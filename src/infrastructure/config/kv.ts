@@ -12,20 +12,62 @@ let kvClient: any;
 if (hasRedisUrl || useLocalRedis) {
   // Use direct Redis connection (Vercel Redis or local Redis)
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  const redisClient = createRedisClient({
+  const isSSL = redisUrl.startsWith('rediss://');
+  
+  const redisClientConfig: any = {
     url: redisUrl,
-  });
+    socket: {
+      connectTimeout: 10000, // 10 seconds timeout
+      reconnectStrategy: (retries: number) => {
+        if (retries > 3) {
+          console.error('Redis: Too many reconnection attempts');
+          return new Error('Too many reconnection attempts');
+        }
+        const delay = Math.min(retries * 100, 3000);
+        console.log(`Redis: Reconnecting in ${delay}ms (attempt ${retries})`);
+        return delay;
+      },
+      keepAlive: 30000, // Keep alive for 30 seconds
+    },
+  };
+
+  // Enable TLS if using rediss:// protocol
+  if (isSSL) {
+    redisClientConfig.socket.tls = true;
+    redisClientConfig.socket.rejectUnauthorized = false; // For self-signed certificates
+  }
+
+  const redisClient = createRedisClient(redisClientConfig);
   
   redisClient.on('error', (err: Error) => {
     console.error('Redis Client Error', err);
   });
   
-  redisClient.connect().catch(console.error);
+  redisClient.on('connect', () => {
+    console.log('Redis: Connected successfully');
+  });
+  
+  redisClient.on('ready', () => {
+    console.log('Redis: Ready to accept commands');
+  });
+  
+  redisClient.on('reconnecting', () => {
+    console.log('Redis: Reconnecting...');
+  });
+  
+  // Connect with error handling
+  redisClient.connect().catch((error) => {
+    console.error('Redis: Failed to connect', error);
+  });
   
   // Create a compatible interface that matches @vercel/kv API
   kvClient = {
     get: async <T>(key: string): Promise<T | null> => {
       try {
+        // Ensure connection before operation
+        if (!redisClient.isOpen) {
+          await redisClient.connect();
+        }
         const value = await redisClient.get(key);
         return value ? JSON.parse(value) : null;
       } catch (error) {
@@ -35,6 +77,10 @@ if (hasRedisUrl || useLocalRedis) {
     },
     set: async (key: string, value: any): Promise<void> => {
       try {
+        // Ensure connection before operation
+        if (!redisClient.isOpen) {
+          await redisClient.connect();
+        }
         await redisClient.set(key, JSON.stringify(value));
       } catch (error) {
         console.error('Error setting in Redis:', error);
@@ -43,6 +89,10 @@ if (hasRedisUrl || useLocalRedis) {
     },
     del: async (key: string): Promise<void> => {
       try {
+        // Ensure connection before operation
+        if (!redisClient.isOpen) {
+          await redisClient.connect();
+        }
         await redisClient.del(key);
       } catch (error) {
         console.error('Error deleting from Redis:', error);
