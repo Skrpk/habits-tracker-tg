@@ -1,0 +1,8 @@
+dist/index.js
+dist/index.d.ts
+dist/index.js.map
+src/index.ts
+dist/src/index.js
+dist/src/index.d.ts
+dist/src/index.js.map
+
