@@ -123,9 +123,11 @@ export class TelegramBotService {
         return;
       }
 
+      const skippedCount = (habit.skipped || []).length;
       const message = `📋 Habit Details\n\n` +
         `Name: ${habit.name}\n` +
         `🔥 Streak: ${habit.streak} days\n` +
+        `⏭️ Skipped days: ${skippedCount}\n` +
         `📅 Last checked: ${habit.lastCheckedDate || 'Never'}\n` +
         `📆 Created: ${new Date(habit.createdAt).toLocaleDateString()}`;
 
@@ -228,7 +230,10 @@ export class TelegramBotService {
         inline_keyboard: [
           [
             { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes` },
-            { text: '❌ No', callback_data: `habit_check:${habit.id}:no` },
+          ],
+          [
+            { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no` },
+            { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip` },
           ],
         ],
       };
@@ -555,10 +560,50 @@ export class TelegramBotService {
     // Answer callback query immediately to remove loading state
     await this.bot.answerCallbackQuery(query.id);
 
-    // Handle habit check (Yes/No)
-    const checkMatch = data.match(/^habit_check:(.+):(yes|no)$/);
+    // Handle habit check (Yes/No/Skip/Cancel)
+    const checkMatch = data.match(/^habit_check:(.+):(yes|no|skip|cancel)$/);
     if (checkMatch) {
-      await this.handleHabitCheckCallback(userId, chatId, username, checkMatch[1], checkMatch[2] === 'yes', query);
+      const action = checkMatch[2];
+      if (action === 'skip') {
+        // Show confirmation for skip
+        await this.handleHabitSkipConfirmation(userId, chatId, checkMatch[1], query.message?.message_id);
+        return;
+      }
+      if (action === 'cancel') {
+        // Cancel skip - go back to habit check question
+        const habits = await this.getUserHabitsUseCase.execute(userId);
+        const habit = habits.find(h => h.id === checkMatch[1]);
+        if (habit) {
+          const keyboard = {
+            inline_keyboard: [
+              [
+                { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes` },
+              ],
+              [
+                { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no` },
+                { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip` },
+              ],
+            ],
+          };
+          await this.safeEditMessage(
+            `Did you "${habit.name}" today?`,
+            {
+              chat_id: chatId,
+              message_id: query.message?.message_id,
+              reply_markup: keyboard,
+            }
+          );
+        }
+        return;
+      }
+      await this.handleHabitCheckCallback(userId, chatId, username, checkMatch[1], action === 'yes', query);
+      return;
+    }
+
+    // Handle habit skip confirmation
+    const skipConfirmMatch = data.match(/^habit_skip_confirm:(.+)$/);
+    if (skipConfirmMatch) {
+      await this.handleHabitSkipCallback(userId, chatId, username, skipConfirmMatch[1], query.message?.message_id);
       return;
     }
 
@@ -630,6 +675,84 @@ export class TelegramBotService {
         text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         show_alert: true,
       });
+    }
+  }
+
+  private async handleHabitSkipConfirmation(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        Logger.warn('Habit not found for skip confirmation', { userId, habitId, chatId });
+        await this.bot.answerCallbackQuery('', {
+          text: 'Habit not found',
+          show_alert: true,
+        });
+        return;
+      }
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '✅ Yes, skip', callback_data: `habit_skip_confirm:${habitId}` },
+            { text: '❌ Cancel', callback_data: `habit_check:${habitId}:cancel` },
+          ],
+        ],
+      };
+
+      await this.safeEditMessage(
+        `Are you sure you want to skip "${habit.name}" today?\n\n⏭️ Your streak will be preserved.`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: keyboard,
+        }
+      );
+    } catch (error) {
+      Logger.error('Error showing skip confirmation', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  private async handleHabitSkipCallback(
+    userId: number,
+    chatId: number,
+    username: string,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username);
+      
+      const message = `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`;
+
+      await this.safeEditMessage(
+        message,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      // Ask about remaining habits
+      await this.askAboutHabits(userId, chatId);
+    } catch (error) {
+      Logger.error('Error skipping habit', {
+        userId,
+        username,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error skipping habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

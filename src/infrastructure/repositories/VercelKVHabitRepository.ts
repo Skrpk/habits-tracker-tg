@@ -15,6 +15,13 @@ export class VercelKVHabitRepository implements IHabitRepository {
   async getUserHabits(userId: number): Promise<UserHabits | null> {
     try {
       const data = await kv.get(this.getUserKey(userId)) as UserHabits | null;
+      if (data) {
+        // Ensure all habits have skipped array initialized
+        data.habits = data.habits.map(habit => ({
+          ...habit,
+          skipped: habit.skipped || [],
+        }));
+      }
       Logger.debug('Retrieved user habits', {
         userId,
         habitCount: data?.habits.length || 0,
@@ -59,6 +66,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
       streak: 0,
       createdAt: new Date(),
       lastCheckedDate: '',
+      skipped: [],
     };
 
     const updatedUserHabits: UserHabits = userHabits || {
