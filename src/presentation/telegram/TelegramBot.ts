@@ -82,6 +82,7 @@ export class TelegramBotService {
           messageId: sentMessage.message_id,
         });
       } catch (error) {
+        console.log('>>>>', error);
         Logger.error('Error sending welcome message', {
           chatId,
           userId,
