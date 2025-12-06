@@ -13,6 +13,9 @@
     },
     "api/reminders.ts": {
       "maxDuration": 60
+    },
+    "api/setup-webhook.ts": {
+      "maxDuration": 10
     }
   }
 }
