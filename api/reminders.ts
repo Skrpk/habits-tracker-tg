@@ -8,7 +8,7 @@ import { DeleteHabitUseCase } from '../src/domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../src/domain/use-cases/GetHabitsToCheckUseCase';
 import { Logger } from '../src/infrastructure/logger/Logger';
 
-const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
 
 if (!botToken) {
   throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
