@@ -1,11 +1,9 @@
-import { createClient } from '@vercel/kv';
 import { createClient as createRedisClient } from 'redis';
 
-// Priority: REDIS_URL (direct connection) > KV REST API > local Redis
+// Use REDIS_URL for connection (direct Redis connection)
 const hasRedisUrl = !!process.env.REDIS_URL;
-const hasKvCredentials = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
 const useLocalRedis = process.env.USE_LOCAL_REDIS === 'true' || 
-  (process.env.NODE_ENV === 'development' && !hasRedisUrl && !hasKvCredentials);
+  (process.env.NODE_ENV === 'development' && !hasRedisUrl);
 
 let kvClient: any;
 
@@ -14,18 +12,17 @@ if (hasRedisUrl || useLocalRedis) {
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
   const isSSL = redisUrl.startsWith('rediss://');
   
+  console.log('Initializing Redis client:', {
+    hasUrl: !!redisUrl,
+    urlPrefix: redisUrl.substring(0, 20) + '...',
+    isSSL,
+    isProduction: process.env.NODE_ENV === 'production',
+  });
+  
   const socketConfig: any = {
-    connectTimeout: 10000, // 10 seconds timeout
-    reconnectStrategy: (retries: number) => {
-      if (retries > 3) {
-        console.error('Redis: Too many reconnection attempts');
-        return new Error('Too many reconnection attempts');
-      }
-      const delay = Math.min(retries * 100, 3000);
-      console.log(`Redis: Reconnecting in ${delay}ms (attempt ${retries})`);
-      return delay;
-    },
-    keepAlive: 30000, // Keep alive for 30 seconds
+    connectTimeout: 5000, // Reduced to 5 seconds for faster failure detection
+    reconnectStrategy: false, // Disable auto-reconnect in serverless (causes issues)
+    keepAlive: false, // Disable keep-alive in serverless
   };
 
   // Enable TLS if using rediss:// protocol
@@ -37,10 +34,16 @@ if (hasRedisUrl || useLocalRedis) {
   const redisClient = createRedisClient({
     url: redisUrl,
     socket: socketConfig,
+    // Disable command queueing for serverless
+    disableClientInfo: true,
   });
   
   redisClient.on('error', (err: Error) => {
-    console.error('Redis Client Error', err);
+    console.error('Redis Client Error:', {
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+    });
   });
   
   redisClient.on('connect', () => {
@@ -55,59 +58,83 @@ if (hasRedisUrl || useLocalRedis) {
     console.log('Redis: Reconnecting...');
   });
   
-  // Connect with error handling
-  redisClient.connect().catch((error) => {
-    console.error('Redis: Failed to connect', error);
-  });
+  // Don't connect immediately - connect on first use (better for serverless)
+  let connectionPromise: Promise<void> | null = null;
+  
+  async function ensureConnected() {
+    if (redisClient.isOpen) {
+      return;
+    }
+    
+    if (connectionPromise) {
+      return connectionPromise;
+    }
+    
+    connectionPromise = (async () => {
+      try {
+        console.log('Redis: Attempting to connect...');
+        await Promise.race([
+          redisClient.connect(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection timeout after 5s')), 5000)
+          ),
+        ]);
+        console.log('Redis: Connection established');
+      } catch (error) {
+        connectionPromise = null; // Reset on failure
+        console.error('Redis: Connection failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          urlPrefix: redisUrl.substring(0, 20) + '...',
+        });
+        throw error;
+      }
+    })();
+    
+    return connectionPromise;
+  }
   
   // Create a compatible interface that matches @vercel/kv API
   kvClient = {
     get: async <T>(key: string): Promise<T | null> => {
       try {
-        // Ensure connection before operation
-        if (!redisClient.isOpen) {
-          await redisClient.connect();
-        }
+        await ensureConnected();
         const value = await redisClient.get(key);
         return value ? JSON.parse(value) : null;
       } catch (error) {
-        console.error('Error getting from Redis:', error);
+        console.error('Error getting from Redis:', {
+          key,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         return null;
       }
     },
     set: async (key: string, value: any): Promise<void> => {
       try {
-        // Ensure connection before operation
-        if (!redisClient.isOpen) {
-          await redisClient.connect();
-        }
+        await ensureConnected();
         await redisClient.set(key, JSON.stringify(value));
       } catch (error) {
-        console.error('Error setting in Redis:', error);
+        console.error('Error setting in Redis:', {
+          key,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         throw error;
       }
     },
     del: async (key: string): Promise<void> => {
       try {
-        // Ensure connection before operation
-        if (!redisClient.isOpen) {
-          await redisClient.connect();
-        }
+        await ensureConnected();
         await redisClient.del(key);
       } catch (error) {
-        console.error('Error deleting from Redis:', error);
+        console.error('Error deleting from Redis:', {
+          key,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         throw error;
       }
     },
   };
-} else if (hasKvCredentials) {
-  // Fallback: Use Vercel KV REST API (if REDIS_URL is not available)
-  kvClient = createClient({
-    url: process.env.KV_REST_API_URL!,
-    token: process.env.KV_REST_API_TOKEN!,
-  });
 } else {
-  throw new Error('Either REDIS_URL or KV_REST_API_URL/KV_REST_API_TOKEN must be set');
+  throw new Error('REDIS_URL environment variable must be set');
 }
 
 export const kv = kvClient;

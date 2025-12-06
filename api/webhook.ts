@@ -24,7 +24,6 @@ function getBotService(): TelegramBotService {
       console.log('Environment check:', {
         hasBotToken: !!botToken,
         hasRedisUrl: !!process.env.REDIS_URL,
-        hasKvUrl: !!process.env.KV_REST_API_URL,
         nodeEnv: process.env.NODE_ENV,
       });
 

@@ -46,8 +46,7 @@ npm install
 ```bash
 # Copy .env.example to .env and fill in the values
 TELEGRAM_BOT_TOKEN=your_bot_token_here
-KV_REST_API_URL=your_vercel_kv_rest_api_url
-KV_REST_API_TOKEN=your_vercel_kv_rest_api_token
+REDIS_URL=your_redis_connection_string
 NODE_ENV=development
 WEBHOOK_URL=https://your-domain.vercel.app/api/webhook
 ```
@@ -134,8 +133,7 @@ vercel deploy
 
 3. Set environment variables in Vercel dashboard:
    - `TELEGRAM_BOT_TOKEN`
-   - `KV_REST_API_URL`
-   - `KV_REST_API_TOKEN`
+   - `REDIS_URL` - Your Redis connection string
    - `NODE_ENV=production`
    - `WEBHOOK_URL=https://your-domain.vercel.app/api/webhook`
 
@@ -196,8 +194,7 @@ habits-tracker/
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `TELEGRAM_BOT_TOKEN` | Your Telegram bot token | Yes |
-| `KV_REST_API_URL` | Vercel KV REST API URL | Yes |
-| `KV_REST_API_TOKEN` | Vercel KV REST API token | Yes |
+| `REDIS_URL` | Redis connection string (redis:// or rediss://) | Yes |
 | `NODE_ENV` | Environment (production/development) | Yes |
 | `WEBHOOK_URL` | Full webhook URL for production | Production only |
 
@@ -205,3 +202,8 @@ habits-tracker/
 
 MIT
 
+##
+# Replace with your actual values
+curl -X POST "https://api.telegram.org/bot8446823578:AAEc7HMkV8jmo69yyYhwXGhqlyevbJ6bXcU/setWebhook?url=https://habits-tracker-tg.vercel.app/api/webhook"
+
+curl "https://api.telegram.org/bot8446823578:AAEc7HMkV8jmo69yyYhwXGhqlyevbJ6bXcU/getWebhookInfo"
