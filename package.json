@@ -10,10 +10,16 @@
     "start": "node dist/index.js",
     "setup-webhook": "tsx scripts/setup-webhook.ts"
   },
-  "keywords": ["telegram", "bot", "habits", "tracker"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "habits",
+    "tracker"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "@vercel/node": "^3.0.0",
     "node-telegram-bot-api": "^0.64.0",
     "redis": "^4.6.0"
@@ -26,4 +32,3 @@
     "typescript": "^5.3.3"
   }
 }
-

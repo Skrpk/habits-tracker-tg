@@ -1,3 +1,4 @@
+import { inject } from '@vercel/analytics';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { VercelKVHabitRepository } from '../src/infrastructure/repositories/VercelKVHabitRepository';
 import { CreateHabitUseCase } from '../src/domain/use-cases/CreateHabitUseCase';
@@ -7,6 +8,9 @@ import { DeleteHabitUseCase } from '../src/domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../src/domain/use-cases/GetHabitsToCheckUseCase';
 import { TelegramBotService } from '../src/presentation/telegram/TelegramBot';
 import TelegramBot from 'node-telegram-bot-api';
+
+// Initialize Vercel Web Analytics
+inject();
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
