@@ -30,6 +30,22 @@ export class TelegramBotService {
     usePolling: boolean = false
   ) {
     this.bot = new TelegramBot(token, { polling: usePolling });
+    
+    // Add error handlers for debugging
+    this.bot.on('error', (error: Error) => {
+      Logger.error('Telegram bot error', {
+        message: error.message,
+        stack: error.stack,
+      });
+    });
+    
+    this.bot.on('polling_error', (error: Error) => {
+      Logger.error('Telegram bot polling error', {
+        message: error.message,
+        stack: error.stack,
+      });
+    });
+    
     this.createHabitUseCase = createHabitUseCase;
     this.getUserHabitsUseCase = getUserHabitsUseCase;
     this.recordHabitCheckUseCase = recordHabitCheckUseCase;
@@ -50,15 +66,31 @@ export class TelegramBotService {
         chatId,
       });
 
-      await this.bot.sendMessage(
-        chatId,
-        'Welcome to Habits Tracker! 🎯\n\n' +
-        'Commands:\n' +
-        '/newhabit <name> - Create a new habit\n' +
-        '/myhabits - View all your habits\n' +
-        '/check - Check habits for today\n\n' +
-        'The bot will remind you daily to check your habits!'
-      );
+      try {
+        Logger.info('Sending welcome message', { chatId });
+        const sentMessage = await this.bot.sendMessage(
+          chatId,
+          'Welcome to Habits Tracker! 🎯\n\n' +
+          'Commands:\n' +
+          '/newhabit <name> - Create a new habit\n' +
+          '/myhabits - View all your habits\n' +
+          '/check - Check habits for today\n\n' +
+          'The bot will remind you daily to check your habits!'
+        );
+        Logger.info('Welcome message sent successfully', {
+          chatId,
+          messageId: sentMessage.message_id,
+        });
+      } catch (error) {
+        Logger.error('Error sending welcome message', {
+          chatId,
+          userId,
+          username,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        throw error;
+      }
     });
 
     // Create habit command
@@ -435,7 +467,21 @@ export class TelegramBotService {
   }
 
   async processUpdate(update: TelegramBot.Update): Promise<void> {
-    await this.bot.processUpdate(update);
+    try {
+      Logger.debug('Processing update', {
+        updateId: update.update_id,
+        messageText: update.message?.text,
+      });
+      await this.bot.processUpdate(update);
+      Logger.debug('Update processed', { updateId: update.update_id });
+    } catch (error) {
+      Logger.error('Error processing update', {
+        updateId: update.update_id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
   }
 }
 
