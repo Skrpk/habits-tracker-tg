@@ -44,9 +44,9 @@ function getBotService(): TelegramBotService {
 // Vercel serverless function handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST requests (for cron jobs)
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  // if (req.method !== 'POST') {
+  //   return res.status(405).json({ error: 'Method not allowed' });
+  // }
 
   // Optional: Add a secret token for security
   const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
