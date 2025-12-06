@@ -14,30 +14,30 @@ if (hasRedisUrl || useLocalRedis) {
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
   const isSSL = redisUrl.startsWith('rediss://');
   
-  const redisClientConfig: any = {
-    url: redisUrl,
-    socket: {
-      connectTimeout: 10000, // 10 seconds timeout
-      reconnectStrategy: (retries: number) => {
-        if (retries > 3) {
-          console.error('Redis: Too many reconnection attempts');
-          return new Error('Too many reconnection attempts');
-        }
-        const delay = Math.min(retries * 100, 3000);
-        console.log(`Redis: Reconnecting in ${delay}ms (attempt ${retries})`);
-        return delay;
-      },
-      keepAlive: 30000, // Keep alive for 30 seconds
+  const socketConfig: any = {
+    connectTimeout: 10000, // 10 seconds timeout
+    reconnectStrategy: (retries: number) => {
+      if (retries > 3) {
+        console.error('Redis: Too many reconnection attempts');
+        return new Error('Too many reconnection attempts');
+      }
+      const delay = Math.min(retries * 100, 3000);
+      console.log(`Redis: Reconnecting in ${delay}ms (attempt ${retries})`);
+      return delay;
     },
+    keepAlive: 30000, // Keep alive for 30 seconds
   };
 
   // Enable TLS if using rediss:// protocol
   if (isSSL) {
-    redisClientConfig.socket.tls = true;
-    redisClientConfig.socket.rejectUnauthorized = false; // For self-signed certificates
+    socketConfig.tls = true;
+    socketConfig.rejectUnauthorized = false; // For self-signed certificates
   }
 
-  const redisClient = createRedisClient(redisClientConfig);
+  const redisClient = createRedisClient({
+    url: redisUrl,
+    socket: socketConfig,
+  });
   
   redisClient.on('error', (err: Error) => {
     console.error('Redis Client Error', err);
