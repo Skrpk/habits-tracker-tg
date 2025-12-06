@@ -54,83 +54,8 @@ export class TelegramBotService {
   }
 
   setupHandlers(): void {
-    // Only setup callback query handler - text commands are handled manually in processUpdate
-    // Handle callback queries (Yes/No buttons, habit list, delete)
-    this.bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
-      const chatId = query.message?.chat.id;
-      const userId = query.from.id;
-      const username = getUsername(query.from);
-      const data = query.data;
-
-      if (!chatId || !data) {
-        Logger.warn('Invalid callback query', { userId, username, hasChatId: !!chatId, hasData: !!data });
-        return;
-      }
-
-      await this.bot.answerCallbackQuery(query.id);
-
-      // Handle habit check (Yes/No)
-      const checkMatch = data.match(/^habit_check:(.+):(yes|no)$/);
-      if (checkMatch) {
-        const habitId = checkMatch[1];
-        const completed = checkMatch[2] === 'yes';
-
-        try {
-          const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username);
-          
-          const emoji = completed ? '✅' : '❌';
-          const message = completed
-            ? `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`
-            : `Streak reset. You can start fresh tomorrow! 💪`;
-
-          await this.safeEditMessage(
-            `${emoji} ${message}`,
-            {
-              chat_id: chatId,
-              message_id: query.message?.message_id,
-            }
-          );
-
-          // Ask about remaining habits
-          await this.askAboutHabits(userId, chatId);
-        } catch (error) {
-          Logger.error('Error recording habit check', {
-            userId,
-            username,
-            habitId,
-            completed,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-          await this.bot.answerCallbackQuery(query.id, {
-            text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            show_alert: true,
-          });
-        }
-        return;
-      }
-
-      // Handle habit view (show details)
-      const viewMatch = data.match(/^habit_view:(.+)$/);
-      if (viewMatch) {
-        const habitId = viewMatch[1];
-        await this.showHabitDetails(userId, chatId, habitId, query.message?.message_id);
-        return;
-      }
-
-      // Handle habit delete
-      const deleteMatch = data.match(/^habit_delete:(.+)$/);
-      if (deleteMatch) {
-        const habitId = deleteMatch[1];
-        await this.deleteHabit(userId, chatId, habitId, query.message?.message_id);
-        return;
-      }
-
-      // Handle back to list
-      if (data === 'habit_list') {
-        await this.showHabitsList(userId, chatId, query.message?.message_id);
-        return;
-      }
-    });
+    // All handlers are now manually handled in processUpdate()
+    // This method is kept for potential future use or compatibility
   }
 
   private async showHabitsList(userId: number, chatId: number, messageId?: number): Promise<void> {
@@ -404,9 +329,9 @@ export class TelegramBotService {
         return;
       }
       
-      // Handle callback queries - use bot.processUpdate since it works fine for callbacks
+      // Handle callback queries
       if (update.callback_query) {
-        await this.bot.processUpdate(update);
+        await this.handleCallbackQuery(update.callback_query);
         return;
       }
       
@@ -514,6 +439,119 @@ export class TelegramBotService {
 
     Logger.info('User requested habit check', { userId, username, chatId });
     await this.askAboutHabits(userId, chatId);
+  }
+
+  // Callback query handlers
+  private async handleCallbackQuery(query: TelegramBot.CallbackQuery): Promise<void> {
+    const chatId = query.message?.chat.id;
+    const userId = query.from.id;
+    const username = getUsername(query.from);
+    const data = query.data;
+
+    if (!chatId || !data) {
+      Logger.warn('Invalid callback query', { userId, username, hasChatId: !!chatId, hasData: !!data });
+      return;
+    }
+
+    // Answer callback query immediately to remove loading state
+    await this.bot.answerCallbackQuery(query.id);
+
+    // Handle habit check (Yes/No)
+    const checkMatch = data.match(/^habit_check:(.+):(yes|no)$/);
+    if (checkMatch) {
+      await this.handleHabitCheckCallback(userId, chatId, username, checkMatch[1], checkMatch[2] === 'yes', query);
+      return;
+    }
+
+    // Handle habit view (show details)
+    const viewMatch = data.match(/^habit_view:(.+)$/);
+    if (viewMatch) {
+      await this.handleHabitViewCallback(userId, chatId, viewMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle habit delete
+    const deleteMatch = data.match(/^habit_delete:(.+)$/);
+    if (deleteMatch) {
+      await this.handleHabitDeleteCallback(userId, chatId, deleteMatch[1], query.message?.message_id, username);
+      return;
+    }
+
+    // Handle back to list
+    if (data === 'habit_list') {
+      await this.handleHabitListCallback(userId, chatId, query.message?.message_id);
+      return;
+    }
+
+    Logger.warn('Unknown callback query data', { userId, username, data, chatId });
+  }
+
+  private async handleHabitCheckCallback(
+    userId: number,
+    chatId: number,
+    username: string,
+    habitId: string,
+    completed: boolean,
+    query: TelegramBot.CallbackQuery
+  ): Promise<void> {
+    try {
+      const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username);
+      
+      const emoji = completed ? '✅' : '❌';
+      const message = completed
+        ? `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`
+        : `Streak reset. You can start fresh tomorrow! 💪`;
+
+      await this.safeEditMessage(
+        `${emoji} ${message}`,
+        {
+          chat_id: chatId,
+          message_id: query.message?.message_id,
+        }
+      );
+
+      // Ask about remaining habits
+      await this.askAboutHabits(userId, chatId);
+    } catch (error) {
+      Logger.error('Error recording habit check', {
+        userId,
+        username,
+        habitId,
+        completed,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.answerCallbackQuery(query.id, {
+        text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        show_alert: true,
+      });
+    }
+  }
+
+  private async handleHabitViewCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    await this.showHabitDetails(userId, chatId, habitId, messageId);
+  }
+
+  private async handleHabitDeleteCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number,
+    username?: string
+  ): Promise<void> {
+    await this.deleteHabit(userId, chatId, habitId, messageId, username);
+  }
+
+  private async handleHabitListCallback(
+    userId: number,
+    chatId: number,
+    messageId?: number
+  ): Promise<void> {
+    await this.showHabitsList(userId, chatId, messageId);
   }
 
   // Add this helper method to the TelegramBotService class
