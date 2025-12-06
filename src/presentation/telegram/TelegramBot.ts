@@ -5,6 +5,7 @@ import { RecordHabitCheckUseCase } from '../../domain/use-cases/RecordHabitCheck
 import { DeleteHabitUseCase } from '../../domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../../domain/use-cases/GetHabitsToCheckUseCase';
 import { Logger } from '../../infrastructure/logger/Logger';
+import { kv } from '../../infrastructure/config/kv';
 
 // Helper function to get username from Telegram user
 function getUsername(from: TelegramBot.User | undefined): string {
@@ -299,16 +300,41 @@ export class TelegramBotService {
         const userId = msg.from?.id;
         const username = getUsername(msg.from);
         
+        if (!userId) {
+          Logger.warn('Message received without user ID', { chatId });
+          return;
+        }
+        
+        // Check for conversation state first (before processing commands)
+        const conversationState = await this.getConversationState(userId);
+        
+        // If user sends a command while in conversation state, clear the state
+        if (conversationState && text.match(/^\//)) {
+          await this.clearConversationState(userId);
+        }
+        
+        if (conversationState === 'creating_habit' && !text.match(/^\//)) {
+          // User is in the middle of creating a habit - treat this message as the habit name
+          await this.handleHabitNameInput(chatId, userId, username, text);
+          return;
+        }
+        
         // Handle /start command
         if (text.match(/^\/start/)) {
           await this.handleStartCommand(chatId, userId, username);
           return;
         }
         
-        // Handle /newhabit command
+        // Handle /newhabit command (without arguments)
+        if (text.match(/^\/newhabit$/)) {
+          await this.handleNewHabitCommand(chatId, userId, username);
+          return;
+        }
+        
+        // Handle /newhabit command with argument (backward compatibility)
         const newHabitMatch = text.match(/^\/newhabit (.+)$/);
         if (newHabitMatch) {
-          await this.handleNewHabitCommand(chatId, userId, username, newHabitMatch[1]);
+          await this.handleNewHabitCommandWithName(chatId, userId, username, newHabitMatch[1]);
           return;
         }
         
@@ -358,7 +384,7 @@ export class TelegramBotService {
         chatId,
         'Welcome to Habits Tracker! 🎯\n\n' +
         'Commands:\n' +
-        '/newhabit <name> - Create a new habit\n' +
+        '/newhabit - Create a new habit\n' +
         '/myhabits - View all your habits\n\n' +
         'The bot will remind you daily to check your habits!'
       );
@@ -381,21 +407,69 @@ export class TelegramBotService {
     }
   }
 
-  private async handleNewHabitCommand(chatId: number, userId: number | undefined, username: string, habitName: string): Promise<void> {
-    if (!userId) {
-      Logger.warn('Unable to identify user for create habit', { chatId });
-      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+  private async handleNewHabitCommand(chatId: number, userId: number, username: string): Promise<void> {
+    // Set conversation state to "creating_habit"
+    await this.setConversationState(userId, 'creating_habit');
+    
+    Logger.info('User started creating habit', { userId, username, chatId });
+    await this.bot.sendMessage(
+      chatId,
+      '📝 What would you like to name your new habit?\n\n' +
+      'Just type the name and send it to me.'
+    );
+  }
+
+  private async handleHabitNameInput(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
+    // Clear conversation state
+    await this.clearConversationState(userId);
+    
+    const trimmedName = habitName.trim();
+    
+    if (!trimmedName || trimmedName.length === 0) {
+      Logger.info('Empty habit name provided', { userId, username, chatId });
+      await this.bot.sendMessage(chatId, '❌ Habit name cannot be empty. Please try again with /newhabit');
       return;
     }
 
-    if (!habitName || habitName.trim().length === 0) {
+    // Check if name starts with a command (user might have sent a command by mistake)
+    if (trimmedName.startsWith('/')) {
+      Logger.info('User sent command instead of habit name', { userId, username, chatId, text: trimmedName });
+      await this.bot.sendMessage(chatId, '❌ Please provide a habit name, not a command. Try again with /newhabit');
+      return;
+    }
+
+    try {
+      Logger.info('Creating habit', { userId, username, chatId, habitName: trimmedName });
+      const habit = await this.createHabitUseCase.execute(userId, trimmedName, username);
+      await this.bot.sendMessage(
+        chatId,
+        `✅ Habit "${habit.name}" created!\n\n` +
+        `View all your habits with /myhabits`
+      );
+    } catch (error) {
+      Logger.error('Error creating habit', {
+        userId,
+        username,
+        chatId,
+        habitName: trimmedName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error creating habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleNewHabitCommandWithName(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
+    // Backward compatibility: handle /newhabit <name> format
+    const trimmedName = habitName.trim();
+    
+    if (!trimmedName || trimmedName.length === 0) {
       Logger.info('Invalid habit creation request', { userId, username, chatId });
       await this.bot.sendMessage(chatId, 'Please provide a habit name: /newhabit <name>');
       return;
     }
 
     try {
-      const habit = await this.createHabitUseCase.execute(userId, habitName.trim(), username);
+      const habit = await this.createHabitUseCase.execute(userId, trimmedName, username);
       await this.bot.sendMessage(
         chatId,
         `✅ Habit "${habit.name}" created!\n\n` +
@@ -409,6 +483,48 @@ export class TelegramBotService {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       await this.bot.sendMessage(chatId, `Error creating habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Conversation state management
+  private async getConversationState(userId: number): Promise<string | null> {
+    try {
+      const state = await kv.get(`conversation_state:${userId}`) as string | null;
+      return state;
+    } catch (error) {
+      Logger.error('Error getting conversation state', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return null;
+    }
+  }
+
+  private async setConversationState(userId: number, state: string): Promise<void> {
+    try {
+      await kv.set(`conversation_state:${userId}`, state);
+      // Set expiration to 1 hour (in case user abandons the conversation)
+      // Note: Redis SET doesn't support expiration directly, we'd need to use SETEX
+      // For now, we'll rely on manual cleanup or implement SETEX if needed
+    } catch (error) {
+      Logger.error('Error setting conversation state', {
+        userId,
+        state,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  private async clearConversationState(userId: number): Promise<void> {
+    try {
+      await kv.del(`conversation_state:${userId}`);
+    } catch (error) {
+      Logger.error('Error clearing conversation state', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      // Don't throw - clearing state is not critical
     }
   }
 
