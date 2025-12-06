@@ -25,6 +25,30 @@ body {
     text-align: center;
 }
 
+.quote-section {
+    margin-bottom: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.quote {
+    font-size: 1.4rem;
+    font-style: italic;
+    margin: 0 0 12px 0;
+    line-height: 1.6;
+    font-weight: 300;
+}
+
+.quote-author {
+    font-size: 1rem;
+    margin: 0;
+    opacity: 0.95;
+    font-weight: 500;
+}
+
 .hero {
     margin-bottom: 50px;
 }
@@ -138,6 +162,18 @@ h1 {
 @media (max-width: 640px) {
     .container {
         padding: 40px 24px;
+    }
+
+    .quote-section {
+        padding: 24px 20px;
+    }
+
+    .quote {
+        font-size: 1.15rem;
+    }
+
+    .quote-author {
+        font-size: 0.9rem;
     }
 
     h1 {
