@@ -1,0 +1,19 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (including optional dependencies for esbuild)
+RUN npm install --include=optional
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Start both bot and reminders server
+CMD sh -c "npm run dev & npm run dev:reminders & wait"
+

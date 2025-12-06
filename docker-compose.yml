@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: habits-tracker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: habits-tracker-bot
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+      - TELEGRAM_BOT_TOKEN=
+      - REDIS_URL=redis://redis:6379
+      - USE_LOCAL_REDIS=true
+      - PORT=3000
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./api:/app/api
+      - node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    command: sh -c "npm run dev & npm run dev:reminders & wait"
+    restart: unless-stopped
+
+  cron:
+    build:
+      context: .
+      dockerfile: docker/cron/Dockerfile
+    container_name: habits-tracker-cron
+    depends_on:
+      bot:
+        condition: service_started
+    environment:
+      - REMINDER_URL=http://bot:3000/api/reminders
+      - CRON_SECRET=${CRON_SECRET:-}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-* * * * *}
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  node_modules:
+
