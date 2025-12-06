@@ -318,12 +318,6 @@ export class TelegramBotService {
           return;
         }
         
-        // Handle /check command
-        if (text.match(/^\/check/)) {
-          await this.handleCheckCommand(chatId, userId, username);
-          return;
-        }
-        
         // Unknown command - ignore silently
         Logger.debug('Unknown command received', { text, userId, chatId });
         return;
@@ -365,8 +359,7 @@ export class TelegramBotService {
         'Welcome to Habits Tracker! 🎯\n\n' +
         'Commands:\n' +
         '/newhabit <name> - Create a new habit\n' +
-        '/myhabits - View all your habits\n' +
-        '/check - Check habits for today\n\n' +
+        '/myhabits - View all your habits\n\n' +
         'The bot will remind you daily to check your habits!'
       );
       Logger.info('Welcome message sent successfully', {
@@ -430,16 +423,6 @@ export class TelegramBotService {
     await this.showHabitsList(userId, chatId);
   }
 
-  private async handleCheckCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
-    if (!userId) {
-      Logger.warn('Unable to identify user for check habits', { chatId });
-      await this.bot.sendMessage(chatId, 'Unable to identify user.');
-      return;
-    }
-
-    Logger.info('User requested habit check', { userId, username, chatId });
-    await this.askAboutHabits(userId, chatId);
-  }
 
   // Callback query handlers
   private async handleCallbackQuery(query: TelegramBot.CallbackQuery): Promise<void> {
