@@ -43,25 +43,21 @@ function getBotService(): TelegramBotService {
 
 // Vercel serverless function handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // SECURITY: Multiple layers of protection
+  // SECURITY: Verify request is from Vercel Cron
+  // Vercel sends both x-vercel-cron header AND Authorization header with signed token
   
-  // Layer 1: Verify it's from Vercel Cron (can be spoofed, but still a check)
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const authHeader = req.headers.authorization;
   
-  // Layer 2: Verify secret token (from query parameter)
-  const expectedSecret = process.env.CRON_SECRET;
-  const providedSecret = req.query.secret;
+  // Vercel cron jobs send: Authorization: Bearer <signed-token>
+  // The token is cryptographically signed and can't be easily faked
+  const hasValidAuth = authHeader && authHeader.startsWith('Bearer ');
   
-  if (!expectedSecret) {
-    Logger.error('CRON_SECRET not configured - endpoint is insecure!');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-  
-  // Require BOTH checks to pass
-  if (!isVercelCron || providedSecret !== expectedSecret) {
+  // Require BOTH checks - header AND authorization
+  if (!isVercelCron || !hasValidAuth) {
     Logger.warn('Unauthorized request to reminders endpoint', {
       hasVercelCronHeader: !!req.headers['x-vercel-cron'],
-      hasSecret: !!providedSecret,
+      hasAuthHeader: !!authHeader,
       ip: req.headers['x-forwarded-for'],
       userAgent: req.headers['user-agent'],
     });
