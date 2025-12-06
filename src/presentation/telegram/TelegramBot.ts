@@ -82,12 +82,17 @@ export class TelegramBotService {
           messageId: sentMessage.message_id,
         });
       } catch (error) {
-        console.log('>>>>', error);
+        console.log('>>>> Error in sendMessage:', error);
+        console.log('>>>> Error type:', typeof error);
+        console.log('>>>> Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         Logger.error('Error sending welcome message', {
           chatId,
           userId,
           username,
           error: error instanceof Error ? error.message : 'Unknown error',
+          errorName: error instanceof Error ? error.name : undefined,
+          errorCode: (error as any)?.code,
+          errorResponse: (error as any)?.response,
           stack: error instanceof Error ? error.stack : undefined,
         });
         throw error;
