@@ -453,7 +453,14 @@ export class TelegramBotService {
       return;
     }
 
-    // Handle habit delete
+    // Handle habit delete confirmation
+    const deleteConfirmMatch = data.match(/^habit_delete_confirm:(.+)$/);
+    if (deleteConfirmMatch) {
+      await this.handleHabitDeleteConfirmCallback(userId, chatId, deleteConfirmMatch[1], query.message?.message_id, username);
+      return;
+    }
+
+    // Handle habit delete (show confirmation)
     const deleteMatch = data.match(/^habit_delete:(.+)$/);
     if (deleteMatch) {
       await this.handleHabitDeleteCallback(userId, chatId, deleteMatch[1], query.message?.message_id, username);
@@ -520,6 +527,61 @@ export class TelegramBotService {
   }
 
   private async handleHabitDeleteCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number,
+    username?: string
+  ): Promise<void> {
+    try {
+      // Get habit details to show in confirmation
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        Logger.warn('Habit not found for deletion confirmation', { userId, username, habitId, chatId });
+        await this.bot.answerCallbackQuery('', {
+          text: 'Habit not found',
+          show_alert: true,
+        });
+        return;
+      }
+
+      // Show confirmation message
+      const confirmationMessage = `⚠️ Are you sure you want to delete "${habit.name}"?\n\nThis action cannot be undone.`;
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '✅ Yes, delete', callback_data: `habit_delete_confirm:${habitId}` },
+            { text: '❌ Cancel', callback_data: `habit_view:${habitId}` },
+          ],
+        ],
+      };
+
+      if (messageId) {
+        await this.safeEditMessage(confirmationMessage, {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: keyboard,
+        });
+      } else {
+        await this.bot.sendMessage(chatId, confirmationMessage, {
+          reply_markup: keyboard,
+        });
+      }
+    } catch (error) {
+      Logger.error('Error showing delete confirmation', {
+        userId,
+        username,
+        habitId,
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleHabitDeleteConfirmCallback(
     userId: number,
     chatId: number,
     habitId: string,
