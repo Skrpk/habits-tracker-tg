@@ -16,11 +16,22 @@ if (!webhookUrl) {
 async function setupWebhook() {
   try {
     const bot = new TelegramBot(botToken);
-    await bot.setWebHook(`${webhookUrl}/api/webhook`);
+    const secretToken = process.env.WEBHOOK_SECRET_TOKEN;
+    
+    // Set webhook with secret token
+    await bot.setWebHook(`${webhookUrl}/api/webhook`, {
+      secret_token: secretToken,
+    });
+    
     const webhookInfo = await bot.getWebHookInfo();
     console.log('Webhook set successfully!');
     console.log('Webhook URL:', webhookInfo.url);
     console.log('Pending updates:', webhookInfo.pending_update_count);
+    if (secretToken) {
+      console.log('✅ Secret token configured');
+    } else {
+      console.warn('⚠️  No secret token set - webhook is not secured!');
+    }
   } catch (error) {
     console.error('Error setting webhook:', error);
     process.exit(1);

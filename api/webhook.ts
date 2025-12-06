@@ -65,6 +65,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Verify secret token
+  const secretToken = process.env.WEBHOOK_SECRET_TOKEN;
+  if (secretToken) {
+    const providedToken = req.headers['x-telegram-bot-api-secret-token'];
+    if (providedToken !== secretToken) {
+      console.warn('Unauthorized webhook request - invalid secret token', {
+        providedToken: providedToken ? 'present' : 'missing',
+        expectedLength: secretToken.length,
+      });
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
   try {
     const update = req.body as TelegramBot.Update;
     console.log('Processing update:', {
