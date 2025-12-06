@@ -1,13 +1,16 @@
 import { createClient } from '@vercel/kv';
 import { createClient as createRedisClient } from 'redis';
 
+// Priority: REDIS_URL (direct connection) > KV REST API > local Redis
+const hasRedisUrl = !!process.env.REDIS_URL;
+const hasKvCredentials = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
 const useLocalRedis = process.env.USE_LOCAL_REDIS === 'true' || 
-  (process.env.NODE_ENV === 'development' && !process.env.KV_REST_API_URL);
+  (process.env.NODE_ENV === 'development' && !hasRedisUrl && !hasKvCredentials);
 
 let kvClient: any;
 
-if (useLocalRedis) {
-  // Use local Redis for development
+if (hasRedisUrl || useLocalRedis) {
+  // Use direct Redis connection (Vercel Redis or local Redis)
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
   const redisClient = createRedisClient({
     url: redisUrl,
@@ -47,16 +50,14 @@ if (useLocalRedis) {
       }
     },
   };
-} else {
-  // Use Vercel KV for production
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    throw new Error('KV_REST_API_URL and KV_REST_API_TOKEN must be set for production');
-  }
-  
+} else if (hasKvCredentials) {
+  // Fallback: Use Vercel KV REST API (if REDIS_URL is not available)
   kvClient = createClient({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
+    url: process.env.KV_REST_API_URL!,
+    token: process.env.KV_REST_API_TOKEN!,
   });
+} else {
+  throw new Error('Either REDIS_URL or KV_REST_API_URL/KV_REST_API_TOKEN must be set');
 }
 
 export const kv = kvClient;
