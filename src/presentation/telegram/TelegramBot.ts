@@ -196,7 +196,7 @@ export class TelegramBotService {
             ? `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`
             : `Streak reset. You can start fresh tomorrow! 💪`;
 
-          await this.bot.editMessageText(
+          await this.safeEditMessage(
             `${emoji} ${message}`,
             {
               chat_id: chatId,
@@ -259,7 +259,7 @@ export class TelegramBotService {
       if (habits.length === 0) {
         const message = 'You don\'t have any habits yet. Create one with /newhabit <name>';
         if (messageId) {
-          await this.bot.editMessageText(message, {
+          await this.safeEditMessage(message, {
             chat_id: chatId,
             message_id: messageId,
           });
@@ -282,7 +282,7 @@ export class TelegramBotService {
       const message = '📋 Your Habits:\n\nClick on a habit to view details or delete it.';
       
       if (messageId) {
-        await this.bot.editMessageText(message, {
+        await this.safeEditMessage(message, {
           chat_id: chatId,
           message_id: messageId,
           reply_markup: keyboard,
@@ -328,7 +328,7 @@ export class TelegramBotService {
       };
 
       if (messageId) {
-        await this.bot.editMessageText(message, {
+        await this.safeEditMessage(message, {
           chat_id: chatId,
           message_id: messageId,
           reply_markup: keyboard,
@@ -362,7 +362,7 @@ export class TelegramBotService {
       const message = `✅ Habit "${habit.name}" deleted successfully!`;
       
       if (messageId) {
-        await this.bot.editMessageText(message, {
+        await this.safeEditMessage(message, {
           chat_id: chatId,
           message_id: messageId,
         });
@@ -547,6 +547,27 @@ export class TelegramBotService {
         errorName: error instanceof Error ? error.name : undefined,
         stack: error instanceof Error ? error.stack : undefined,
       });
+      throw error;
+    }
+  }
+
+  // Add this helper method to the TelegramBotService class
+  private async safeEditMessage(
+    text: string,
+    options: TelegramBot.EditMessageTextOptions
+  ): Promise<void> {
+    try {
+      await this.bot.editMessageText(text, options);
+    } catch (error: any) {
+      // Ignore "message is not modified" error - it means the message is already correct
+      if (error?.response?.body?.description?.includes('message is not modified')) {
+        Logger.debug('Message not modified, skipping edit', {
+          chatId: options.chat_id,
+          messageId: options.message_id,
+        });
+        return;
+      }
+      // Re-throw other errors
       throw error;
     }
   }
