@@ -8,7 +8,7 @@ import { GetHabitsToCheckUseCase } from '../domain/use-cases/GetHabitsToCheckUse
 import { TelegramBotService } from '../presentation/telegram/TelegramBot';
 import TelegramBot from 'node-telegram-bot-api';
 
-const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
 const webhookUrl = process.env.WEBHOOK_URL;
 
 if (!botToken) {
