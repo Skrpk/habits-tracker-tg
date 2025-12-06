@@ -67,7 +67,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Verify secret token
   const secretToken = process.env.WEBHOOK_SECRET_TOKEN;
-  console.log('Secret token:', secretToken?.slice(0, 10));
   if (secretToken) {
     const providedToken = req.headers['x-telegram-bot-api-secret-token'];
     if (providedToken !== secretToken) {

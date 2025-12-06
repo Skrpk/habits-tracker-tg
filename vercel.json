@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "crons": [
     {
-      "path": "/api/reminders",
+      "path": "/api/reminders?secret=secret",
       "schedule": "0 22 * * *"
     }
   ],
