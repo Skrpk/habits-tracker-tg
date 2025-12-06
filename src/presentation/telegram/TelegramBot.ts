@@ -478,12 +478,73 @@ export class TelegramBotService {
         updateId: update.update_id,
         messageText: update.message?.text,
       });
-      await this.bot.processUpdate(update);
+      
+      // In webhook mode, processUpdate doesn't wait for async handlers
+      // We need to manually handle the update and await handlers
+      if (update.message?.text) {
+        const text = update.message.text;
+        const msg = update.message;
+        
+        // Handle /start command
+        if (text.match(/^\/start/)) {
+          const chatId = msg.chat.id;
+          const userId = msg.from?.id;
+          const username = getUsername(msg.from);
+
+          Logger.info('User started bot', {
+            userId,
+            username,
+            chatId,
+          });
+
+          try {
+            Logger.info('Sending welcome message', { chatId });
+            const sentMessage = await this.bot.sendMessage(
+              chatId,
+              'Welcome to Habits Tracker! 🎯\n\n' +
+              'Commands:\n' +
+              '/newhabit <name> - Create a new habit\n' +
+              '/myhabits - View all your habits\n' +
+              '/check - Check habits for today\n\n' +
+              'The bot will remind you daily to check your habits!'
+            );
+            Logger.info('Welcome message sent successfully', {
+              chatId,
+              messageId: sentMessage.message_id,
+            });
+          } catch (error) {
+            console.log('>>>> Error in sendMessage:', error);
+            console.log('>>>> Error type:', typeof error);
+            console.log('>>>> Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+            Logger.error('Error sending welcome message', {
+              chatId,
+              userId,
+              username,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              errorName: error instanceof Error ? error.name : undefined,
+              errorCode: (error as any)?.code,
+              errorResponse: (error as any)?.response,
+              stack: error instanceof Error ? error.stack : undefined,
+            });
+            throw error;
+          }
+          return;
+        }
+        
+        // Handle other commands by calling processUpdate (for now)
+        // This will trigger the registered handlers
+        await this.bot.processUpdate(update);
+      } else {
+        // For non-text updates (callbacks, etc.), use processUpdate
+        await this.bot.processUpdate(update);
+      }
+      
       Logger.debug('Update processed', { updateId: update.update_id });
     } catch (error) {
       Logger.error('Error processing update', {
         updateId: update.update_id,
         error: error instanceof Error ? error.message : 'Unknown error',
+        errorName: error instanceof Error ? error.name : undefined,
         stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
