@@ -25,7 +25,7 @@ services:
         condition: service_healthy
     environment:
       - NODE_ENV=development
-      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_BOT_TOKEN={TOKEN}
       - REDIS_URL=redis://redis:6379
       - USE_LOCAL_REDIS=true
       - PORT=3000
