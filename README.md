@@ -201,9 +201,3 @@ habits-tracker/
 ## License
 
 MIT
-
-##
-# Replace with your actual values
-curl -X POST "https://api.telegram.org/bot8446823578:AAEc7HMkV8jmo69yyYhwXGhqlyevbJ6bXcU/setWebhook?url=https://habits-tracker-tg.vercel.app/api/webhook"
-
-curl "https://api.telegram.org/bot8446823578:AAEc7HMkV8jmo69yyYhwXGhqlyevbJ6bXcU/getWebhookInfo"
