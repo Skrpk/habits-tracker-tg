@@ -4,7 +4,7 @@
   "description": "Telegram bot for tracking habits",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && rm -f dist/index.js dist/index.d.ts dist/index.js.map",
+    "build": "tsc && rm -f dist/index.js dist/index.d.ts dist/index.js.map && cp -r public dist/",
     "dev": "tsx src/index.ts",
     "dev:reminders": "tsx src/api/reminders-server.ts",
     "start": "node dist/index.js",
