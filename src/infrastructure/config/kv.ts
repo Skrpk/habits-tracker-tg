@@ -97,7 +97,7 @@ if (hasRedisUrl || useLocalRedis) {
   kvClient = {
     get: async <T>(key: string): Promise<T | null> => {
       try {
-        await ensureConnected();
+        // await ensureConnected();
         const value = await redisClient.get(key);
         return value ? JSON.parse(value) : null;
       } catch (error) {
@@ -110,7 +110,7 @@ if (hasRedisUrl || useLocalRedis) {
     },
     set: async (key: string, value: any): Promise<void> => {
       try {
-        await ensureConnected();
+        // await ensureConnected();
         await redisClient.set(key, JSON.stringify(value));
       } catch (error) {
         console.error('Error setting in Redis:', {
@@ -122,7 +122,7 @@ if (hasRedisUrl || useLocalRedis) {
     },
     del: async (key: string): Promise<void> => {
       try {
-        await ensureConnected();
+        // await ensureConnected();
         await redisClient.del(key);
       } catch (error) {
         console.error('Error deleting from Redis:', {
