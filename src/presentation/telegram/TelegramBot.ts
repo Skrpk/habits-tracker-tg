@@ -54,120 +54,7 @@ export class TelegramBotService {
   }
 
   setupHandlers(): void {
-    // Start command
-    this.bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id;
-      const userId = msg.from?.id;
-      const username = getUsername(msg.from);
-
-      Logger.info('User started bot', {
-        userId,
-        username,
-        chatId,
-      });
-
-      try {
-        Logger.info('Sending welcome message', { chatId });
-        const sentMessage = await this.bot.sendMessage(
-          chatId,
-          'Welcome to Habits Tracker! 🎯\n\n' +
-          'Commands:\n' +
-          '/newhabit <name> - Create a new habit\n' +
-          '/myhabits - View all your habits\n' +
-          '/check - Check habits for today\n\n' +
-          'The bot will remind you daily to check your habits!'
-        );
-        Logger.info('Welcome message sent successfully', {
-          chatId,
-          messageId: sentMessage.message_id,
-        });
-      } catch (error) {
-        console.log('>>>> Error in sendMessage:', error);
-        console.log('>>>> Error type:', typeof error);
-        console.log('>>>> Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        Logger.error('Error sending welcome message', {
-          chatId,
-          userId,
-          username,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          errorName: error instanceof Error ? error.name : undefined,
-          errorCode: (error as any)?.code,
-          errorResponse: (error as any)?.response,
-          stack: error instanceof Error ? error.stack : undefined,
-        });
-        throw error;
-      }
-    });
-
-    // Create habit command
-    this.bot.onText(/\/newhabit (.+)/, async (msg: TelegramBot.Message, match: RegExpMatchArray | null) => {
-      const chatId = msg.chat.id;
-      const userId = msg.from?.id;
-      const username = getUsername(msg.from);
-      
-      if (!userId) {
-        Logger.warn('Unable to identify user for create habit', { chatId });
-        await this.bot.sendMessage(chatId, 'Unable to identify user.');
-        return;
-      }
-
-      if (!match || !match[1]) {
-        Logger.info('Invalid habit creation request', { userId, username, chatId });
-        await this.bot.sendMessage(chatId, 'Please provide a habit name: /newhabit <name>');
-        return;
-      }
-
-      try {
-        const habit = await this.createHabitUseCase.execute(userId, match[1], username);
-        await this.bot.sendMessage(
-          chatId,
-          `✅ Habit "${habit.name}" created!\n\n` +
-          `View all your habits with /myhabits`
-        );
-      } catch (error) {
-        Logger.error('Error creating habit', {
-          userId,
-          username,
-          chatId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-        await this.bot.sendMessage(chatId, `Error creating habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    });
-
-    // List habits command
-    this.bot.onText(/\/myhabits/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id;
-      const userId = msg.from?.id;
-      const username = getUsername(msg.from);
-      
-      if (!userId) {
-        Logger.warn('Unable to identify user for list habits', { chatId });
-        await this.bot.sendMessage(chatId, 'Unable to identify user.');
-        return;
-      }
-
-      Logger.info('User requested habits list', { userId, username, chatId });
-      await this.showHabitsList(userId, chatId);
-    });
-
-
-    // Check habits command
-    this.bot.onText(/\/check/, async (msg: TelegramBot.Message) => {
-      const chatId = msg.chat.id;
-      const userId = msg.from?.id;
-      const username = getUsername(msg.from);
-      
-      if (!userId) {
-        Logger.warn('Unable to identify user for check habits', { chatId });
-        await this.bot.sendMessage(chatId, 'Unable to identify user.');
-        return;
-      }
-
-      Logger.info('User requested habit check', { userId, username, chatId });
-      await this.askAboutHabits(userId, chatId);
-    });
-
+    // Only setup callback query handler - text commands are handled manually in processUpdate
     // Handle callback queries (Yes/No buttons, habit list, delete)
     this.bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
       const chatId = query.message?.chat.id;
@@ -479,65 +366,52 @@ export class TelegramBotService {
         messageText: update.message?.text,
       });
       
-      // In webhook mode, processUpdate doesn't wait for async handlers
-      // We need to manually handle the update and await handlers
+      // Handle text messages (commands)
       if (update.message?.text) {
         const text = update.message.text;
         const msg = update.message;
+        const chatId = msg.chat.id;
+        const userId = msg.from?.id;
+        const username = getUsername(msg.from);
         
         // Handle /start command
         if (text.match(/^\/start/)) {
-          const chatId = msg.chat.id;
-          const userId = msg.from?.id;
-          const username = getUsername(msg.from);
-
-          Logger.info('User started bot', {
-            userId,
-            username,
-            chatId,
-          });
-
-          try {
-            Logger.info('Sending welcome message', { chatId });
-            const sentMessage = await this.bot.sendMessage(
-              chatId,
-              'Welcome to Habits Tracker! 🎯\n\n' +
-              'Commands:\n' +
-              '/newhabit <name> - Create a new habit\n' +
-              '/myhabits - View all your habits\n' +
-              '/check - Check habits for today\n\n' +
-              'The bot will remind you daily to check your habits!'
-            );
-            Logger.info('Welcome message sent successfully', {
-              chatId,
-              messageId: sentMessage.message_id,
-            });
-          } catch (error) {
-            console.log('>>>> Error in sendMessage:', error);
-            console.log('>>>> Error type:', typeof error);
-            console.log('>>>> Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-            Logger.error('Error sending welcome message', {
-              chatId,
-              userId,
-              username,
-              error: error instanceof Error ? error.message : 'Unknown error',
-              errorName: error instanceof Error ? error.name : undefined,
-              errorCode: (error as any)?.code,
-              errorResponse: (error as any)?.response,
-              stack: error instanceof Error ? error.stack : undefined,
-            });
-            throw error;
-          }
+          await this.handleStartCommand(chatId, userId, username);
           return;
         }
         
-        // Handle other commands by calling processUpdate (for now)
-        // This will trigger the registered handlers
-        await this.bot.processUpdate(update);
-      } else {
-        // For non-text updates (callbacks, etc.), use processUpdate
-        await this.bot.processUpdate(update);
+        // Handle /newhabit command
+        const newHabitMatch = text.match(/^\/newhabit (.+)$/);
+        if (newHabitMatch) {
+          await this.handleNewHabitCommand(chatId, userId, username, newHabitMatch[1]);
+          return;
+        }
+        
+        // Handle /myhabits command
+        if (text.match(/^\/myhabits/)) {
+          await this.handleMyHabitsCommand(chatId, userId, username);
+          return;
+        }
+        
+        // Handle /check command
+        if (text.match(/^\/check/)) {
+          await this.handleCheckCommand(chatId, userId, username);
+          return;
+        }
+        
+        // Unknown command - ignore silently
+        Logger.debug('Unknown command received', { text, userId, chatId });
+        return;
       }
+      
+      // Handle callback queries - use bot.processUpdate since it works fine for callbacks
+      if (update.callback_query) {
+        await this.bot.processUpdate(update);
+        return;
+      }
+      
+      // For other update types, use processUpdate
+      await this.bot.processUpdate(update);
       
       Logger.debug('Update processed', { updateId: update.update_id });
     } catch (error) {
@@ -549,6 +423,97 @@ export class TelegramBotService {
       });
       throw error;
     }
+  }
+
+  // Command handlers - extracted for clean manual handling
+  private async handleStartCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
+    Logger.info('User started bot', {
+      userId,
+      username,
+      chatId,
+    });
+
+    try {
+      Logger.info('Sending welcome message', { chatId });
+      const sentMessage = await this.bot.sendMessage(
+        chatId,
+        'Welcome to Habits Tracker! 🎯\n\n' +
+        'Commands:\n' +
+        '/newhabit <name> - Create a new habit\n' +
+        '/myhabits - View all your habits\n' +
+        '/check - Check habits for today\n\n' +
+        'The bot will remind you daily to check your habits!'
+      );
+      Logger.info('Welcome message sent successfully', {
+        chatId,
+        messageId: sentMessage.message_id,
+      });
+    } catch (error) {
+      Logger.error('Error sending welcome message', {
+        chatId,
+        userId,
+        username,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorName: error instanceof Error ? error.name : undefined,
+        errorCode: (error as any)?.code,
+        errorResponse: (error as any)?.response,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
+  }
+
+  private async handleNewHabitCommand(chatId: number, userId: number | undefined, username: string, habitName: string): Promise<void> {
+    if (!userId) {
+      Logger.warn('Unable to identify user for create habit', { chatId });
+      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+      return;
+    }
+
+    if (!habitName || habitName.trim().length === 0) {
+      Logger.info('Invalid habit creation request', { userId, username, chatId });
+      await this.bot.sendMessage(chatId, 'Please provide a habit name: /newhabit <name>');
+      return;
+    }
+
+    try {
+      const habit = await this.createHabitUseCase.execute(userId, habitName.trim(), username);
+      await this.bot.sendMessage(
+        chatId,
+        `✅ Habit "${habit.name}" created!\n\n` +
+        `View all your habits with /myhabits`
+      );
+    } catch (error) {
+      Logger.error('Error creating habit', {
+        userId,
+        username,
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error creating habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleMyHabitsCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
+    if (!userId) {
+      Logger.warn('Unable to identify user for list habits', { chatId });
+      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+      return;
+    }
+
+    Logger.info('User requested habits list', { userId, username, chatId });
+    await this.showHabitsList(userId, chatId);
+  }
+
+  private async handleCheckCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
+    if (!userId) {
+      Logger.warn('Unable to identify user for check habits', { chatId });
+      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+      return;
+    }
+
+    Logger.info('User requested habit check', { userId, username, chatId });
+    await this.askAboutHabits(userId, chatId);
   }
 
   // Add this helper method to the TelegramBotService class
