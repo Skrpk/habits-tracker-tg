@@ -393,7 +393,7 @@ export class TelegramBotService {
         'Commands:\n' +
         '/newhabit - Create a new habit\n\n' +
         '/myhabits - View all your habits\n\n' +
-        'The bot will remind you daily to check your habits!\n\n' +
+        'The bot will remind you daily to check your habits! ⏰\n\n' +
         { parse_mode: 'Markdown' }
       );
       Logger.info('Welcome message sent successfully', {
