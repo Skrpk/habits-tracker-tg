@@ -389,11 +389,11 @@ export class TelegramBotService {
         chatId,
         '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n\n' +
         '— Plutarch\n\n' +
-        '*Welcome to Habits Tracker! 🎯*\n\n' +
+        '**Welcome to Habits Tracker! 🎯**\n\n' +
         'Commands:\n' +
         '/newhabit - Create a new habit\n\n' +
         '/myhabits - View all your habits\n\n' +
-        'The bot will remind you daily to check your habits! ⏰\n\n' +
+        'The bot will remind you daily to check your habits! ⏰\n\n',
         { parse_mode: 'Markdown' }
       );
       Logger.info('Welcome message sent successfully', {
