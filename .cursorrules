@@ -1,0 +1,206 @@
+# Habits Tracker - Telegram Bot Project
+
+## Project Overview
+
+This is a TypeScript-based Telegram bot for habit tracking, deployed on Vercel. Users can create habits, track daily completion, maintain streaks, and skip days without breaking streaks. The bot sends daily reminders automatically via cron jobs.
+
+## Architecture
+
+The project follows **Clean Architecture** principles with clear separation of concerns:
+
+### Layer Structure
+
+1. **Domain Layer** (`src/domain/`)
+   - **Entities** (`entities/`): Core business objects (e.g., `Habit`, `UserHabits`)
+   - **Repositories** (`repositories/`): Interfaces defining data access contracts (e.g., `IHabitRepository`)
+   - **Use Cases** (`use-cases/`): Business logic implementations
+     - `CreateHabitUseCase`: Creates new habits
+     - `DeleteHabitUseCase`: Deletes habits
+     - `GetUserHabitsUseCase`: Retrieves user's habits
+     - `GetHabitsToCheckUseCase`: Gets habits that need checking
+     - `RecordHabitCheckUseCase`: Records habit completion/skipping
+
+2. **Infrastructure Layer** (`src/infrastructure/`)
+   - **Config** (`config/`): Redis client configuration (`kv.ts`)
+   - **Repositories** (`repositories/`): Concrete implementations (e.g., `VercelKVHabitRepository`)
+   - **Logger** (`logger/`): Structured logging utility
+
+3. **Presentation Layer** (`src/presentation/`)
+   - **Telegram** (`telegram/`): Telegram bot service and handlers
+     - `TelegramBot.ts`: Main bot service handling commands and callbacks
+     - `DailyReminderService.ts`: Manages reminder logic
+
+## Key Features
+
+1. **Habit Management**
+   - Create habits via `/newhabit` (multi-step conversation)
+   - View all habits via `/myhabits`
+   - Delete habits with confirmation
+   - View habit details (streak, skipped days, creation date)
+
+2. **Habit Tracking**
+   - Daily reminders sent automatically
+   - Three options when checking habits:
+     - ✅ Yes (completes habit, increments streak)
+     - ❌ No (drop streak) (resets streak to 0, clears skipped days)
+     - ⏭️ Skip (keep streak) (records skipped day, maintains streak)
+
+3. **Streak Management**
+   - Streaks increment on consecutive completions
+   - Streaks reset to 0 if habit is not completed (without skipping)
+   - Skipped days are tracked in `skipped` array with `streakDay` and `date`
+   - Skipped days count displayed in habit details
+
+4. **Daily Reminders**
+   - Automatic daily reminders via cron jobs
+   - Production: Vercel Cron Jobs (`0 22 * * *` - 10 PM daily)
+   - Development: Docker cron container (configurable schedule)
+
+## File Structure
+
+```
+habits-tracker/
+├── api/                          # Vercel serverless functions
+│   ├── webhook.ts               # Telegram webhook handler
+│   ├── reminders.ts             # Cron job endpoint for reminders
+│   └── setup-webhook.ts         # Manual webhook setup endpoint
+├── src/
+│   ├── domain/                  # Domain layer (business logic)
+│   │   ├── entities/
+│   │   ├── repositories/
+│   │   └── use-cases/
+│   ├── infrastructure/          # Infrastructure layer (external services)
+│   │   ├── config/             # Redis configuration
+│   │   ├── logger/             # Logging utilities
+│   │   └── repositories/       # Redis repository implementation
+│   ├── presentation/            # Presentation layer (Telegram bot)
+│   │   └── telegram/
+│   ├── api/                    # Local development API servers
+│   │   └── reminders-server.ts # Local HTTP server for reminders
+│   └── index.ts                # Local development entry (polling mode)
+├── public/                      # Static files served at root URL
+│   ├── index.html              # Landing page
+│   └── styles.css              # Landing page styles
+├── scripts/                     # Utility scripts
+│   └── setup-webhook.ts        # Webhook setup script
+├── docker/                      # Docker configuration
+│   └── cron/                   # Cron container files
+├── docker-compose.yml          # Local development setup
+├── Dockerfile.dev              # Bot service Dockerfile
+├── vercel.json                 # Vercel deployment config
+├── tsconfig.json               # TypeScript configuration
+└── package.json                # Dependencies and scripts
+```
+
+## How It Works
+
+### Production (Vercel)
+
+1. **Webhook Mode**: Telegram sends updates to `/api/webhook`
+   - Secured with `WEBHOOK_SECRET_TOKEN` (X-Telegram-Bot-Api-Secret-Token header)
+   - Handles all bot commands and callback queries
+   - Uses singleton pattern for bot service in serverless functions
+
+2. **Cron Jobs**: Vercel Cron calls `/api/reminders` daily at 10 PM
+   - Secured with `x-vercel-cron` header and `Authorization` header
+   - Fetches all active users from Redis
+   - Sends reminder messages for unchecked habits
+
+3. **Static Files**: `public/` folder served at root URL (`/`)
+   - Landing page with quote and features
+   - API routes remain functional at `/api/*`
+
+### Development (Local)
+
+1. **Docker Compose**: Runs three services
+   - `redis`: Redis database (port 6379)
+   - `bot`: Bot service with hot-reload (port 3000)
+   - `cron`: Cron daemon calling reminders endpoint
+
+2. **Polling Mode**: `src/index.ts` uses Telegram polling
+   - Only runs locally (not deployed)
+   - Handles updates via long polling
+
+3. **Reminders Server**: `src/api/reminders-server.ts`
+   - Local HTTP server mimicking Vercel serverless function
+   - Called by Docker cron container
+
+## Data Models
+
+### Habit Entity
+```typescript
+interface Habit {
+  id: string;
+  userId: number;
+  name: string;
+  streak: number;
+  createdAt: Date;
+  lastCheckedDate: string; // YYYY-MM-DD
+  skipped: SkippedDay[];  // Array of skipped days
+}
+
+interface SkippedDay {
+  streakDay: number;      // Streak day when skipped
+  date: string;          // YYYY-MM-DD format
+}
+```
+
+### Storage
+- Redis keys: `user:habits:{userId}` for user habits
+- Redis keys: `active_users` for tracking users with habits
+- Redis keys: `conversation_state:{userId}` for multi-step conversations
+
+## Environment Variables
+
+### Required
+- `TELEGRAM_BOT_TOKEN`: Telegram bot token
+- `REDIS_URL`: Redis connection string (Vercel Redis or local)
+
+### Optional
+- `WEBHOOK_URL`: Full URL for webhook (production)
+- `WEBHOOK_SECRET_TOKEN`: Secret token for webhook security
+- `USE_LOCAL_REDIS`: Set to `true` for local development
+- `NODE_ENV`: `production` or `development`
+- `CRON_SECRET`: Secret for local cron endpoint (optional)
+- `CRON_SCHEDULE`: Cron schedule for local development (default: `* * * * *`)
+
+## Important Patterns
+
+1. **Manual Update Handling**: All Telegram updates are manually routed in `TelegramBotService.processUpdate()` to ensure async operations complete before serverless function returns.
+
+2. **Conversation State**: Multi-step conversations (e.g., `/newhabit`) use Redis to store state, not in-memory maps (for serverless compatibility).
+
+3. **Error Handling**: `safeEditMessage()` helper ignores "message is not modified" errors from Telegram.
+
+4. **Logging**: Structured logging via `Logger` utility with timestamps and metadata.
+
+5. **Redis Connection**: Connection is managed per-request in serverless functions with connection pooling and timeout handling.
+
+## Build Process
+
+1. TypeScript compilation (`tsc`)
+2. Remove `dist/index.js` (prevents Vercel from treating it as serverless function)
+3. Copy `public/*` to `dist/` (for static file serving)
+
+## Development Commands
+
+- `npm run dev`: Start bot in polling mode (local)
+- `npm run dev:reminders`: Start local reminders server
+- `npm run build`: Build for production
+- `npm run setup-webhook`: Set Telegram webhook (production)
+- `docker-compose up`: Start local development environment
+
+## Security Considerations
+
+1. **Webhook Security**: `WEBHOOK_SECRET_TOKEN` verified in `X-Telegram-Bot-Api-Secret-Token` header
+2. **Cron Security**: `x-vercel-cron` header and `Authorization` header verified
+3. **Input Validation**: Command injection prevention (commands can't be used as habit names)
+
+## Notes
+
+- The bot uses webhooks in production and polling in development
+- Redis is used directly (not Vercel KV) - connection string format: `redis://` or `rediss://`
+- All async operations in Telegram handlers are awaited to prevent premature function termination
+- The `/check` command was removed - reminders are automatic only
+- Landing page quote is from Plutarch: "Choose what is best, and habit will make it pleasant and easy."
+

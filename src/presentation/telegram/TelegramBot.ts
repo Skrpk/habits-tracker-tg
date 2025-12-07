@@ -387,11 +387,14 @@ export class TelegramBotService {
       Logger.info('Sending welcome message', { chatId });
       const sentMessage = await this.bot.sendMessage(
         chatId,
+        'Choose what is best, and habit will make it pleasant and easy.\n' +
+        '— Plutarch\n\n' +
         'Welcome to Habits Tracker! 🎯\n\n' +
         'Commands:\n' +
-        '/newhabit - Create a new habit\n' +
+        '/newhabit - Create a new habit\n\n' +
         '/myhabits - View all your habits\n\n' +
-        'The bot will remind you daily to check your habits!'
+        'The bot will remind you daily to check your habits!\n\n' +
+        'You can also check your habits by replying to the bot\'s message.'
       );
       Logger.info('Welcome message sent successfully', {
         chatId,
