@@ -387,7 +387,7 @@ export class TelegramBotService {
       Logger.info('Sending welcome message', { chatId });
       const sentMessage = await this.bot.sendMessage(
         chatId,
-        '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n\n' +
+        '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
         '— Plutarch\n\n' +
         '*Welcome to Habits Tracker! 🎯*\n\n' +
         'Commands:\n' +
