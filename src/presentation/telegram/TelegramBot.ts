@@ -66,6 +66,33 @@ export class TelegramBotService {
     // Create user preferences use case internally (repository is lightweight)
     const habitRepository = new VercelKVHabitRepository();
     this.setUserPreferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
+    
+    // Set bot commands menu
+    this.setupBotCommands();
+  }
+
+  private async setupBotCommands(): Promise<void> {
+    try {
+      await this.bot.setMyCommands([
+        {
+          command: 'start',
+          description: 'Start the bot and set your timezone',
+        },
+        {
+          command: 'newhabit',
+          description: 'Create a new habit to track',
+        },
+        {
+          command: 'myhabits',
+          description: 'View all your habits',
+        },
+      ]);
+      Logger.info('Bot commands menu set successfully');
+    } catch (error) {
+      Logger.error('Error setting bot commands', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   setupHandlers(): void {
