@@ -75,10 +75,6 @@ export class TelegramBotService {
     try {
       await this.bot.setMyCommands([
         {
-          command: 'start',
-          description: 'Start the bot and set your timezone',
-        },
-        {
           command: 'newhabit',
           description: 'Create a new habit to track',
         },
