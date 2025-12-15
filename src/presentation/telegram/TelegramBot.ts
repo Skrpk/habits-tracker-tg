@@ -1140,7 +1140,6 @@ export class TelegramBotService {
     await this.showHabitsList(userId, chatId);
   }
 
-
   // Callback query handlers
   private async handleCallbackQuery(query: TelegramBot.CallbackQuery): Promise<void> {
     const chatId = query.message?.chat.id;
