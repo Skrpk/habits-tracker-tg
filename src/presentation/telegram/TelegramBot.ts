@@ -162,10 +162,9 @@ export class TelegramBotService {
       const keyboard = {
         inline_keyboard: habits.map(habit => {
           const skippedCount = (habit.skipped || []).length;
-          const skippedText = skippedCount > 0 ? `, ⏭️ ${skippedCount}` : '';
           return [
             {
-              text: `${habit.name} (🔥 ${habit.streak}${skippedText})`,
+              text: `${habit.name} (🔥 ${habit.streak}, ⏭️ ${skippedCount})`,
               callback_data: `habit_view:${habit.id}`,
             },
           ];
@@ -178,8 +177,8 @@ export class TelegramBotService {
         const skippedCount = (habit.skipped || []).length;
         message += `${index + 1}. ${habit.name}\n`;
         message += `   🔥 Streak: ${habit.streak} days\n`;
+        message += `   ⏭️ Skipped: ${skippedCount} day${skippedCount !== 1 ? 's' : ''}\n`;
         if (skippedCount > 0) {
-          message += `   ⏭️ Skipped: ${skippedCount} day${skippedCount > 1 ? 's' : ''}\n`;
           // Format and show skipped dates
           const skippedDates = (habit.skipped || [])
             .map(s => {
