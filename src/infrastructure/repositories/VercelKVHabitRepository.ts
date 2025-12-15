@@ -202,11 +202,21 @@ export class VercelKVHabitRepository implements IHabitRepository {
 
   async saveUserPreferences(preferences: UserPreferences): Promise<void> {
     try {
+      // Merge with existing preferences to preserve all fields
+      const existingPreferences = await this.getUserPreferences(preferences.userId);
+      const mergedPreferences: UserPreferences = {
+        ...existingPreferences,
+        ...preferences,
+        userId: preferences.userId, // Ensure userId is set
+      };
+
       Logger.debug('Saving user preferences', {
         userId: preferences.userId,
-        timezone: preferences.timezone,
+        timezone: mergedPreferences.timezone,
+        consentAccepted: mergedPreferences.consentAccepted,
+        consentDate: mergedPreferences.consentDate,
       });
-      await kv.set(this.getUserPreferencesKey(preferences.userId), preferences);
+      await kv.set(this.getUserPreferencesKey(preferences.userId), mergedPreferences);
       Logger.info('User preferences saved successfully', {
         userId: preferences.userId,
       });

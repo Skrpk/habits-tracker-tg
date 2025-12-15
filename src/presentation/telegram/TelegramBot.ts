@@ -569,16 +569,23 @@ export class TelegramBotService {
     }
 
     try {
-      // Check if user has set their timezone
+      // Check if user has accepted consent
       const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       
-      if (!preferences || !preferences.timezone) {
+      if (!preferences || !preferences.consentAccepted) {
+        // Show consent message first
+        await this.showConsentMessage(chatId, userId);
+        return;
+      }
+      
+      // Check if user has set their timezone
+      if (!preferences.timezone) {
         // Show timezone selection
         await this.showTimezoneSelection(chatId, userId);
         return;
       }
 
-      // User has timezone set, show welcome message
+      // User has consent and timezone set, show welcome message
       Logger.info('Sending welcome message', { chatId });
       const sentMessage = await this.bot.sendMessage(
         chatId,
@@ -608,6 +615,45 @@ export class TelegramBotService {
       });
       throw error;
     }
+  }
+
+  private async showConsentMessage(chatId: number, userId: number): Promise<void> {
+    const consentMessage = 
+      '📋 *Privacy Policy & Terms of Service*\n\n' +
+      'Before using Habits Tracker, please review and accept our policies:\n\n' +
+      '🔒 *Data Collection*\n' +
+      '• We store your habit data (names, streaks, completion dates)\n' +
+      '• We store your timezone preference for accurate reminders\n' +
+      '• We store conversation state temporarily during multi-step interactions\n' +
+      '• All data is stored securely in our database\n\n' +
+      '📱 *How We Use Your Data*\n' +
+      '• To send you habit reminders at your preferred times\n' +
+      '• To track your habit streaks and progress\n' +
+      '• To provide you with habit management features\n' +
+      '• We do not share your data with third parties\n\n' +
+      '⚙️ *Your Rights*\n' +
+      '• You can delete your habits at any time\n' +
+      '• You can stop using the bot at any time\n' +
+      '• Your data is associated only with your Telegram user ID\n\n' +
+      '📝 *Terms*\n' +
+      '• This bot is provided "as is" without warranties\n' +
+      '• We reserve the right to update these policies\n' +
+      '• Continued use implies acceptance of any policy changes\n\n' +
+      'By clicking "✅ I Accept", you agree to our Privacy Policy and Terms of Service.';
+
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '✅ I Accept', callback_data: 'consent_accept' },
+          { text: '❌ Decline', callback_data: 'consent_decline' },
+        ],
+      ],
+    };
+
+    await this.bot.sendMessage(chatId, consentMessage, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+    });
   }
 
   private async showTimezoneSelection(chatId: number, userId: number): Promise<void> {
@@ -798,6 +844,68 @@ export class TelegramBotService {
         `❌ Error setting schedule: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
         `Please try again or use the buttons.`
       );
+    }
+  }
+
+  private async handleConsentAcceptance(
+    userId: number,
+    chatId: number,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      await this.setUserPreferencesUseCase.setConsent(userId, true);
+      
+      await this.safeEditMessage(
+        '✅ *Thank you for accepting our Privacy Policy and Terms of Service!*\n\n' +
+        'Now let\'s set up your timezone to ensure reminders arrive at the right time.',
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+        }
+      );
+
+      // Proceed to timezone selection
+      setTimeout(() => {
+        this.showTimezoneSelection(chatId, userId);
+      }, 1000);
+
+      Logger.info('User accepted consent', { userId });
+    } catch (error) {
+      Logger.error('Error accepting consent', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleConsentDecline(
+    userId: number,
+    chatId: number,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      await this.setUserPreferencesUseCase.setConsent(userId, false);
+      
+      await this.safeEditMessage(
+        '❌ *Consent Declined*\n\n' +
+        'We\'re sorry, but we cannot provide our services without your consent to our Privacy Policy and Terms of Service.\n\n' +
+        'If you change your mind, you can start the bot again with /start and accept the policies.',
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+        }
+      );
+
+      Logger.info('User declined consent', { userId });
+    } catch (error) {
+      Logger.error('Error declining consent', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -1166,6 +1274,17 @@ export class TelegramBotService {
     // Handle back to list
     if (data === 'habit_list') {
       await this.handleHabitListCallback(userId, chatId, query.message?.message_id);
+      return;
+    }
+
+    // Handle consent acceptance/rejection
+    if (data === 'consent_accept') {
+      await this.handleConsentAcceptance(userId, chatId, query.message?.message_id);
+      return;
+    }
+
+    if (data === 'consent_decline') {
+      await this.handleConsentDecline(userId, chatId, query.message?.message_id);
       return;
     }
 

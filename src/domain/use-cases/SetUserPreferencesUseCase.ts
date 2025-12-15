@@ -29,5 +29,26 @@ export class SetUserPreferencesUseCase {
   async getPreferences(userId: number): Promise<UserPreferences | null> {
     return await this.habitRepository.getUserPreferences(userId);
   }
+
+  async setConsent(userId: number, accepted: boolean): Promise<UserPreferences> {
+    const existingPreferences = await this.habitRepository.getUserPreferences(userId);
+    
+    const preferences: UserPreferences = {
+      userId,
+      timezone: existingPreferences?.timezone,
+      consentAccepted: accepted,
+      consentDate: accepted ? new Date().toISOString().split('T')[0] : undefined,
+    };
+
+    await this.habitRepository.saveUserPreferences(preferences);
+
+    Logger.info('User consent updated', {
+      userId,
+      accepted,
+      consentDate: preferences.consentDate,
+    });
+
+    return preferences;
+  }
 }
 

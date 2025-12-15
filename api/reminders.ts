@@ -48,8 +48,31 @@ function getBotService(): TelegramBotService {
 
 // Vercel serverless function handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // SECURITY: Verify request is from Vercel Cron
-  // Vercel sends both x-vercel-cron header AND Authorization header with signed token
+  // SECURITY: Verify Authorization header with secret token
+  const authHeader = req.headers.authorization;
+  const expectedSecret = process.env.CRON_API_SECRET;
+  
+  if (!expectedSecret) {
+    Logger.error('CRON_SECRET environment variable not configured');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    Logger.warn('Unauthorized request to reminders endpoint - missing Authorization header', {
+      method: req.method,
+      hasAuthHeader: !!authHeader,
+    });
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const providedToken = authHeader.replace('Bearer ', '').trim();
+  if (providedToken !== expectedSecret) {
+    Logger.warn('Unauthorized request to reminders endpoint - invalid token', {
+      method: req.method,
+      tokenLength: providedToken.length,
+    });
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   try {
     Logger.info('Starting hourly reminders cron job');
