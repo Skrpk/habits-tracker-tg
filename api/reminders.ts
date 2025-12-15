@@ -6,6 +6,9 @@ import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCa
 import { RecordHabitCheckUseCase } from '../src/domain/use-cases/RecordHabitCheckUseCase';
 import { DeleteHabitUseCase } from '../src/domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../src/domain/use-cases/GetHabitsToCheckUseCase';
+import { GetHabitsDueForReminderUseCase } from '../src/domain/use-cases/GetHabitsDueForReminderUseCase';
+import { SetHabitReminderScheduleUseCase } from '../src/domain/use-cases/SetHabitReminderScheduleUseCase';
+import { Habit } from '../src/domain/entities/Habit';
 import { Logger } from '../src/infrastructure/logger/Logger';
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -19,22 +22,24 @@ let botService: TelegramBotService | null = null;
 
 function getBotService(): TelegramBotService {
   if (!botService) {
-    const habitRepository = new VercelKVHabitRepository();
-    const createHabitUseCase = new CreateHabitUseCase(habitRepository);
-    const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
-    const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
-    const deleteHabitUseCase = new DeleteHabitUseCase(habitRepository);
-    const getHabitsToCheckUseCase = new GetHabitsToCheckUseCase(habitRepository);
+      const habitRepository = new VercelKVHabitRepository();
+      const createHabitUseCase = new CreateHabitUseCase(habitRepository);
+      const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
+      const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+      const deleteHabitUseCase = new DeleteHabitUseCase(habitRepository);
+      const getHabitsToCheckUseCase = new GetHabitsToCheckUseCase(habitRepository);
+      const setHabitReminderScheduleUseCase = new SetHabitReminderScheduleUseCase(habitRepository);
 
-    botService = new TelegramBotService(
-      botToken,
-      createHabitUseCase,
-      getUserHabitsUseCase,
-      recordHabitCheckUseCase,
-      deleteHabitUseCase,
-      getHabitsToCheckUseCase,
-      false // No polling for webhook mode
-    );
+      botService = new TelegramBotService(
+        botToken,
+        createHabitUseCase,
+        getUserHabitsUseCase,
+        recordHabitCheckUseCase,
+        deleteHabitUseCase,
+        getHabitsToCheckUseCase,
+        false, // No polling for webhook mode
+        setHabitReminderScheduleUseCase
+      );
     
     botService.setupHandlers();
   }
@@ -47,28 +52,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Vercel sends both x-vercel-cron header AND Authorization header with signed token
 
   try {
-    Logger.info('Starting daily reminders cron job');
+    Logger.info('Starting hourly reminders cron job');
     
     const habitRepository = new VercelKVHabitRepository();
     const botService = getBotService();
-    const activeUserIds = await habitRepository.getAllActiveUserIds();
+    
+    // Get current time (UTC)
+    const now = new Date();
+    const currentHour = now.getUTCHours();
+    const currentMinute = now.getUTCMinutes();
 
-    Logger.info('Retrieved active users for reminders', {
-      totalUsers: activeUserIds.length,
-      userIds: activeUserIds,
+    Logger.info('Checking for habits due for reminder', {
+      currentHour,
+      currentMinute,
+      timezone: 'UTC',
     });
+
+    // Get habits that are due for reminders right now based on their schedules
+    const getHabitsDueForReminderUseCase = new GetHabitsDueForReminderUseCase(habitRepository);
+    const habitsDue = await getHabitsDueForReminderUseCase.execute(now, currentHour, currentMinute, 'UTC');
+
+    Logger.info('Found habits due for reminder', {
+      count: habitsDue.length,
+      habitIds: habitsDue.map(h => h.id),
+    });
+
+    // Group habits by user
+    const habitsByUser = new Map<number, Habit[]>();
+    for (const habit of habitsDue) {
+      if (!habitsByUser.has(habit.userId)) {
+        habitsByUser.set(habit.userId, []);
+      }
+      habitsByUser.get(habit.userId)!.push(habit);
+    }
 
     let successCount = 0;
     let errorCount = 0;
     const errors: Array<{ userId: number; error: string }> = [];
 
-    // Send reminders to all active users
-    for (const userId of activeUserIds) {
+    // Send reminders grouped by user
+    for (const [userId, habits] of habitsByUser.entries()) {
       try {
-        Logger.info('Sending reminder to user', { userId });
-        await botService.sendDailyReminder(userId);
+        Logger.info('Sending reminder to user', { userId, habitCount: habits.length });
+        
+        // Send reminders for this user's habits
+        await botService.sendHabitReminders(userId, habits);
         successCount++;
-        Logger.info('Reminder sent successfully', { userId });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         Logger.error('Error sending reminder to user', {
@@ -80,8 +109,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    Logger.info('Daily reminders cron job completed', {
-      totalUsers: activeUserIds.length,
+    Logger.info('Hourly reminders cron job completed', {
+      totalHabitsDue: habitsDue.length,
+      totalUsers: habitsByUser.size,
       successCount,
       errorCount,
       errors: errors.length > 0 ? errors : undefined,
@@ -89,8 +119,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       ok: true,
-      message: 'Reminders sent',
-      totalUsers: activeUserIds.length,
+      message: 'Reminders processed',
+      totalHabitsDue: habitsDue.length,
+      totalUsers: habitsByUser.size,
       successCount,
       errorCount,
       errors: errors.length > 0 ? errors : undefined,

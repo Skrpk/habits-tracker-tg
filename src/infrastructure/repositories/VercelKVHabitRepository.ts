@@ -1,6 +1,7 @@
 import { kv } from '../config/kv';
 import { IHabitRepository } from '../../domain/repositories/IHabitRepository';
 import { Habit, UserHabits } from '../../domain/entities/Habit';
+import { UserPreferences } from '../../domain/entities/UserPreferences';
 import { Logger } from '../logger/Logger';
 
 export class VercelKVHabitRepository implements IHabitRepository {
@@ -12,14 +13,26 @@ export class VercelKVHabitRepository implements IHabitRepository {
     return 'active_users';
   }
 
+  private getUserPreferencesKey(userId: number): string {
+    return `user:${userId}:preferences`;
+  }
+
   async getUserHabits(userId: number): Promise<UserHabits | null> {
     try {
       const data = await kv.get(this.getUserKey(userId)) as UserHabits | null;
       if (data) {
-        // Ensure all habits have skipped array initialized
+        // Migration: Ensure all habits have required fields
         data.habits = data.habits.map(habit => ({
           ...habit,
           skipped: habit.skipped || [],
+          // Set default reminder schedule if missing (daily at 22:00 UTC)
+          reminderSchedule: habit.reminderSchedule || {
+            type: 'daily',
+            hour: 22,
+            minute: 0,
+            timezone: 'UTC',
+          },
+          reminderEnabled: habit.reminderEnabled !== false, // default true
         }));
       }
       Logger.debug('Retrieved user habits', {
@@ -55,7 +68,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
     }
   }
 
-  async createHabit(userId: number, habitName: string): Promise<Habit> {
+  async createHabit(userId: number, habitName: string, timezone: string = 'UTC'): Promise<Habit> {
     const userHabits = await this.getUserHabits(userId);
     const today = new Date().toISOString().split('T')[0];
     
@@ -67,6 +80,14 @@ export class VercelKVHabitRepository implements IHabitRepository {
       createdAt: new Date(),
       lastCheckedDate: '',
       skipped: [],
+      // Default reminder schedule: daily at 22:00 in user's timezone
+      reminderSchedule: {
+        type: 'daily',
+        hour: 22,
+        minute: 0,
+        timezone: timezone,
+      },
+      reminderEnabled: true,
     };
 
     const updatedUserHabits: UserHabits = userHabits || {
@@ -162,6 +183,39 @@ export class VercelKVHabitRepository implements IHabitRepository {
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+  }
+
+  async getUserPreferences(userId: number): Promise<UserPreferences | null> {
+    try {
+      const data = await kv.get(this.getUserPreferencesKey(userId)) as UserPreferences | null;
+      Logger.debug('Retrieved user preferences', { userId, hasTimezone: !!data?.timezone });
+      return data;
+    } catch (error) {
+      Logger.error('Error getting user preferences', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return null;
+    }
+  }
+
+  async saveUserPreferences(preferences: UserPreferences): Promise<void> {
+    try {
+      Logger.debug('Saving user preferences', {
+        userId: preferences.userId,
+        timezone: preferences.timezone,
+      });
+      await kv.set(this.getUserPreferencesKey(preferences.userId), preferences);
+      Logger.info('User preferences saved successfully', {
+        userId: preferences.userId,
+      });
+    } catch (error) {
+      Logger.error('Error saving user preferences', {
+        userId: preferences.userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
     }
   }
 }

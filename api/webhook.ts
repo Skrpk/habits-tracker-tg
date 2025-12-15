@@ -5,6 +5,7 @@ import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCa
 import { RecordHabitCheckUseCase } from '../src/domain/use-cases/RecordHabitCheckUseCase';
 import { DeleteHabitUseCase } from '../src/domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../src/domain/use-cases/GetHabitsToCheckUseCase';
+import { SetHabitReminderScheduleUseCase } from '../src/domain/use-cases/SetHabitReminderScheduleUseCase';
 import { TelegramBotService } from '../src/presentation/telegram/TelegramBot';
 import TelegramBot from 'node-telegram-bot-api';
 
@@ -33,6 +34,7 @@ function getBotService(): TelegramBotService {
       const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
       const deleteHabitUseCase = new DeleteHabitUseCase(habitRepository);
       const getHabitsToCheckUseCase = new GetHabitsToCheckUseCase(habitRepository);
+      const setHabitReminderScheduleUseCase = new SetHabitReminderScheduleUseCase(habitRepository);
 
       botService = new TelegramBotService(
         botToken!,
@@ -41,7 +43,8 @@ function getBotService(): TelegramBotService {
         recordHabitCheckUseCase,
         deleteHabitUseCase,
         getHabitsToCheckUseCase,
-        false // No polling for webhook mode
+        false, // No polling for webhook mode
+        setHabitReminderScheduleUseCase
       );
       
       botService.setupHandlers();

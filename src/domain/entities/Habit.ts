@@ -3,6 +3,13 @@ export interface SkippedDay {
   date: string; // YYYY-MM-DD format
 }
 
+// Reminder schedule types
+export type ReminderSchedule =
+  | { type: 'daily'; hour: number; minute: number; timezone?: string } // Every day at specific time
+  | { type: 'weekly'; daysOfWeek: number[]; hour: number; minute: number; timezone?: string } // Specific days of week (0=Sunday, 6=Saturday)
+  | { type: 'monthly'; daysOfMonth: number[]; hour: number; minute: number; timezone?: string } // Specific days of month (1-31)
+  | { type: 'interval'; intervalDays: number; hour: number; minute: number; timezone?: string; startDate?: string }; // Every N days
+
 export interface Habit {
   id: string;
   userId: number;
@@ -11,6 +18,8 @@ export interface Habit {
   createdAt: Date;
   lastCheckedDate: string; // YYYY-MM-DD format
   skipped: SkippedDay[]; // Array of skipped days
+  reminderSchedule?: ReminderSchedule; // Reminder schedule configuration
+  reminderEnabled?: boolean; // Whether reminders are enabled (default true)
 }
 
 export interface UserHabits {

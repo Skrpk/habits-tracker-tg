@@ -4,6 +4,11 @@ import { GetUserHabitsUseCase } from '../../domain/use-cases/GetUserHabitsUseCas
 import { RecordHabitCheckUseCase } from '../../domain/use-cases/RecordHabitCheckUseCase';
 import { DeleteHabitUseCase } from '../../domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../../domain/use-cases/GetHabitsToCheckUseCase';
+import { SetHabitReminderScheduleUseCase } from '../../domain/use-cases/SetHabitReminderScheduleUseCase';
+import { CheckHabitReminderDueUseCase } from '../../domain/use-cases/CheckHabitReminderDueUseCase';
+import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPreferencesUseCase';
+import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
+import { Habit } from '../../domain/entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { kv } from '../../infrastructure/config/kv';
 
@@ -20,6 +25,9 @@ export class TelegramBotService {
   private recordHabitCheckUseCase: RecordHabitCheckUseCase;
   private deleteHabitUseCase: DeleteHabitUseCase;
   private getHabitsToCheckUseCase: GetHabitsToCheckUseCase;
+  private setHabitReminderScheduleUseCase: SetHabitReminderScheduleUseCase | null = null;
+  private checkReminderDue: CheckHabitReminderDueUseCase;
+  private setUserPreferencesUseCase: SetUserPreferencesUseCase;
 
   constructor(
     token: string,
@@ -28,10 +36,11 @@ export class TelegramBotService {
     recordHabitCheckUseCase: RecordHabitCheckUseCase,
     deleteHabitUseCase: DeleteHabitUseCase,
     getHabitsToCheckUseCase: GetHabitsToCheckUseCase,
-    usePolling: boolean = false
+    usePolling: boolean = false,
+    setHabitReminderScheduleUseCase?: SetHabitReminderScheduleUseCase
   ) {
     this.bot = new TelegramBot(token, { polling: usePolling });
-    
+    console.log(`Bot initialized (polling: ${usePolling}) - Process: ${process.env.NODE_ENV || 'development'}`);
     // Add error handlers for debugging
     this.bot.on('error', (error: Error) => {
       Logger.error('Telegram bot error', {
@@ -52,11 +61,55 @@ export class TelegramBotService {
     this.recordHabitCheckUseCase = recordHabitCheckUseCase;
     this.deleteHabitUseCase = deleteHabitUseCase;
     this.getHabitsToCheckUseCase = getHabitsToCheckUseCase;
+    this.setHabitReminderScheduleUseCase = setHabitReminderScheduleUseCase || null;
+    this.checkReminderDue = new CheckHabitReminderDueUseCase();
+    // Create user preferences use case internally (repository is lightweight)
+    const habitRepository = new VercelKVHabitRepository();
+    this.setUserPreferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
   }
 
   setupHandlers(): void {
-    // All handlers are now manually handled in processUpdate()
-    // This method is kept for potential future use or compatibility
+    // When polling is enabled, we need to listen to bot events and route them to processUpdate()
+    // When webhook mode is used, updates come via processUpdate() directly from the API route
+    
+    // Listen for messages (commands and text)
+    this.bot.on('message', (msg: TelegramBot.Message) => {
+      Logger.debug('Message event received', {
+        messageId: msg.message_id,
+        text: msg.text,
+        chatId: msg.chat.id,
+      });
+      const update: TelegramBot.Update = {
+        update_id: Date.now(), // Temporary ID, will be replaced by actual update
+        message: msg,
+      };
+      this.processUpdate(update).catch(error => {
+        Logger.error('Error processing message update', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          messageId: msg.message_id,
+        });
+      });
+    });
+
+    // Listen for callback queries (button clicks)
+    this.bot.on('callback_query', (query: TelegramBot.CallbackQuery) => {
+      Logger.debug('Callback query event received', {
+        queryId: query.id,
+        data: query.data,
+      });
+      const update: TelegramBot.Update = {
+        update_id: Date.now(), // Temporary ID, will be replaced by actual update
+        callback_query: query,
+      };
+      this.processUpdate(update).catch(error => {
+        Logger.error('Error processing callback query update', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          queryId: query.id,
+        });
+      });
+    });
+
+    Logger.info('Bot handlers set up for polling mode - listening for messages and callback queries');
   }
 
   private async showHabitsList(userId: number, chatId: number, messageId?: number): Promise<void> {
@@ -84,15 +137,38 @@ export class TelegramBotService {
 
       // Create inline keyboard with one button per habit
       const keyboard = {
-        inline_keyboard: habits.map(habit => [
-          {
-            text: `${habit.name} (🔥 ${habit.streak} days)`,
-            callback_data: `habit_view:${habit.id}`,
-          },
-        ]),
+        inline_keyboard: habits.map(habit => {
+          const skippedCount = (habit.skipped || []).length;
+          const skippedText = skippedCount > 0 ? `, ⏭️ ${skippedCount}` : '';
+          return [
+            {
+              text: `${habit.name} (🔥 ${habit.streak}${skippedText})`,
+              callback_data: `habit_view:${habit.id}`,
+            },
+          ];
+        }),
       };
 
-      const message = '📋 Your Habits:\n\nClick on a habit to view details or delete it.';
+      // Build message with skipped dates
+      let message = '📋 Your Habits:\n\n';
+      habits.forEach((habit, index) => {
+        const skippedCount = (habit.skipped || []).length;
+        message += `${index + 1}. ${habit.name}\n`;
+        message += `   🔥 Streak: ${habit.streak} days\n`;
+        if (skippedCount > 0) {
+          message += `   ⏭️ Skipped: ${skippedCount} day${skippedCount > 1 ? 's' : ''}\n`;
+          // Format and show skipped dates
+          const skippedDates = (habit.skipped || [])
+            .map(s => {
+              const date = new Date(s.date);
+              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            })
+            .join(', ');
+          message += `   📅 Skipped on: ${skippedDates}\n`;
+        }
+        message += '\n';
+      });
+      message += 'Click on a habit to view details or delete it.';
       
       if (messageId) {
         await this.safeEditMessage(message, {
@@ -124,15 +200,33 @@ export class TelegramBotService {
       }
 
       const skippedCount = (habit.skipped || []).length;
+      
+      // Get user's timezone for default schedule display
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+      
+      const schedule = habit.reminderSchedule || {
+        type: 'daily' as const,
+        hour: 22,
+        minute: 0,
+        timezone: userTimezone,
+      };
+      const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
+      const reminderStatus = habit.reminderEnabled !== false ? '✅ Enabled' : '❌ Disabled';
+      
       const message = `📋 Habit Details\n\n` +
         `Name: ${habit.name}\n` +
         `🔥 Streak: ${habit.streak} days\n` +
         `⏭️ Skipped days: ${skippedCount}\n` +
+        `⏰ Reminder: ${scheduleDesc} (${reminderStatus})\n` +
         `📅 Last checked: ${habit.lastCheckedDate || 'Never'}\n` +
         `📆 Created: ${new Date(habit.createdAt).toLocaleDateString()}`;
 
       const keyboard = {
         inline_keyboard: [
+          [
+            { text: '⏰ Set Reminder Schedule', callback_data: `habit_set_schedule:${habit.id}` },
+          ],
           [
             { text: '🗑️ Delete Habit', callback_data: `habit_delete:${habit.id}` },
           ],
@@ -286,6 +380,56 @@ export class TelegramBotService {
     }
   }
 
+  async sendHabitReminders(userId: number, habits: Habit[]): Promise<void> {
+    try {
+      Logger.info('Sending habit reminders', { 
+        userId, 
+        habitCount: habits.length,
+        habitIds: habits.map(h => h.id),
+      });
+      
+      if (habits.length === 0) {
+        Logger.info('No habits to remind', { userId });
+        return;
+      }
+
+      // Send reminders for each habit individually
+      for (const habit of habits) {
+        await this.sendSingleHabitReminder(userId, habit);
+      }
+      
+      Logger.info('Habit reminders sent successfully', { userId });
+    } catch (error) {
+      Logger.error('Error sending habit reminders', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  private async sendSingleHabitReminder(userId: number, habit: Habit): Promise<void> {
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes` },
+        ],
+        [
+          { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no` },
+          { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip` },
+        ],
+      ],
+    };
+
+    await this.bot.sendMessage(
+      userId,
+      `⏰ Reminder: Did you "${habit.name}" today?`,
+      {
+        reply_markup: keyboard,
+      }
+    );
+  }
+
   getBot(): TelegramBot {
     return this.bot;
   }
@@ -297,6 +441,7 @@ export class TelegramBotService {
         messageText: update.message?.text,
       });
       
+      console.log('wwwww', update);
       // Handle text messages (commands)
       if (update.message?.text) {
         const text = update.message.text;
@@ -324,8 +469,15 @@ export class TelegramBotService {
           return;
         }
         
+        // Handle schedule input (for both new habits and updating existing ones)
+        if (conversationState && (conversationState.startsWith('set_schedule:') || conversationState.startsWith('setting_schedule_new:')) && !text.match(/^\//)) {
+          await this.handleScheduleInput(chatId, userId, username, text, conversationState);
+          return;
+        }
+        
         // Handle /start command
         if (text.match(/^\/start/)) {
+          console.log('WWWWWW');
           await this.handleStartCommand(chatId, userId, username);
           return;
         }
@@ -383,7 +535,23 @@ export class TelegramBotService {
       chatId,
     });
 
+    if (!userId) {
+      Logger.warn('Unable to identify user for start command', { chatId });
+      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+      return;
+    }
+
     try {
+      // Check if user has set their timezone
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      
+      if (!preferences || !preferences.timezone) {
+        // Show timezone selection
+        await this.showTimezoneSelection(chatId, userId);
+        return;
+      }
+
+      // User has timezone set, show welcome message
       Logger.info('Sending welcome message', { chatId });
       const sentMessage = await this.bot.sendMessage(
         chatId,
@@ -415,6 +583,69 @@ export class TelegramBotService {
     }
   }
 
+  private async showTimezoneSelection(chatId: number, userId: number): Promise<void> {
+    // 24 unique timezones covering all UTC offsets from -12 to +12
+    const timezones = [
+      // UTC-12:00 to UTC-01:00
+      { text: '🌴 Baker Island (BIT)', tz: 'Pacific/Baker_Island' }, // UTC-12:00
+      { text: '🏝️ Niue (NUT)', tz: 'Pacific/Niue' }, // UTC-11:00
+      { text: '🌺 Hawaii (HST)', tz: 'Pacific/Honolulu' }, // UTC-10:00
+      { text: '🏔️ Alaska (AKST)', tz: 'America/Anchorage' }, // UTC-09:00
+      { text: '🌴 Los Angeles (PST)', tz: 'America/Los_Angeles' }, // UTC-08:00
+      { text: '⛰️ Denver (MST)', tz: 'America/Denver' }, // UTC-07:00
+      { text: '🏙️ Chicago (CST)', tz: 'America/Chicago' }, // UTC-06:00
+      { text: '🗽 New York (EST)', tz: 'America/New_York' }, // UTC-05:00
+      { text: '🌊 Halifax (AST)', tz: 'America/Halifax' }, // UTC-04:00
+      { text: '🇧🇷 São Paulo (BRT)', tz: 'America/Sao_Paulo' }, // UTC-03:00
+      { text: '🏔️ South Georgia (GST)', tz: 'Atlantic/South_Georgia' }, // UTC-02:00
+      { text: '🏝️ Cape Verde (CVT)', tz: 'Atlantic/Cape_Verde' }, // UTC-01:00
+      // UTC±00:00 to UTC+12:00
+      { text: '🇬🇧 London (GMT)', tz: 'Europe/London' }, // UTC±00:00
+      { text: '🇫🇷 Paris (CET)', tz: 'Europe/Paris' }, // UTC+01:00
+      { text: '🇺🇦 Kyiv (EET)', tz: 'Europe/Kyiv' }, // UTC+02:00
+      { text: '🇷🇺 Moscow (MSK)', tz: 'Europe/Moscow' }, // UTC+03:00
+      { text: '🇦🇪 Dubai (GST)', tz: 'Asia/Dubai' }, // UTC+04:00
+      { text: '🇵🇰 Karachi (PKT)', tz: 'Asia/Karachi' }, // UTC+05:00
+      { text: '🇮🇳 Mumbai (IST)', tz: 'Asia/Kolkata' }, // UTC+05:30
+      { text: '🇧🇩 Dhaka (BST)', tz: 'Asia/Dhaka' }, // UTC+06:00
+      { text: '🇹🇭 Bangkok (ICT)', tz: 'Asia/Bangkok' }, // UTC+07:00
+      { text: '🇨🇳 Shanghai (CST)', tz: 'Asia/Shanghai' }, // UTC+08:00
+      { text: '🇯🇵 Tokyo (JST)', tz: 'Asia/Tokyo' }, // UTC+09:00
+      { text: '🇦🇺 Sydney (AEST)', tz: 'Australia/Sydney' }, // UTC+10:00
+      { text: '🏝️ Solomon Islands (SBT)', tz: 'Pacific/Guadalcanal' }, // UTC+11:00
+      { text: '🇳🇿 Auckland (NZST)', tz: 'Pacific/Auckland' }, // UTC+12:00
+    ];
+
+    // Create keyboard with timezone buttons (2 columns)
+    const keyboard = {
+      inline_keyboard: [] as any[][],
+    };
+
+    for (let i = 0; i < timezones.length; i += 2) {
+      const row = [timezones[i]];
+      if (i + 1 < timezones.length) {
+        row.push(timezones[i + 1]);
+      }
+      keyboard.inline_keyboard.push(
+        row.map(tz => ({
+          text: tz.text,
+          callback_data: `timezone_select:${tz.tz}`,
+        }))
+      );
+    }
+
+    await this.bot.sendMessage(
+      chatId,
+      '🌍 *Welcome to Habits Tracker!*\n\n' +
+      'First, please select your timezone so we can send reminders at the right time for you.\n\n' +
+      'You can change this later in settings.',
+      {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      }
+    );
+  }
+
   private async handleNewHabitCommand(chatId: number, userId: number, username: string): Promise<void> {
     // Set conversation state to "creating_habit"
     await this.setConversationState(userId, 'creating_habit');
@@ -427,10 +658,207 @@ export class TelegramBotService {
     );
   }
 
+  private async handleScheduleInput(
+    chatId: number,
+    userId: number,
+    username: string,
+    scheduleInput: string,
+    conversationState: string
+  ): Promise<void> {
+    try {
+      // Parse conversation state: set_schedule:habitId:scheduleType or setting_schedule_new:habitId:scheduleType
+      const match = conversationState.match(/^(?:set_schedule|setting_schedule_new):(.+):(.+)$/);
+      if (!match) {
+        await this.bot.sendMessage(chatId, 'Invalid conversation state. Please try again.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      const habitId = match[1];
+      const scheduleType = match[2];
+      const isNewHabit = conversationState.startsWith('setting_schedule_new:');
+
+      if (!this.setHabitReminderScheduleUseCase) {
+        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      // Parse simplified input based on schedule type
+      let fullInput = scheduleInput.trim();
+      
+      // Construct full schedule string based on type
+      switch (scheduleType) {
+        case 'daily':
+          // Input: "20:30" → "daily 20:30"
+          if (!fullInput.match(/^\d{1,2}:\d{2}$/)) {
+            throw new Error('Invalid time format. Use HH:MM (e.g., 20:30)');
+          }
+          fullInput = `daily ${fullInput}`;
+          break;
+          
+        case 'weekly':
+          // Input: "monday 15:48" or "tuesday,saturday 18:00" → "weekly monday 15:48"
+          const weeklyMatch = fullInput.match(/^([a-z,]+)\s+(\d{1,2}:\d{2})$/i);
+          if (!weeklyMatch) {
+            throw new Error('Invalid format. Use: day1,day2 HH:MM (e.g., monday 15:48 or tuesday,saturday 18:00)');
+          }
+          fullInput = `weekly ${fullInput}`;
+          break;
+          
+        case 'monthly':
+          // Input: "15 15:42" or "20,26 22:00" → "monthly 15 15:42"
+          const monthlyMatch = fullInput.match(/^(\d{1,2}(?:,\d{1,2})*)\s+(\d{1,2}:\d{2})$/);
+          if (!monthlyMatch) {
+            throw new Error('Invalid format. Use: day1,day2 HH:MM (e.g., 15 15:42 or 20,26 22:00)');
+          }
+          fullInput = `monthly ${fullInput}`;
+          break;
+          
+        case 'interval':
+          // Input: "2 15:30" → "interval 2 15:30"
+          const intervalMatch = fullInput.match(/^(\d+)\s+(\d{1,2}:\d{2})$/);
+          if (!intervalMatch) {
+            throw new Error('Invalid format. Use: N HH:MM (e.g., 2 15:30)');
+          }
+          fullInput = `interval ${fullInput}`;
+          break;
+          
+        default:
+          // Fallback: try to prepend schedule type if not present
+          if (!fullInput.toLowerCase().startsWith(scheduleType.toLowerCase())) {
+            fullInput = `${scheduleType} ${fullInput}`;
+          }
+      }
+
+      // Get user's timezone preference
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+
+      const schedule = this.setHabitReminderScheduleUseCase.parseSchedule(fullInput, userTimezone);
+      const updatedHabit = await this.setHabitReminderScheduleUseCase.execute(userId, habitId, schedule);
+      const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
+
+      const completionMessage = isNewHabit
+        ? `✅ Habit "${updatedHabit.name}" is ready!\n\n` +
+          `Schedule: ${scheduleDesc}\n\n` +
+          `View all your habits with /myhabits`
+        : `✅ Reminder schedule updated!\n\n` +
+          `Habit: ${updatedHabit.name}\n` +
+          `Schedule: ${scheduleDesc}`;
+
+      await this.bot.sendMessage(chatId, completionMessage);
+
+      await this.clearConversationState(userId);
+
+      // For new habits, don't show habit details - just confirm creation
+      // For existing habits, show updated details
+      if (!isNewHabit) {
+        setTimeout(() => {
+          this.showHabitDetails(userId, chatId, habitId);
+        }, 1500);
+      }
+    } catch (error) {
+      Logger.error('Error processing schedule input', {
+        userId,
+        username,
+        scheduleInput,
+        conversationState,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(
+        chatId,
+        `❌ Error setting schedule: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+        `Please try again or use the buttons.`
+      );
+    }
+  }
+
+  private async handleTimezoneSelection(
+    userId: number,
+    chatId: number,
+    timezone: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      await this.setUserPreferencesUseCase.setTimezone(userId, timezone);
+      
+      const timezoneName = timezone.split('/').pop()?.replace(/_/g, ' ') || timezone;
+      
+      await this.safeEditMessage(
+        `✅ Timezone set to ${timezoneName}\n\n` +
+        '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
+        '— Plutarch\n\n' +
+        '*Welcome to Habits Tracker! 🎯*\n\n' +
+        'Commands:\n' +
+        '/newhabit - Create a new habit\n\n' +
+        '/myhabits - View all your habits\n\n' +
+        'The bot will remind you daily to check your habits! ⏰\n\n',
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+        }
+      );
+
+      Logger.info('User timezone set', { userId, timezone });
+    } catch (error) {
+      Logger.error('Error setting timezone', {
+        userId,
+        timezone,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error setting timezone: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleScheduleSkipNew(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      // Get user's timezone for display
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+      const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
+
+      const scheduleDesc = this.checkReminderDue.getScheduleDescription(
+        habit.reminderSchedule || { type: 'daily', hour: 22, minute: 0, timezone: userTimezone }
+      );
+
+      await this.safeEditMessage(
+        `✅ Habit "${habit.name}" is ready!\n\n` +
+        `Schedule: ${scheduleDesc} (default)\n\n` +
+        `View all your habits with /myhabits`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      await this.clearConversationState(userId);
+    } catch (error) {
+      Logger.error('Error skipping schedule for new habit', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   private async handleHabitNameInput(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
-    // Clear conversation state
-    await this.clearConversationState(userId);
-    
     const trimmedName = habitName.trim();
     
     if (!trimmedName || trimmedName.length === 0) {
@@ -449,11 +877,9 @@ export class TelegramBotService {
     try {
       Logger.info('Creating habit', { userId, username, chatId, habitName: trimmedName });
       const habit = await this.createHabitUseCase.execute(userId, trimmedName, username);
-      await this.bot.sendMessage(
-        chatId,
-        `✅ Habit "${habit.name}" created!\n\n` +
-        `View all your habits with /myhabits`
-      );
+      
+      // Ask for schedule configuration
+      await this.askForScheduleDuringCreation(chatId, userId, habit.id, habit.name);
     } catch (error) {
       Logger.error('Error creating habit', {
         userId,
@@ -463,7 +889,44 @@ export class TelegramBotService {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       await this.bot.sendMessage(chatId, `Error creating habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await this.clearConversationState(userId);
     }
+  }
+
+  private async askForScheduleDuringCreation(chatId: number, userId: number, habitId: string, habitName: string): Promise<void> {
+    // Set conversation state for schedule configuration during creation
+    await this.setConversationState(userId, `setting_schedule_new:${habitId}`);
+    
+    // Get user's timezone for display
+    const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+    const userTimezone = userPreferences?.timezone || 'UTC';
+    const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
+    
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '📅 Daily', callback_data: `schedule_type_new:${habitId}:daily` },
+          { text: '📆 Weekly', callback_data: `schedule_type_new:${habitId}:weekly` },
+        ],
+        [
+          { text: '🗓️ Monthly', callback_data: `schedule_type_new:${habitId}:monthly` },
+          { text: '⏱️ Interval', callback_data: `schedule_type_new:${habitId}:interval` },
+        ],
+        [
+          { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
+        ],
+      ],
+    };
+
+    await this.bot.sendMessage(
+      chatId,
+      `✅ Habit "${habitName}" created!\n\n` +
+      `⏰ Now set up your reminder schedule:\n\n` +
+      `Choose a schedule type or skip to use the default (daily at 22:00 ${timezoneName}).`,
+      {
+        reply_markup: keyboard,
+      }
+    );
   }
 
   private async handleNewHabitCommandWithName(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
@@ -617,6 +1080,48 @@ export class TelegramBotService {
       return;
     }
 
+    // Handle habit set schedule (show schedule options)
+    const setScheduleMatch = data.match(/^habit_set_schedule:(.+)$/);
+    if (setScheduleMatch) {
+      await this.handleSetScheduleCallback(userId, chatId, setScheduleMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle schedule type selection for new habits
+    const scheduleTypeNewMatch = data.match(/^schedule_type_new:(.+):(.+)$/);
+    if (scheduleTypeNewMatch) {
+      await this.handleScheduleTypeCallback(userId, chatId, scheduleTypeNewMatch[1], scheduleTypeNewMatch[2], query.message?.message_id, true);
+      return;
+    }
+
+    // Handle schedule skip for new habits
+    const scheduleSkipNewMatch = data.match(/^schedule_skip_new:(.+)$/);
+    if (scheduleSkipNewMatch) {
+      await this.handleScheduleSkipNew(userId, chatId, scheduleSkipNewMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle schedule type selection (for updating existing habits)
+    const scheduleTypeMatch = data.match(/^schedule_type:(.+):(.+)$/);
+    if (scheduleTypeMatch) {
+      await this.handleScheduleTypeCallback(userId, chatId, scheduleTypeMatch[1], scheduleTypeMatch[2], query.message?.message_id, false);
+      return;
+    }
+
+    // Handle quick schedule selection (for weekly schedules with long callback_data)
+    const scheduleQuickMatch = data.match(/^schedule_quick:(.+):(\d+)$/);
+    if (scheduleQuickMatch) {
+      await this.handleScheduleQuickCallback(userId, chatId, scheduleQuickMatch[1], parseInt(scheduleQuickMatch[2], 10), query.message?.message_id);
+      return;
+    }
+
+    // Handle schedule confirmation
+    const scheduleConfirmMatch = data.match(/^schedule_confirm:(.+):(.+)$/);
+    if (scheduleConfirmMatch) {
+      await this.handleScheduleConfirmCallback(userId, chatId, scheduleConfirmMatch[1], scheduleConfirmMatch[2], query.message?.message_id);
+      return;
+    }
+
     // Handle habit delete confirmation
     const deleteConfirmMatch = data.match(/^habit_delete_confirm:(.+)$/);
     if (deleteConfirmMatch) {
@@ -634,6 +1139,13 @@ export class TelegramBotService {
     // Handle back to list
     if (data === 'habit_list') {
       await this.handleHabitListCallback(userId, chatId, query.message?.message_id);
+      return;
+    }
+
+    // Handle timezone selection
+    const timezoneMatch = data.match(/^timezone_select:(.+)$/);
+    if (timezoneMatch) {
+      await this.handleTimezoneSelection(userId, chatId, timezoneMatch[1], query.message?.message_id);
       return;
     }
 
@@ -664,8 +1176,8 @@ export class TelegramBotService {
         }
       );
 
-      // Ask about remaining habits
-      await this.askAboutHabits(userId, chatId);
+      // Note: We don't ask about other habits here because each habit has its own reminder schedule
+      // Users will receive separate reminders for each habit at their scheduled times
     } catch (error) {
       Logger.error('Error recording habit check', {
         userId,
@@ -746,8 +1258,8 @@ export class TelegramBotService {
         }
       );
 
-      // Ask about remaining habits
-      await this.askAboutHabits(userId, chatId);
+      // Note: We don't ask about other habits here because each habit has its own reminder schedule
+      // Users will receive separate reminders for each habit at their scheduled times
     } catch (error) {
       Logger.error('Error skipping habit', {
         userId,
@@ -839,6 +1351,289 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     await this.showHabitsList(userId, chatId, messageId);
+  }
+
+  private async handleSetScheduleCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        await this.bot.sendMessage(chatId, 'Habit not found.');
+        return;
+      }
+
+      if (!this.setHabitReminderScheduleUseCase) {
+        await this.bot.sendMessage(chatId, 'Schedule management is not available. Please contact support.');
+        return;
+      }
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '📅 Daily', callback_data: `schedule_type:${habitId}:daily` },
+            { text: '📆 Weekly', callback_data: `schedule_type:${habitId}:weekly` },
+          ],
+          [
+            { text: '🗓️ Monthly', callback_data: `schedule_type:${habitId}:monthly` },
+            { text: '⏱️ Interval', callback_data: `schedule_type:${habitId}:interval` },
+          ],
+          [
+            { text: '← Back', callback_data: `habit_view:${habitId}` },
+          ],
+        ],
+      };
+
+      // Get user's timezone for default schedule display
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+      
+      await this.safeEditMessage(
+        `⏰ Set Reminder Schedule for "${habit.name}"\n\n` +
+        `Current: ${this.checkReminderDue.getScheduleDescription(habit.reminderSchedule || { type: 'daily', hour: 22, minute: 0, timezone: userTimezone })}\n\n` +
+        `Choose a schedule type:`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: keyboard,
+        }
+      );
+    } catch (error) {
+      Logger.error('Error showing schedule options', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleScheduleTypeCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    scheduleType: string,
+    messageId?: number,
+    isNewHabit: boolean = false
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit || !this.setHabitReminderScheduleUseCase) {
+        await this.bot.sendMessage(chatId, 'Error: Habit not found or schedule management unavailable.');
+        return;
+      }
+
+      let message = `⏰ Set ${scheduleType.charAt(0).toUpperCase() + scheduleType.slice(1)} Schedule\n\n`;
+      let keyboard: any;
+
+      switch (scheduleType) {
+        case 'daily':
+          message += 'Enter the time for daily reminders.\n\n' +
+            'Examples:\n' +
+            '• 20:30 - Every day at 8:30 PM\n' +
+            '• 09:00 - Every day at 9:00 AM\n\n' +
+            '📝 Reply with: HH:MM';
+          break;
+
+        case 'weekly':
+          message += 'Enter days and time for weekly reminders.\n\n' +
+            'Examples:\n' +
+            '• monday 18:00 - Every Monday at 6 PM\n' +
+            '• tuesday,saturday 20:00 - Every Tuesday and Saturday at 8 PM\n' +
+            '• monday,wednesday,friday 08:00 - Mon/Wed/Fri at 8 AM\n\n' +
+            'Days: sunday, monday, tuesday, wednesday, thursday, friday, saturday\n\n' +
+            '📝 Reply with: day1,day2 HH:MM';
+          break;
+
+        case 'monthly':
+          message += 'Enter day(s) of month and time for monthly reminders.\n\n' +
+            'Examples:\n' +
+            '• 15 15:42 - 15th of each month at 3:42 PM\n' +
+            '• 20,26 22:00 - 20th and 26th at 10 PM\n' +
+            '• 1,15 09:00 - 1st and 15th at 9 AM\n\n' +
+            '📝 Reply with: day1,day2 HH:MM';
+          break;
+
+        case 'interval':
+          message += 'Enter number of days and time for interval reminders.\n\n' +
+            'Examples:\n' +
+            '• 2 15:30 - Every 2 days at 3:30 PM\n' +
+            '• 3 09:00 - Every 3 days at 9 AM\n' +
+            '• 5 20:00 - Every 5 days at 8 PM\n\n' +
+            '📝 Reply with: N HH:MM';
+          break;
+
+        default:
+          await this.bot.sendMessage(chatId, 'Unknown schedule type.');
+          return;
+      }
+
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '← Back', callback_data: isNewHabit ? `schedule_skip_new:${habitId}` : `habit_set_schedule:${habitId}` },
+          ],
+        ],
+      };
+
+      await this.safeEditMessage(message, {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: keyboard,
+      });
+
+      // Set conversation state to wait for schedule input
+      const statePrefix = isNewHabit ? 'setting_schedule_new' : 'set_schedule';
+      await this.setConversationState(userId, `${statePrefix}:${habitId}:${scheduleType}`);
+      
+      // Update back button for new habits
+      if (isNewHabit && keyboard) {
+        keyboard.inline_keyboard = keyboard.inline_keyboard || [];
+        // Replace back button with skip button
+        const backButtonIndex = keyboard.inline_keyboard.findIndex((row: any[]) => 
+          row.some((btn: any) => btn.callback_data?.includes('Back'))
+        );
+        if (backButtonIndex >= 0) {
+          keyboard.inline_keyboard[backButtonIndex] = [
+            { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
+          ];
+        } else {
+          keyboard.inline_keyboard.push([
+            { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
+          ]);
+        }
+      }
+    } catch (error) {
+      Logger.error('Error handling schedule type', {
+        userId,
+        habitId,
+        scheduleType,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleScheduleQuickCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    scheduleIndex: number,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      if (!this.setHabitReminderScheduleUseCase) {
+        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        return;
+      }
+
+      // Retrieve stored quick schedules from conversation state
+      const conversationState = await this.getConversationState(userId);
+      if (!conversationState || !conversationState.startsWith(`schedule_quick:${habitId}:`)) {
+        await this.bot.sendMessage(chatId, 'Schedule options expired. Please try again.');
+        return;
+      }
+
+      // Parse the stored schedules
+      const schedulesJson = conversationState.replace(`schedule_quick:${habitId}:`, '');
+      const quickSchedules: Array<{ text: string; schedule: string }> = JSON.parse(schedulesJson);
+
+      if (scheduleIndex < 0 || scheduleIndex >= quickSchedules.length) {
+        await this.bot.sendMessage(chatId, 'Invalid schedule selection.');
+        return;
+      }
+
+      // Get user's timezone preference
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+
+      const selectedSchedule = quickSchedules[scheduleIndex].schedule;
+      const schedule = this.setHabitReminderScheduleUseCase.parseSchedule(selectedSchedule, userTimezone);
+      const updatedHabit = await this.setHabitReminderScheduleUseCase.execute(userId, habitId, schedule);
+      const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
+
+      await this.safeEditMessage(
+        `✅ Reminder schedule updated!\n\n` +
+        `Habit: ${updatedHabit.name}\n` +
+        `Schedule: ${scheduleDesc}`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      // Clear conversation state
+      await this.clearConversationState(userId);
+
+      // Show updated habit details
+      setTimeout(() => {
+        this.showHabitDetails(userId, chatId, habitId);
+      }, 1500);
+    } catch (error) {
+      Logger.error('Error confirming quick schedule', {
+        userId,
+        habitId,
+        scheduleIndex,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleScheduleConfirmCallback(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    scheduleInput: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      if (!this.setHabitReminderScheduleUseCase) {
+        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        return;
+      }
+
+      // Get user's timezone preference
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+
+      const schedule = this.setHabitReminderScheduleUseCase.parseSchedule(scheduleInput, userTimezone);
+      const updatedHabit = await this.setHabitReminderScheduleUseCase.execute(userId, habitId, schedule);
+      const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
+
+      await this.safeEditMessage(
+        `✅ Reminder schedule updated!\n\n` +
+        `Habit: ${updatedHabit.name}\n` +
+        `Schedule: ${scheduleDesc}`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      // Clear conversation state
+      await this.clearConversationState(userId);
+
+      // Show updated habit details
+      setTimeout(() => {
+        this.showHabitDetails(userId, chatId, habitId);
+      }, 1500);
+    } catch (error) {
+      Logger.error('Error confirming schedule', {
+        userId,
+        habitId,
+        scheduleInput,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // Add this helper method to the TelegramBotService class
