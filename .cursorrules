@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a TypeScript-based Telegram bot for habit tracking, deployed on Vercel. Users can create habits, track daily completion, maintain streaks, and skip days without breaking streaks. The bot sends daily reminders automatically via cron jobs.
+This is a TypeScript-based Telegram bot for habit tracking, deployed on Vercel. Users can create habits, track daily completion, maintain streaks, and skip days without breaking streaks. The bot sends reminders automatically via cron jobs based on each habit's custom schedule. Users can configure their timezone and set custom reminder schedules per habit (daily, weekly, monthly, or interval-based).
 
 ## Architecture
 
@@ -11,7 +11,7 @@ The project follows **Clean Architecture** principles with clear separation of c
 ### Layer Structure
 
 1. **Domain Layer** (`src/domain/`)
-   - **Entities** (`entities/`): Core business objects (e.g., `Habit`, `UserHabits`)
+   - **Entities** (`entities/`): Core business objects (e.g., `Habit`, `UserHabits`, `UserPreferences`)
    - **Repositories** (`repositories/`): Interfaces defining data access contracts (e.g., `IHabitRepository`)
    - **Use Cases** (`use-cases/`): Business logic implementations
      - `CreateHabitUseCase`: Creates new habits
@@ -19,6 +19,10 @@ The project follows **Clean Architecture** principles with clear separation of c
      - `GetUserHabitsUseCase`: Retrieves user's habits
      - `GetHabitsToCheckUseCase`: Gets habits that need checking
      - `RecordHabitCheckUseCase`: Records habit completion/skipping
+     - `SetUserPreferencesUseCase`: Manages user preferences (timezone)
+     - `SetHabitReminderScheduleUseCase`: Sets/updates habit reminder schedules
+     - `CheckHabitReminderDueUseCase`: Checks if a habit is due for reminder
+     - `GetHabitsDueForReminderUseCase`: Gets all habits due for reminders across users
 
 2. **Infrastructure Layer** (`src/infrastructure/`)
    - **Config** (`config/`): Redis client configuration (`kv.ts`)
@@ -32,28 +36,42 @@ The project follows **Clean Architecture** principles with clear separation of c
 
 ## Key Features
 
-1. **Habit Management**
+1. **User Onboarding**
+   - On first `/start`, users select their timezone from 24 options (covering UTC-12 to UTC+12)
+   - Timezone preference is stored and used for all habit reminders
+   - Users can change timezone later (stored in `UserPreferences`)
+
+2. **Habit Management**
    - Create habits via `/newhabit` (multi-step conversation)
+   - After creating a habit, users configure reminder schedule immediately
    - View all habits via `/myhabits`
    - Delete habits with confirmation
-   - View habit details (streak, skipped days, creation date)
+   - View habit details (streak, skipped days, reminder schedule, creation date)
+   - Update reminder schedule for existing habits
 
-2. **Habit Tracking**
-   - Daily reminders sent automatically
+3. **Habit Tracking**
+   - Reminders sent automatically based on each habit's schedule
    - Three options when checking habits:
      - ✅ Yes (completes habit, increments streak)
      - ❌ No (drop streak) (resets streak to 0, clears skipped days)
      - ⏭️ Skip (keep streak) (records skipped day, maintains streak)
 
-3. **Streak Management**
+4. **Streak Management**
    - Streaks increment on consecutive completions
    - Streaks reset to 0 if habit is not completed (without skipping)
    - Skipped days are tracked in `skipped` array with `streakDay` and `date`
    - Skipped days count displayed in habit details
 
-4. **Daily Reminders**
-   - Automatic daily reminders via cron jobs
-   - Production: Vercel Cron Jobs (`0 22 * * *` - 10 PM daily)
+5. **Reminder Scheduling**
+   - Each habit can have a custom reminder schedule:
+     - **Daily**: Every day at a specific time (e.g., "20:30")
+     - **Weekly**: On specific days of week (e.g., "monday,wednesday 18:00")
+     - **Monthly**: On specific days of month (e.g., "15,30 22:00")
+     - **Interval**: Every N days (e.g., "2 15:30" for every 2 days)
+   - Schedules are configured in user's timezone
+   - Default schedule: Daily at 22:00 in user's timezone
+   - Reminders checked hourly via cron jobs
+   - Production: Vercel Cron Jobs (`0 * * * *` - every hour at minute 0)
    - Development: Docker cron container (configurable schedule)
 
 ## File Structure
@@ -101,10 +119,12 @@ habits-tracker/
    - Handles all bot commands and callback queries
    - Uses singleton pattern for bot service in serverless functions
 
-2. **Cron Jobs**: Vercel Cron calls `/api/reminders` daily at 10 PM
+2. **Cron Jobs**: Vercel Cron calls `/api/reminders` hourly at minute 0
    - Secured with `x-vercel-cron` header and `Authorization` header
    - Fetches all active users from Redis
-   - Sends reminder messages for unchecked habits
+   - For each user, converts server time to user's timezone
+   - Checks which habits are due for reminders based on their schedules
+   - Sends reminder messages for habits that are due and not yet checked today
 
 3. **Static Files**: `public/` folder served at root URL (`/`)
    - Landing page with quote and features
@@ -137,16 +157,33 @@ interface Habit {
   createdAt: Date;
   lastCheckedDate: string; // YYYY-MM-DD
   skipped: SkippedDay[];  // Array of skipped days
+  reminderSchedule?: ReminderSchedule; // Custom reminder schedule
+  reminderEnabled?: boolean; // Whether reminders are enabled (default true)
 }
 
 interface SkippedDay {
   streakDay: number;      // Streak day when skipped
   date: string;          // YYYY-MM-DD format
 }
+
+type ReminderSchedule =
+  | { type: 'daily'; hour: number; minute: number; timezone?: string }
+  | { type: 'weekly'; daysOfWeek: number[]; hour: number; minute: number; timezone?: string }
+  | { type: 'monthly'; daysOfMonth: number[]; hour: number; minute: number; timezone?: string }
+  | { type: 'interval'; intervalDays: number; hour: number; minute: number; timezone?: string; startDate?: string };
+```
+
+### UserPreferences Entity
+```typescript
+interface UserPreferences {
+  userId: number;
+  timezone: string; // IANA timezone (e.g., "America/New_York", "Europe/London")
+}
 ```
 
 ### Storage
 - Redis keys: `user:habits:{userId}` for user habits
+- Redis keys: `user:{userId}:preferences` for user preferences (timezone)
 - Redis keys: `active_users` for tracking users with habits
 - Redis keys: `conversation_state:{userId}` for multi-step conversations
 
@@ -168,13 +205,33 @@ interface SkippedDay {
 
 1. **Manual Update Handling**: All Telegram updates are manually routed in `TelegramBotService.processUpdate()` to ensure async operations complete before serverless function returns.
 
-2. **Conversation State**: Multi-step conversations (e.g., `/newhabit`) use Redis to store state, not in-memory maps (for serverless compatibility).
+2. **Conversation State**: Multi-step conversations (e.g., `/newhabit`, schedule configuration) use Redis to store state, not in-memory maps (for serverless compatibility). States include:
+   - `creating_habit`: Waiting for habit name
+   - `setting_schedule_new:{habitId}`: Configuring schedule for new habit
+   - `set_schedule:{habitId}:{scheduleType}`: Configuring schedule for existing habit
 
-3. **Error Handling**: `safeEditMessage()` helper ignores "message is not modified" errors from Telegram.
+3. **Timezone Handling**: 
+   - Users must set timezone on first `/start` command
+   - All habit schedules are stored with user's timezone
+   - Reminder checking converts server UTC time to each user's timezone
+   - Schedule descriptions display times in user's timezone
 
-4. **Logging**: Structured logging via `Logger` utility with timestamps and metadata.
+4. **Schedule Configuration**:
+   - During habit creation, users configure schedule immediately after naming
+   - Simplified input format: "20:30" for daily, "monday 15:48" for weekly, etc.
+   - Schedule type is selected via buttons, then user enters simplified format
+   - Users can skip schedule configuration to use default (daily 22:00 in their timezone)
 
-5. **Redis Connection**: Connection is managed per-request in serverless functions with connection pooling and timeout handling.
+5. **Error Handling**: `safeEditMessage()` helper ignores "message is not modified" errors from Telegram.
+
+6. **Logging**: Structured logging via `Logger` utility with timestamps and metadata.
+
+7. **Redis Connection**: Connection is managed per-request in serverless functions with connection pooling and timeout handling.
+
+8. **Bot Commands Menu**: Bot commands are set via `setMyCommands()` on initialization:
+   - `/start` - Start the bot and set your timezone
+   - `/newhabit` - Create a new habit to track
+   - `/myhabits` - View all your habits
 
 ## Build Process
 
@@ -202,5 +259,9 @@ interface SkippedDay {
 - Redis is used directly (not Vercel KV) - connection string format: `redis://` or `rediss://`
 - All async operations in Telegram handlers are awaited to prevent premature function termination
 - The `/check` command was removed - reminders are automatic only
+- Reminders are checked hourly (not daily) to support custom schedules
+- Each habit can have its own reminder schedule and timezone
+- User timezone is required - set on first `/start`, stored in `UserPreferences`
+- Schedule input is simplified: users select type via button, then enter simplified format (e.g., "20:30" for daily)
 - Landing page quote is from Plutarch: "Choose what is best, and habit will make it pleasant and easy."
 
