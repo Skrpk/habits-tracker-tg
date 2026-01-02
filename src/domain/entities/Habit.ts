@@ -3,6 +3,11 @@ export interface SkippedDay {
   date: string; // YYYY-MM-DD format
 }
 
+export interface DroppedDay {
+  streakBeforeDrop: number; // The streak value before it was dropped
+  date: string; // YYYY-MM-DD format
+}
+
 // Reminder schedule types
 export type ReminderSchedule =
   | { type: 'daily'; hour: number; minute: number; timezone?: string } // Every day at specific time
@@ -18,8 +23,10 @@ export interface Habit {
   createdAt: Date;
   lastCheckedDate: string; // YYYY-MM-DD format
   skipped: SkippedDay[]; // Array of skipped days
+  dropped: DroppedDay[]; // Array of dropped days (when streak was reset to 0)
   reminderSchedule?: ReminderSchedule; // Reminder schedule configuration
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
+  disabled?: boolean; // Whether the habit is disabled (default false)
 }
 
 export interface UserHabits {

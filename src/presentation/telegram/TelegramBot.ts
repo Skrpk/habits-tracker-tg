@@ -7,10 +7,13 @@ import { GetHabitsToCheckUseCase } from '../../domain/use-cases/GetHabitsToCheck
 import { SetHabitReminderScheduleUseCase } from '../../domain/use-cases/SetHabitReminderScheduleUseCase';
 import { CheckHabitReminderDueUseCase } from '../../domain/use-cases/CheckHabitReminderDueUseCase';
 import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPreferencesUseCase';
+import { ToggleHabitDisabledUseCase } from '../../domain/use-cases/ToggleHabitDisabledUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
 import { Habit } from '../../domain/entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { kv } from '../../infrastructure/config/kv';
+import { QuoteManager } from '../../infrastructure/quotes/QuoteManager';
+import OpenAI from 'openai';
 
 // Helper function to get username from Telegram user
 function getUsername(from: TelegramBot.User | undefined): string {
@@ -28,6 +31,9 @@ export class TelegramBotService {
   private setHabitReminderScheduleUseCase: SetHabitReminderScheduleUseCase | null = null;
   private checkReminderDue: CheckHabitReminderDueUseCase;
   private setUserPreferencesUseCase: SetUserPreferencesUseCase;
+  private toggleHabitDisabledUseCase: ToggleHabitDisabledUseCase;
+  private quoteManager: QuoteManager;
+  private openai: OpenAI | null = null;
 
   constructor(
     token: string,
@@ -66,6 +72,15 @@ export class TelegramBotService {
     // Create user preferences use case internally (repository is lightweight)
     const habitRepository = new VercelKVHabitRepository();
     this.setUserPreferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
+    this.toggleHabitDisabledUseCase = new ToggleHabitDisabledUseCase(habitRepository);
+    this.quoteManager = new QuoteManager();
+    
+    // Initialize OpenAI if API key is available
+    if (process.env.OPENAI_API_KEY) {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+    }
     
     // Set bot commands menu
     this.setupBotCommands();
@@ -162,9 +177,10 @@ export class TelegramBotService {
       const keyboard = {
         inline_keyboard: habits.map(habit => {
           const skippedCount = (habit.skipped || []).length;
+          const statusIcon = habit.disabled === true ? '⏸️' : '▶️';
           return [
             {
-              text: `${habit.name} (🔥 ${habit.streak}, ⏭️ ${skippedCount})`,
+              text: `${statusIcon} ${habit.name} (🔥 ${habit.streak}, ⏭️ ${skippedCount})`,
               callback_data: `habit_view:${habit.id}`,
             },
           ];
@@ -175,7 +191,8 @@ export class TelegramBotService {
       let message = '📋 Your Habits:\n\n';
       habits.forEach((habit, index) => {
         const skippedCount = (habit.skipped || []).length;
-        message += `${index + 1}. ${habit.name}\n`;
+        const statusText = habit.disabled === true ? '⏸️ Disabled' : '▶️ Active';
+        message += `${index + 1}. ${habit.name} (${statusText})\n`;
         message += `   🔥 Streak: ${habit.streak} days\n`;
         message += `   ⏭️ Skipped: ${skippedCount} day${skippedCount !== 1 ? 's' : ''}\n`;
         if (skippedCount > 0) {
@@ -235,9 +252,11 @@ export class TelegramBotService {
       };
       const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
       const reminderStatus = habit.reminderEnabled !== false ? '✅ Enabled' : '❌ Disabled';
+      const disabledStatus = habit.disabled === true ? '⏸️ Disabled' : '▶️ Active';
       
       const message = `📋 Habit Details\n\n` +
         `Name: ${habit.name}\n` +
+        `Status: ${disabledStatus}\n` +
         `🔥 Streak: ${habit.streak} days\n` +
         `⏭️ Skipped days: ${skippedCount}\n` +
         `⏰ Reminder: ${scheduleDesc} (${reminderStatus})\n` +
@@ -246,6 +265,9 @@ export class TelegramBotService {
 
       const keyboard = {
         inline_keyboard: [
+          [
+            { text: habit.disabled === true ? '▶️ Enable Habit' : '⏸️ Disable Habit', callback_data: `habit_toggle_disabled:${habit.id}` },
+          ],
           [
             { text: '⏰ Set Reminder Schedule', callback_data: `habit_set_schedule:${habit.id}` },
           ],
@@ -271,6 +293,37 @@ export class TelegramBotService {
       }
     } catch (error) {
       await this.bot.sendMessage(chatId, `Error fetching habit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleHabitToggleDisabled(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const isDisabled = await this.toggleHabitDisabledUseCase.execute(userId, habitId);
+      const statusText = isDisabled ? 'disabled' : 'enabled';
+      
+      await this.bot.answerCallbackQuery('', {
+        text: `Habit ${statusText}`,
+        show_alert: false,
+      });
+
+      // Refresh the habit details view
+      await this.showHabitDetails(userId, chatId, habitId, messageId);
+    } catch (error) {
+      Logger.error('Error toggling habit disabled state', {
+        userId,
+        habitId,
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.answerCallbackQuery('', {
+        text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        show_alert: true,
+      });
     }
   }
 
@@ -520,6 +573,24 @@ export class TelegramBotService {
         // Handle /myhabits command
         if (text.match(/^\/myhabits/)) {
           await this.handleMyHabitsCommand(chatId, userId, username);
+          return;
+        }
+        
+        // Handle /quote command (admin only, not registered in commands menu)
+        if (text.match(/^\/quote/)) {
+          await this.handleQuoteCommand(chatId, userId, username);
+          return;
+        }
+        
+        // Handle quote editing (conversation state)
+        if (conversationState && conversationState.startsWith('quote_edit:') && !text.match(/^\//)) {
+          await this.handleQuoteEditInput(chatId, userId, username, text, conversationState);
+          return;
+        }
+        
+        // Handle quote regenerate with custom prompt (conversation state)
+        if (conversationState && conversationState.startsWith('quote_regenerate:') && !text.match(/^\//)) {
+          await this.handleQuoteRegenerateInput(chatId, userId, username, text, conversationState);
           return;
         }
         
@@ -1258,6 +1329,13 @@ export class TelegramBotService {
       return;
     }
 
+    // Handle habit toggle disabled
+    const toggleDisabledMatch = data.match(/^habit_toggle_disabled:(.+)$/);
+    if (toggleDisabledMatch) {
+      await this.handleHabitToggleDisabled(userId, chatId, toggleDisabledMatch[1], query.message?.message_id);
+      return;
+    }
+
     // Handle habit delete (show confirmation)
     const deleteMatch = data.match(/^habit_delete:(.+)$/);
     if (deleteMatch) {
@@ -1286,6 +1364,31 @@ export class TelegramBotService {
     const timezoneMatch = data.match(/^timezone_select:(.+)$/);
     if (timezoneMatch) {
       await this.handleTimezoneSelection(userId, chatId, timezoneMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle quote actions
+    const quoteDeleteMatch = data.match(/^quote_delete:(\d+)$/);
+    if (quoteDeleteMatch) {
+      await this.handleQuoteDelete(userId, chatId, parseInt(quoteDeleteMatch[1], 10), query.message?.message_id);
+      return;
+    }
+
+    const quoteEditMatch = data.match(/^quote_edit:(\d+)$/);
+    if (quoteEditMatch) {
+      await this.handleQuoteEdit(userId, chatId, parseInt(quoteEditMatch[1], 10), query.message?.message_id);
+      return;
+    }
+
+    const quoteGetImgMatch = data.match(/^quote_get_img:(\d+)$/);
+    if (quoteGetImgMatch) {
+      await this.handleQuoteGetImg(userId, chatId, parseInt(quoteGetImgMatch[1], 10), query.message?.message_id);
+      return;
+    }
+
+    const quoteRegenerateMatch = data.match(/^quote_regenerate:(\d+)$/);
+    if (quoteRegenerateMatch) {
+      await this.handleQuoteRegenerate(userId, chatId, parseInt(quoteRegenerateMatch[1], 10), query.message?.message_id);
       return;
     }
 
@@ -1773,6 +1876,451 @@ export class TelegramBotService {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Quote management handlers
+  private async handleQuoteCommand(chatId: number, userId: number, username: string): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      Logger.debug('Non-admin user attempted to use /quote command', { userId, username, chatId });
+      return; // Silently ignore
+    }
+
+    try {
+      // Get current quote index from Redis
+      let quoteIndex = await kv.get('quote_counter') as number | null;
+      if (quoteIndex === null || quoteIndex === undefined) {
+        quoteIndex = 0;
+      }
+
+      // Get total quotes count
+      const totalQuotes = await this.quoteManager.getTotalQuotes();
+      if (totalQuotes === 0) {
+        await this.bot.sendMessage(chatId, 'No quotes available.');
+        return;
+      }
+
+      // Wrap around if index exceeds total
+      if (quoteIndex >= totalQuotes) {
+        quoteIndex = 0;
+      }
+
+      // Get quote
+      const quote = await this.quoteManager.getQuote(quoteIndex);
+      if (!quote) {
+        await this.bot.sendMessage(chatId, 'Quote not found.');
+        return;
+      }
+
+      // Increment counter for next time
+      await kv.set('quote_counter', quoteIndex + 1);
+
+      // Display quote with buttons
+      const message = `📝 Quote ${quoteIndex + 1}/${totalQuotes}\n\n"${quote.text}"\n\n— ${quote.author}`;
+      
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🗑️ Delete', callback_data: `quote_delete:${quoteIndex}` },
+            { text: '✏️ Edit', callback_data: `quote_edit:${quoteIndex}` },
+          ],
+          [
+            { text: '🖼️ Get Img', callback_data: `quote_get_img:${quoteIndex}` },
+          ],
+        ],
+      };
+
+      await this.bot.sendMessage(chatId, message, {
+        reply_markup: keyboard,
+      });
+
+      Logger.info('Quote displayed', { userId, username, quoteIndex, totalQuotes });
+    } catch (error) {
+      Logger.error('Error handling quote command', {
+        userId,
+        username,
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleQuoteDelete(
+    userId: number,
+    chatId: number,
+    quoteIndex: number,
+    messageId?: number
+  ): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      return; // Silently ignore
+    }
+
+    try {
+      const deleted = await this.quoteManager.deleteQuote(quoteIndex);
+      if (!deleted) {
+        await this.bot.answerCallbackQuery('', {
+          text: 'Quote not found',
+          show_alert: true,
+        });
+        return;
+      }
+
+      // Adjust counter if needed (since quotes shift down after deletion)
+      const currentCounter = await kv.get('quote_counter') as number | null;
+      if (currentCounter !== null && currentCounter > quoteIndex) {
+        await kv.set('quote_counter', currentCounter - 1);
+      } else if (currentCounter !== null && currentCounter === quoteIndex) {
+        // If we deleted the quote that counter points to, wrap around or reset
+        const totalQuotes = await this.quoteManager.getTotalQuotes();
+        await kv.set('quote_counter', totalQuotes > 0 ? 0 : 0);
+      }
+
+      const totalQuotes = await this.quoteManager.getTotalQuotes();
+      await this.safeEditMessage(
+        `✅ Quote deleted!\n\nTotal quotes remaining: ${totalQuotes}`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      Logger.info('Quote deleted', { userId, quoteIndex, totalQuotes });
+    } catch (error) {
+      Logger.error('Error deleting quote', {
+        userId,
+        quoteIndex,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error deleting quote: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleQuoteEdit(
+    userId: number,
+    chatId: number,
+    quoteIndex: number,
+    messageId?: number
+  ): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      return; // Silently ignore
+    }
+
+    try {
+      const quote = await this.quoteManager.getQuote(quoteIndex);
+      if (!quote) {
+        await this.bot.answerCallbackQuery('', {
+          text: 'Quote not found',
+          show_alert: true,
+        });
+        return;
+      }
+
+      // Set conversation state for editing
+      await this.setConversationState(userId, `quote_edit:${quoteIndex}`);
+
+      await this.safeEditMessage(
+        `✏️ Editing Quote ${quoteIndex + 1}\n\nCurrent quote:\n"${quote.text}"\n\n— ${quote.author}\n\n📝 Please send the new quote text. Format: "quote text" or "quote text|author"`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      Logger.info('Quote edit started', { userId, quoteIndex });
+    } catch (error) {
+      Logger.error('Error starting quote edit', {
+        userId,
+        quoteIndex,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleQuoteEditInput(
+    chatId: number,
+    userId: number,
+    username: string,
+    inputText: string,
+    conversationState: string
+  ): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      return; // Silently ignore
+    }
+
+    try {
+      const match = conversationState.match(/^quote_edit:(\d+)$/);
+      if (!match) {
+        await this.bot.sendMessage(chatId, 'Invalid conversation state. Please try again.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      const quoteIndex = parseInt(match[1], 10);
+      
+      // Parse input: "quote text" or "quote text|author"
+      let newText = inputText.trim();
+      let newAuthor: string | undefined = undefined;
+
+      if (newText.includes('|')) {
+        const parts = newText.split('|');
+        if (parts.length === 2) {
+          newText = parts[0].trim();
+          newAuthor = parts[1].trim();
+        }
+      }
+
+      const edited = await this.quoteManager.editQuote(quoteIndex, newText, newAuthor);
+      if (!edited) {
+        await this.bot.sendMessage(chatId, 'Failed to edit quote. Quote may have been deleted.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      const updatedQuote = await this.quoteManager.getQuote(quoteIndex);
+      if (!updatedQuote) {
+        await this.bot.sendMessage(chatId, 'Quote not found after edit.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      const totalQuotes = await this.quoteManager.getTotalQuotes();
+      const message = `✅ Quote edited!\n\n📝 Quote ${quoteIndex + 1}/${totalQuotes}\n\n"${updatedQuote.text}"\n\n— ${updatedQuote.author}`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🗑️ Delete', callback_data: `quote_delete:${quoteIndex}` },
+            { text: '✏️ Edit', callback_data: `quote_edit:${quoteIndex}` },
+          ],
+          [
+            { text: '🖼️ Get Img', callback_data: `quote_get_img:${quoteIndex}` },
+          ],
+        ],
+      };
+
+      await this.bot.sendMessage(chatId, message, {
+        reply_markup: keyboard,
+      });
+
+      await this.clearConversationState(userId);
+      Logger.info('Quote edited', { userId, username, quoteIndex });
+    } catch (error) {
+      Logger.error('Error editing quote', {
+        userId,
+        username,
+        conversationState,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error editing quote: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await this.clearConversationState(userId);
+    }
+  }
+
+  private async handleQuoteGetImg(
+    userId: number,
+    chatId: number,
+    quoteIndex: number,
+    messageId?: number
+  ): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      return; // Silently ignore
+    }
+
+    if (!this.openai) {
+      await this.bot.answerCallbackQuery('', {
+        text: 'OpenAI API not configured',
+        show_alert: true,
+      });
+      return;
+    }
+
+    try {
+      const quote = await this.quoteManager.getQuote(quoteIndex);
+      if (!quote) {
+        await this.bot.answerCallbackQuery('', {
+          text: 'Quote not found',
+          show_alert: true,
+        });
+        return;
+      }
+
+      // Show generating message
+      await this.bot.sendMessage(chatId, 'Generating image...');
+
+      // Generate image using OpenAI DALL-E
+      const prompt = `Create a beautiful, inspiring image representing this quote: "${quote.text}" by ${quote.author}. The image should be artistic, meaningful, and visually appealing. Use the timeline where the author of quote used to live. Also try to use more real people and their live scenarios. Don't put any text on the image.`;
+      
+      const response = await this.openai.images.generate({
+        model: 'dall-e-3',
+        prompt: prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+      });
+
+      const imageUrl = response.data?.[0]?.url;
+      if (!imageUrl) {
+        throw new Error('No image URL returned from OpenAI');
+      }
+
+      // Send image to user with regenerate button
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🔄 Regenerate with prompt', callback_data: `quote_regenerate:${quoteIndex}` },
+          ],
+        ],
+      };
+
+      await this.bot.sendPhoto(chatId, imageUrl, {
+        caption: `"${quote.text}"\n\n— ${quote.author}`,
+        reply_markup: keyboard,
+      });
+
+      Logger.info('Quote image generated', { userId, quoteIndex, imageUrl });
+    } catch (error) {
+      Logger.error('Error generating quote image', {
+        userId,
+        quoteIndex,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleQuoteRegenerate(
+    userId: number,
+    chatId: number,
+    quoteIndex: number,
+    messageId?: number
+  ): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      return; // Silently ignore
+    }
+
+    try {
+      const quote = await this.quoteManager.getQuote(quoteIndex);
+      if (!quote) {
+        await this.bot.answerCallbackQuery('', {
+          text: 'Quote not found',
+          show_alert: true,
+        });
+        return;
+      }
+
+      // Set conversation state for custom prompt input
+      await this.setConversationState(userId, `quote_regenerate:${quoteIndex}`);
+
+      await this.bot.sendMessage(
+        chatId,
+        `🔄 Regenerating image for quote ${quoteIndex + 1}\n\n📝 Please send your custom prompt. It will be combined with the standard prompt.\n\nExample: "in a minimalist style" or "with vibrant colors"`,
+      );
+
+      Logger.info('Quote regenerate started', { userId, quoteIndex });
+    } catch (error) {
+      Logger.error('Error starting quote regenerate', {
+        userId,
+        quoteIndex,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async handleQuoteRegenerateInput(
+    chatId: number,
+    userId: number,
+    username: string,
+    customPrompt: string,
+    conversationState: string
+  ): Promise<void> {
+    // Check admin access
+    const adminId = process.env.ADMIN_ID;
+    if (!adminId || userId.toString() !== adminId) {
+      return; // Silently ignore
+    }
+
+    if (!this.openai) {
+      await this.bot.sendMessage(chatId, 'OpenAI API not configured.');
+      await this.clearConversationState(userId);
+      return;
+    }
+
+    try {
+      const match = conversationState.match(/^quote_regenerate:(\d+)$/);
+      if (!match) {
+        await this.bot.sendMessage(chatId, 'Invalid conversation state. Please try again.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      const quoteIndex = parseInt(match[1], 10);
+      const quote = await this.quoteManager.getQuote(quoteIndex);
+      if (!quote) {
+        await this.bot.sendMessage(chatId, 'Quote not found.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      // Show generating message
+      await this.bot.sendMessage(chatId, '🔄 Generating image with custom prompt...');
+
+      // Combine standard prompt with custom prompt
+      const standardPrompt = `Create a beautiful, inspiring image representing this quote: "${quote.text}" by ${quote.author}. The image should be artistic, meaningful, and visually appealing. Use the timeline where the author of quote used to live. Also try to use more real people and their live scenarios. Don't put any text on the image.`;
+      const fullPrompt = `${standardPrompt} ${customPrompt.trim()}`;
+      
+      const response = await this.openai.images.generate({
+        model: 'dall-e-3',
+        prompt: fullPrompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+      });
+
+      const imageUrl = response.data?.[0]?.url;
+      if (!imageUrl) {
+        throw new Error('No image URL returned from OpenAI');
+      }
+
+      // Send image to user with regenerate button
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🔄 Regenerate with prompt', callback_data: `quote_regenerate:${quoteIndex}` },
+          ],
+        ],
+      };
+
+      await this.bot.sendPhoto(chatId, imageUrl, {
+        caption: `"${quote.text}"\n\n— ${quote.author}\n\n✨ Custom prompt: ${customPrompt.trim()}`,
+        reply_markup: keyboard,
+      });
+
+      await this.clearConversationState(userId);
+      Logger.info('Quote image regenerated with custom prompt', { userId, username, quoteIndex, customPrompt });
+    } catch (error) {
+      Logger.error('Error regenerating quote image', {
+        userId,
+        username,
+        conversationState,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await this.clearConversationState(userId);
     }
   }
 

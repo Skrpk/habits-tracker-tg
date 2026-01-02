@@ -25,6 +25,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
         data.habits = data.habits.map(habit => ({
           ...habit,
           skipped: habit.skipped || [],
+          dropped: habit.dropped || [],
           // Set default reminder schedule if missing (daily at 22:00 UTC)
           reminderSchedule: habit.reminderSchedule || {
             type: 'daily',
@@ -33,6 +34,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
             timezone: 'UTC',
           },
           reminderEnabled: habit.reminderEnabled !== false, // default true
+          disabled: habit.disabled === true, // default false
         }));
       }
       Logger.debug('Retrieved user habits', {

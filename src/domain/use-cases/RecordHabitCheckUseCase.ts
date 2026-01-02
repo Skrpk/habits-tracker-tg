@@ -1,5 +1,5 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
-import { Habit, SkippedDay } from '../entities/Habit';
+import { Habit, SkippedDay, DroppedDay } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 
 export class RecordHabitCheckUseCase {
@@ -42,6 +42,7 @@ export class RecordHabitCheckUseCase {
     }
 
     let newStreak = habit.streak;
+    let updatedDropped = habit.dropped || [];
     
     if (completed) {
       // Check if yesterday was checked (for streak continuity)
@@ -62,16 +63,34 @@ export class RecordHabitCheckUseCase {
         // Gap in checking - streak broken, start new streak
         newStreak = 1;
       }
+      
+      // Update habit with completed check
+      await this.habitRepository.updateHabit(userId, habitId, {
+        streak: newStreak,
+        lastCheckedDate: today,
+        skipped: habit.skipped || [], // Keep skipped days when completing
+      });
     } else {
       // Reset streak to 0 and clear skipped days
       newStreak = 0;
+      
+      // Track drop date if there was a streak before dropping
+      if (habit.streak > 0) {
+        const droppedDay: DroppedDay = {
+          streakBeforeDrop: habit.streak,
+          date: today,
+        };
+        updatedDropped = [...(habit.dropped || []), droppedDay];
+      }
+      
+      // Update habit with dropped check
+      await this.habitRepository.updateHabit(userId, habitId, {
+        streak: newStreak,
+        lastCheckedDate: today,
+        skipped: [], // Clear skipped when dropping streak
+        dropped: updatedDropped,
+      });
     }
-
-    await this.habitRepository.updateHabit(userId, habitId, {
-      streak: newStreak,
-      lastCheckedDate: today,
-      skipped: completed ? habit.skipped || [] : [], // Clear skipped when dropping streak
-    });
 
     const updatedHabits = await this.habitRepository.getUserHabits(userId);
     const updatedHabit = updatedHabits!.habits.find(h => h.id === habitId)!;

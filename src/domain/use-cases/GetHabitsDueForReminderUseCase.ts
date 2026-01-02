@@ -37,6 +37,11 @@ export class GetHabitsDueForReminderUseCase {
       const today = userDate.toISOString().split('T')[0];
 
       for (const habit of userHabits.habits) {
+        // Skip if habit is disabled
+        if (habit.disabled === true) {
+          continue;
+        }
+
         // Skip if already checked today
         if (habit.lastCheckedDate === today) {
           continue;

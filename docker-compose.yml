@@ -29,12 +29,15 @@ services:
       - REDIS_URL=redis://redis:6379
       - USE_LOCAL_REDIS=true
       - PORT=3000
+      - ADMIN_ID=148654904
+      - OPENAI_API_KEY=
     volumes:
       - ./src:/app/src
       - ./package.json:/app/package.json
       - ./tsconfig.json:/app/tsconfig.json
       - ./api:/app/api
       - node_modules:/app/node_modules
+      - ./quotes:/app/quotes
     ports:
       - "3000:3000"
     command: npm run dev
