@@ -82,6 +82,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
       createdAt: new Date(),
       lastCheckedDate: '',
       skipped: [],
+      dropped: [],
       // Default reminder schedule: daily at 22:00 in user's timezone
       reminderSchedule: {
         type: 'daily',
