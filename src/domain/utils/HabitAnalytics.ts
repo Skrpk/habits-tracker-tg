@@ -37,7 +37,11 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
   const schedule = habit.reminderSchedule;
   const remindersEnabled = habit.reminderEnabled !== false;
   const notDisabled = habit.disabled !== true;
-  const shouldInferCompletions = remindersEnabled && notDisabled;
+  // Only infer completions if there's evidence of user interaction:
+  // - streak > 0 (user has completed at least once), OR
+  // - has skipped/dropped days (user has interacted with the habit)
+  const hasUserInteraction = (habit.streak || 0) > 0 || skippedDates.size > 0 || droppedDates.size > 0;
+  const shouldInferCompletions = remindersEnabled && notDisabled && hasUserInteraction;
   
   // Helper to check if a date is a scheduled day
   function isScheduledDay(date: Date): boolean {
@@ -68,6 +72,33 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
       default:
         return false;
     }
+  }
+  
+  // If we shouldn't infer completions, only return explicit events (skips/drops)
+  if (!shouldInferCompletions) {
+    const currentDate = new Date(creationDate);
+    while (currentDate <= today) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      
+      if (droppedDates.has(dateStr)) {
+        const drop = droppedDates.get(dateStr)!;
+        history.push({
+          date: dateStr,
+          type: 'dropped',
+          streak: 0,
+          streakBefore: drop.streakBeforeDrop,
+        });
+      } else if (skippedDates.has(dateStr)) {
+        history.push({
+          date: dateStr,
+          type: 'skipped',
+          streak: 0,
+        });
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return history;
   }
   
   // Current streak value as we process forward
@@ -113,9 +144,96 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
     currentDate.setDate(currentDate.getDate() + 1);
   }
   
-  // Verify final streak matches expected
-  // If it doesn't, there might be an issue with the data, but we'll trust the stored streak
-  // The computed history should match the stored streak at the end
+  // Adjust inferred completions to match the stored streak value
+  // Work backwards from today, marking only the most recent N scheduled days as completed
+  // where N = habit.streak, excluding skipped/dropped days
+  const targetStreak = habit.streak || 0;
+  if (targetStreak > 0 && currentStreak !== targetStreak) {
+    // Rebuild history working backwards from today
+    const adjustedHistory: CheckHistoryEntry[] = [];
+    let remainingCompletions = targetStreak;
+    const workDate = new Date(today);
+    
+    // First, collect all explicit events (skips/drops) in reverse chronological order
+    const explicitEvents: CheckHistoryEntry[] = [];
+    const tempDate = new Date(creationDate);
+    while (tempDate <= today) {
+      const dateStr = tempDate.toISOString().split('T')[0];
+      if (droppedDates.has(dateStr)) {
+        const drop = droppedDates.get(dateStr)!;
+        explicitEvents.push({
+          date: dateStr,
+          type: 'dropped',
+          streak: 0,
+          streakBefore: drop.streakBeforeDrop,
+        });
+      } else if (skippedDates.has(dateStr)) {
+        explicitEvents.push({
+          date: dateStr,
+          type: 'skipped',
+          streak: 0, // Will be recalculated
+        });
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+    
+    // Work backwards from today, marking scheduled days as completed
+    let runningStreak = 0;
+    while (workDate >= creationDate && remainingCompletions > 0) {
+      const dateStr = workDate.toISOString().split('T')[0];
+      
+      if (droppedDates.has(dateStr)) {
+        const drop = droppedDates.get(dateStr)!;
+        adjustedHistory.unshift({
+          date: dateStr,
+          type: 'dropped',
+          streak: 0,
+          streakBefore: drop.streakBeforeDrop,
+        });
+        runningStreak = 0;
+      } else if (skippedDates.has(dateStr)) {
+        adjustedHistory.unshift({
+          date: dateStr,
+          type: 'skipped',
+          streak: runningStreak,
+        });
+        // Streak preserved, don't decrement remainingCompletions
+      } else if (isScheduledDay(workDate)) {
+        runningStreak++;
+        adjustedHistory.unshift({
+          date: dateStr,
+          type: 'completed',
+          streak: runningStreak,
+        });
+        remainingCompletions--;
+      }
+      
+      workDate.setDate(workDate.getDate() - 1);
+    }
+    
+    // Add any remaining days (before the streak started) without completions
+    while (workDate >= creationDate) {
+      const dateStr = workDate.toISOString().split('T')[0];
+      if (droppedDates.has(dateStr)) {
+        const drop = droppedDates.get(dateStr)!;
+        adjustedHistory.unshift({
+          date: dateStr,
+          type: 'dropped',
+          streak: 0,
+          streakBefore: drop.streakBeforeDrop,
+        });
+      } else if (skippedDates.has(dateStr)) {
+        adjustedHistory.unshift({
+          date: dateStr,
+          type: 'skipped',
+          streak: 0,
+        });
+      }
+      workDate.setDate(workDate.getDate() - 1);
+    }
+    
+    return adjustedHistory;
+  }
   
   return history;
 }

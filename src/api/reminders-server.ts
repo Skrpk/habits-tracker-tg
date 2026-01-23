@@ -189,10 +189,6 @@ async function serveStaticFile(
   if (analyticsMatch) {
     const userId = analyticsMatch[1];
     const analyticsPath = join(publicDir, 'analytics.html');
-    console.log('ANALYTICS PATH', analyticsPath);
-    console.log('EXISTS', existsSync(analyticsPath));
-    console.log('STAT', statSync(analyticsPath));
-    console.log('IS FILE', statSync(analyticsPath).isFile());
     if (existsSync(analyticsPath)) {
       let content = readFileSync(analyticsPath, 'utf-8');
       // Inject userId into the page (the JS will also read from URL, but this ensures it's available)
