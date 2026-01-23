@@ -1,6 +1,12 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/analytics/:userId",
+      "destination": "/analytics.html?userId=:userId"
+    }
+  ],
   "functions": {
     "api/webhook.ts": {
       "maxDuration": 10
@@ -9,6 +15,9 @@
       "maxDuration": 60
     },
     "api/setup-webhook.ts": {
+      "maxDuration": 10
+    },
+    "api/analytics.ts": {
       "maxDuration": 10
     }
   }

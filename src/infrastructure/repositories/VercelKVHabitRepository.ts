@@ -26,6 +26,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
           ...habit,
           skipped: habit.skipped || [],
           dropped: habit.dropped || [],
+          // checkHistory is no longer stored - it's computed on demand
           // Set default reminder schedule if missing (daily at 22:00 UTC)
           reminderSchedule: habit.reminderSchedule || {
             type: 'daily',
@@ -83,6 +84,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
       lastCheckedDate: '',
       skipped: [],
       dropped: [],
+      // checkHistory is computed on demand, not stored
       // Default reminder schedule: daily at 22:00 in user's timezone
       reminderSchedule: {
         type: 'daily',

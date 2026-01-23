@@ -8,6 +8,13 @@ export interface DroppedDay {
   date: string; // YYYY-MM-DD format
 }
 
+export interface CheckHistoryEntry {
+  date: string; // YYYY-MM-DD format
+  type: 'completed' | 'skipped' | 'dropped'; // Type of check
+  streak: number; // Streak value after this check
+  streakBefore?: number; // Streak value before this check (for dropped)
+}
+
 // Reminder schedule types
 export type ReminderSchedule =
   | { type: 'daily'; hour: number; minute: number; timezone?: string } // Every day at specific time
@@ -24,6 +31,7 @@ export interface Habit {
   lastCheckedDate: string; // YYYY-MM-DD format
   skipped: SkippedDay[]; // Array of skipped days
   dropped: DroppedDay[]; // Array of dropped days (when streak was reset to 0)
+  checkHistory?: CheckHistoryEntry[]; // @deprecated - Computed on demand, not stored. Use computeCheckHistory() utility instead.
   reminderSchedule?: ReminderSchedule; // Reminder schedule configuration
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
   disabled?: boolean; // Whether the habit is disabled (default false)

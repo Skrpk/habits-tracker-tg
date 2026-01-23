@@ -97,6 +97,10 @@ export class TelegramBotService {
           command: 'myhabits',
           description: 'View all your habits',
         },
+        {
+          command: 'analytics',
+          description: 'View your habits analytics',
+        },
       ]);
       Logger.info('Bot commands menu set successfully');
     } catch (error) {
@@ -576,6 +580,12 @@ export class TelegramBotService {
           return;
         }
         
+        // Handle /analytics command
+        if (text.match(/^\/analytics/)) {
+          await this.handleAnalyticsCommand(chatId, userId, username);
+          return;
+        }
+        
         // Handle /quote command (admin only, not registered in commands menu)
         if (text.match(/^\/quote/)) {
           await this.handleQuoteCommand(chatId, userId, username);
@@ -661,6 +671,7 @@ export class TelegramBotService {
         'Commands:\n' +
         '/newhabit - Create a new habit\n\n' +
         '/myhabits - View all your habits\n\n' +
+        '/analytics - View detailed analytics and graphs\n\n' +
         'The bot will remind you daily to check your habits! ⏰\n\n',
         { parse_mode: 'Markdown' }
       );
@@ -994,6 +1005,7 @@ export class TelegramBotService {
         'Commands:\n' +
         '/newhabit - Create a new habit\n\n' +
         '/myhabits - View all your habits\n\n' +
+        '/analytics - View detailed analytics and graphs\n\n' +
         'The bot will remind you daily to check your habits! ⏰\n\n',
         {
           chat_id: chatId,
@@ -1209,6 +1221,43 @@ export class TelegramBotService {
 
     Logger.info('User requested habits list', { userId, username, chatId });
     await this.showHabitsList(userId, chatId);
+  }
+
+  private async handleAnalyticsCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
+    if (!userId) {
+      Logger.warn('Unable to identify user for analytics', { chatId });
+      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+      return;
+    }
+
+    Logger.info('User requested analytics', { userId, username, chatId });
+    
+    // Get base URL from environment variables
+    // Try VERCEL_URL first (automatically set by Vercel), then extract from WEBHOOK_URL, then use localhost for dev
+    let baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.WEBHOOK_URL 
+        ? process.env.WEBHOOK_URL.replace('/api/webhook', '')
+        : 'http://localhost:3000';
+    
+    // Ensure baseUrl doesn't have trailing slash
+    baseUrl = baseUrl.replace(/\/$/, '');
+    
+    const analyticsUrl = `${baseUrl}/analytics/${userId}`;
+    
+    const message = `📊 *Your Habits Analytics*\n\n` +
+      `View detailed analytics and graphs for all your habits:\n\n` +
+      `${analyticsUrl}\n\n` +
+      `Click the link above to see:\n` +
+      `• Streak trends over time\n` +
+      `• Completion statistics\n` +
+      `• Skipped and dropped days\n` +
+      `• Timeline of all check events`;
+    
+    await this.bot.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      disable_web_page_preview: false, // Allow preview of the link
+    });
   }
 
   // Callback query handlers

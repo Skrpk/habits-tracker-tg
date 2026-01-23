@@ -64,7 +64,7 @@ export class RecordHabitCheckUseCase {
         newStreak = 1;
       }
       
-      // Update habit with completed check
+      // Update habit with completed check (no checkHistory stored)
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
         lastCheckedDate: today,
@@ -83,7 +83,7 @@ export class RecordHabitCheckUseCase {
         updatedDropped = [...(habit.dropped || []), droppedDay];
       }
       
-      // Update habit with dropped check
+      // Update habit with dropped check (no checkHistory stored)
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
         lastCheckedDate: today,
@@ -159,6 +159,7 @@ export class RecordHabitCheckUseCase {
       skipped: updatedSkipped,
       lastCheckedDate: today,
       // Keep streak unchanged when skipping
+      // No checkHistory stored - it's computed on demand
     });
 
     const updatedHabits = await this.habitRepository.getUserHabits(userId);

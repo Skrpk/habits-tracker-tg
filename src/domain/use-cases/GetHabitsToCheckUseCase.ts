@@ -12,8 +12,11 @@ export class GetHabitsToCheckUseCase {
 
     const today = new Date().toISOString().split('T')[0];
     
-    // Return habits that haven't been checked today
-    return userHabits.habits.filter(habit => habit.lastCheckedDate !== today);
+    // Return habits that haven't been checked today and are not disabled
+    return userHabits.habits.filter(habit => 
+      habit.lastCheckedDate !== today && 
+      habit.disabled !== true
+    );
   }
 }
 

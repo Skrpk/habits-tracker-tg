@@ -1,0 +1,249 @@
+{
+  "userId": 12345,
+  "habits": [
+    {
+      "id": "mock-1month-habit-001",
+      "userId": 12345,
+      "name": "Morning Meditation",
+      "streak": 5,
+      "createdAt": "2025-12-23T23:00:00.000Z",
+      "lastCheckedDate": "2026-01-21",
+      "skipped": [
+        {
+          "skippedDay": 3,
+          "date": "2026-01-02"
+        },
+        {
+          "skippedDay": 8,
+          "date": "2026-01-10"
+        }
+      ],
+      "dropped": [
+        {
+          "streakBeforeDrop": 7,
+          "date": "2026-01-04"
+        }
+      ],
+      "reminderSchedule": {
+        "type": "daily",
+        "hour": 7,
+        "minute": 0,
+        "timezone": "America/New_York"
+      },
+      "reminderEnabled": true,
+      "disabled": false
+    },
+    {
+      "id": "mock-1year-habit-002",
+      "userId": 12345,
+      "name": "Daily Exercise",
+      "streak": 12,
+      "createdAt": "2025-01-22T23:00:00.000Z",
+      "lastCheckedDate": "2026-01-20",
+      "skipped": [
+        {
+          "skippedDay": 5,
+          "date": "2025-02-16"
+        },
+        {
+          "skippedDay": 10,
+          "date": "2025-03-28"
+        },
+        {
+          "skippedDay": 3,
+          "date": "2025-05-17"
+        },
+        {
+          "skippedDay": 15,
+          "date": "2025-07-06"
+        },
+        {
+          "skippedDay": 8,
+          "date": "2025-08-25"
+        },
+        {
+          "skippedDay": 20,
+          "date": "2025-10-14"
+        },
+        {
+          "skippedDay": 5,
+          "date": "2025-12-03"
+        },
+        {
+          "skippedDay": 10,
+          "date": "2025-12-28"
+        }
+      ],
+      "dropped": [
+        {
+          "streakBeforeDrop": 25,
+          "date": "2025-03-08"
+        },
+        {
+          "streakBeforeDrop": 18,
+          "date": "2025-07-26"
+        },
+        {
+          "streakBeforeDrop": 30,
+          "date": "2025-11-23"
+        }
+      ],
+      "reminderSchedule": {
+        "type": "daily",
+        "hour": 18,
+        "minute": 30,
+        "timezone": "America/New_York"
+      },
+      "reminderEnabled": true,
+      "disabled": false
+    },
+    {
+      "id": "mock-3year-habit-003",
+      "userId": 12345,
+      "name": "Read 30 Minutes",
+      "streak": 45,
+      "createdAt": "2023-01-23T23:00:00.000Z",
+      "lastCheckedDate": "2026-01-21",
+      "skipped": [
+        {
+          "skippedDay": 10,
+          "date": "2023-04-28"
+        },
+        {
+          "skippedDay": 5,
+          "date": "2023-06-17"
+        },
+        {
+          "skippedDay": 15,
+          "date": "2023-08-06"
+        },
+        {
+          "skippedDay": 8,
+          "date": "2023-09-25"
+        },
+        {
+          "skippedDay": 20,
+          "date": "2023-11-14"
+        },
+        {
+          "skippedDay": 12,
+          "date": "2024-01-03"
+        },
+        {
+          "skippedDay": 7,
+          "date": "2024-02-22"
+        },
+        {
+          "skippedDay": 18,
+          "date": "2024-04-12"
+        },
+        {
+          "skippedDay": 9,
+          "date": "2024-06-01"
+        },
+        {
+          "skippedDay": 25,
+          "date": "2024-07-21"
+        },
+        {
+          "skippedDay": 11,
+          "date": "2024-09-09"
+        },
+        {
+          "skippedDay": 6,
+          "date": "2024-10-29"
+        },
+        {
+          "skippedDay": 14,
+          "date": "2024-12-18"
+        },
+        {
+          "skippedDay": 19,
+          "date": "2025-02-06"
+        },
+        {
+          "skippedDay": 8,
+          "date": "2025-03-28"
+        },
+        {
+          "skippedDay": 22,
+          "date": "2025-05-17"
+        },
+        {
+          "skippedDay": 13,
+          "date": "2025-07-06"
+        },
+        {
+          "skippedDay": 7,
+          "date": "2025-08-25"
+        },
+        {
+          "skippedDay": 16,
+          "date": "2025-10-14"
+        },
+        {
+          "skippedDay": 10,
+          "date": "2025-11-08"
+        },
+        {
+          "skippedDay": 5,
+          "date": "2025-11-23"
+        },
+        {
+          "skippedDay": 30,
+          "date": "2025-12-03"
+        },
+        {
+          "skippedDay": 12,
+          "date": "2025-12-18"
+        },
+        {
+          "skippedDay": 8,
+          "date": "2026-01-02"
+        },
+        {
+          "skippedDay": 40,
+          "date": "2026-01-12"
+        }
+      ],
+      "dropped": [
+        {
+          "streakBeforeDrop": 50,
+          "date": "2023-05-18"
+        },
+        {
+          "streakBeforeDrop": 35,
+          "date": "2023-09-25"
+        },
+        {
+          "streakBeforeDrop": 60,
+          "date": "2024-02-22"
+        },
+        {
+          "streakBeforeDrop": 28,
+          "date": "2024-07-21"
+        },
+        {
+          "streakBeforeDrop": 42,
+          "date": "2024-12-18"
+        },
+        {
+          "streakBeforeDrop": 55,
+          "date": "2025-05-17"
+        },
+        {
+          "streakBeforeDrop": 38,
+          "date": "2025-10-14"
+        }
+      ],
+      "reminderSchedule": {
+        "type": "daily",
+        "hour": 21,
+        "minute": 0,
+        "timezone": "America/New_York"
+      },
+      "reminderEnabled": true,
+      "disabled": false
+    }
+  ]
+}
