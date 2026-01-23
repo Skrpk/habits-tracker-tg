@@ -1233,9 +1233,8 @@ export class TelegramBotService {
     Logger.info('User requested analytics', { userId, username, chatId });
     
     // Get base URL from environment variables
-    // Try VERCEL_URL first (automatically set by Vercel), then extract from WEBHOOK_URL, then use localhost for dev
-    let baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
+    let baseUrl = process.env.PROD_URL 
+      ? `https://${process.env.PROD_URL}`
       : process.env.WEBHOOK_URL 
         ? process.env.WEBHOOK_URL.replace('/api/webhook', '')
         : 'http://localhost:3000';
