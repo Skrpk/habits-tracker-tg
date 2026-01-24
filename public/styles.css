@@ -205,6 +205,34 @@ h1 {
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 1px;
+    margin-bottom: 16px;
+}
+
+.footer-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+}
+
+.footer-links a {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #5568d3;
+    text-decoration: underline;
+}
+
+.footer-links span {
+    color: #cbd5e0;
+    font-size: 14px;
 }
 
 @media (max-width: 640px) {
