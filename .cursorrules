@@ -81,12 +81,15 @@ habits-tracker/
 ├── api/                          # Vercel serverless functions
 │   ├── webhook.ts               # Telegram webhook handler
 │   ├── reminders.ts             # Cron job endpoint for reminders
+│   ├── analytics.ts             # Analytics API endpoint
 │   └── setup-webhook.ts         # Manual webhook setup endpoint
 ├── src/
 │   ├── domain/                  # Domain layer (business logic)
 │   │   ├── entities/
 │   │   ├── repositories/
-│   │   └── use-cases/
+│   │   ├── use-cases/
+│   │   └── utils/               # Domain utilities
+│   │       └── HabitAnalytics.ts # History inference logic
 │   ├── infrastructure/          # Infrastructure layer (external services)
 │   │   ├── config/             # Redis configuration
 │   │   ├── logger/             # Logging utilities
@@ -98,6 +101,7 @@ habits-tracker/
 │   └── index.ts                # Local development entry (polling mode)
 ├── public/                      # Static files served at root URL
 │   ├── index.html              # Landing page
+│   ├── analytics.html          # Analytics dashboard page
 │   └── styles.css              # Landing page styles
 ├── scripts/                     # Utility scripts
 │   └── setup-webhook.ts        # Webhook setup script
@@ -128,7 +132,15 @@ habits-tracker/
 
 3. **Static Files**: `public/` folder served at root URL (`/`)
    - Landing page with quote and features
+   - Analytics page at `/analytics/{userId}` (served via `api/analytics.ts`)
    - API routes remain functional at `/api/*`
+
+4. **Analytics API**: `/api/analytics` endpoint
+   - Serves analytics HTML page for authenticated users
+   - Fetches user habits from Redis
+   - Computes check history for each habit using `computeCheckHistory()`
+   - Returns HTML with embedded habit data as JSON
+   - Accessible via `/analytics/{userId}` route
 
 ### Development (Local)
 
@@ -164,6 +176,18 @@ interface Habit {
 interface SkippedDay {
   streakDay: number;      // Streak day when skipped
   date: string;          // YYYY-MM-DD format
+}
+
+interface DroppedDay {
+  streakBeforeDrop: number; // Streak value before the drop
+  date: string;            // YYYY-MM-DD format
+}
+
+interface CheckHistoryEntry {
+  date: string;           // YYYY-MM-DD format
+  type: 'completed' | 'skipped' | 'dropped';
+  streak: number;         // Streak value at this point
+  streakBefore?: number;  // For drops: streak before the drop
 }
 
 type ReminderSchedule =
@@ -232,6 +256,18 @@ interface UserPreferences {
    - `/start` - Start the bot and set your timezone
    - `/newhabit` - Create a new habit to track
    - `/myhabits` - View all your habits
+   - `/analytics` - Get link to your personal analytics dashboard
+
+9. **Analytics Data Inference** (`computeCheckHistory`):
+   - Reconstructs habit history from minimal stored data (no per-day storage)
+   - Only infers completions when `streak > 0` OR there are skipped/dropped days (user interaction)
+   - Works backwards from today to match stored streak value exactly
+   - Processes all days from creation to today, but only marks completions for:
+     - Current streak period (most recent N days where N = streak)
+     - Pre-drop streaks (using `streakBeforeDrop` from drop events)
+   - Handles drops (reset streak to 0) and skips (preserve streak)
+   - Supports all schedule types (daily, weekly, monthly, interval)
+   - Returns chronological history with correct streak progression
 
 ## Build Process
 
@@ -264,4 +300,7 @@ interface UserPreferences {
 - User timezone is required - set on first `/start`, stored in `UserPreferences`
 - Schedule input is simplified: users select type via button, then enter simplified format (e.g., "20:30" for daily)
 - Landing page quote is from Plutarch: "Choose what is best, and habit will make it pleasant and easy."
+- Analytics page uses Chart.js and chartjs-plugin-zoom for interactive visualizations
+- Analytics history inference ensures data accuracy: only infers completions when there's evidence of user interaction
+- The analytics page is client-side rendered with embedded JSON data for better performance
 
