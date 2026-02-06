@@ -593,7 +593,7 @@ export class TelegramBotService {
         
         // Handle /analytics command
         if (text.match(/^\/analytics/)) {
-          await this.handleAnalyticsCommand(chatId, userId, username);
+          await this.handleAnalyticsCommand(chatId, userId, username, msg.from);
           return;
         }
         
@@ -778,6 +778,205 @@ export class TelegramBotService {
       Logger.error('Error sending new user notification', {
         userId,
         username,
+        channelId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  }
+
+  private async sendHabitReactionNotification(
+    userId: number,
+    username: string,
+    habitName: string,
+    action: 'completed' | 'dropped' | 'skipped',
+    streak: number,
+    user?: TelegramBot.User
+  ): Promise<void> {
+    const channelId = process.env.NOTIFICATION_CHANNEL_ID;
+    
+    if (!channelId) {
+      Logger.debug('NOTIFICATION_CHANNEL_ID not set, skipping habit reaction notification', { userId });
+      return;
+    }
+
+    try {
+      // Get user info from preferences if not provided
+      let userInfo = user;
+      if (!userInfo) {
+        const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+        userInfo = preferences?.user;
+      }
+
+      // Format user information
+      const firstName = userInfo?.first_name || 'Unknown';
+      const lastName = userInfo?.last_name || '';
+      const fullName = `${firstName}${lastName ? ` ${lastName}` : ''}`.trim() || username;
+      const userLink = userInfo?.username 
+        ? `[@${userInfo.username}](https://t.me/${userInfo.username})`
+        : `[${fullName}](tg://user?id=${userId})`;
+
+      // Format action emoji and text
+      const actionEmoji = action === 'completed' ? '✅' : action === 'dropped' ? '❌' : '⏭️';
+      const actionText = action === 'completed' ? 'Completed' : action === 'dropped' ? 'Dropped' : 'Skipped';
+      
+      // Format notification message
+      const notificationMessage = 
+        `${actionEmoji} *Habit ${actionText}*\n\n` +
+        `👤 User: ${userLink}\n` +
+        `🆔 ID: \`${userId}\`\n` +
+        `📝 Habit: *${habitName}*\n` +
+        `🔥 Streak: ${streak} days\n` +
+        `⏰ Time: ${new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        })} UTC`;
+
+      await this.bot.sendMessage(channelId, notificationMessage, {
+        parse_mode: 'Markdown',
+        disable_notification: false,
+      });
+
+      Logger.info('Habit reaction notification sent', {
+        userId,
+        username,
+        habitName,
+        action,
+        streak,
+        channelId,
+      });
+    } catch (error) {
+      // Don't fail the habit check if notification fails
+      Logger.error('Error sending habit reaction notification', {
+        userId,
+        username,
+        habitName,
+        action,
+        channelId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  }
+
+  private async sendAnalyticsCommandNotification(
+    userId: number,
+    username: string,
+    user?: TelegramBot.User
+  ): Promise<void> {
+    const channelId = process.env.NOTIFICATION_CHANNEL_ID;
+    
+    if (!channelId) {
+      Logger.debug('NOTIFICATION_CHANNEL_ID not set, skipping analytics command notification', { userId });
+      return;
+    }
+
+    try {
+      // Get user info from preferences if not provided
+      let userInfo = user;
+      if (!userInfo) {
+        const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+        userInfo = preferences?.user;
+      }
+
+      // Format user information
+      const firstName = userInfo?.first_name || 'Unknown';
+      const lastName = userInfo?.last_name || '';
+      const fullName = `${firstName}${lastName ? ` ${lastName}` : ''}`.trim() || username;
+      const userLink = userInfo?.username 
+        ? `[@${userInfo.username}](https://t.me/${userInfo.username})`
+        : `[${fullName}](tg://user?id=${userId})`;
+      
+      // Format notification message
+      const notificationMessage = 
+        '📊 *Analytics Command Used*\n\n' +
+        `👤 User: ${userLink}\n` +
+        `🆔 ID: \`${userId}\`\n` +
+        `📛 Name: ${fullName}\n` +
+        `⏰ Time: ${new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        })} UTC`;
+
+      await this.bot.sendMessage(channelId, notificationMessage, {
+        parse_mode: 'Markdown',
+        disable_notification: false,
+      });
+
+      Logger.info('Analytics command notification sent', {
+        userId,
+        username,
+        channelId,
+      });
+    } catch (error) {
+      // Don't fail the analytics command if notification fails
+      Logger.error('Error sending analytics command notification', {
+        userId,
+        username,
+        channelId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  }
+
+  private async sendAnalyticsPageVisitNotification(
+    userId: number
+  ): Promise<void> {
+    const channelId = process.env.NOTIFICATION_CHANNEL_ID;
+    
+    if (!channelId) {
+      Logger.debug('NOTIFICATION_CHANNEL_ID not set, skipping analytics page visit notification', { userId });
+      return;
+    }
+
+    try {
+      // Get user info from preferences
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userInfo = preferences?.user;
+
+      if (!userInfo) {
+        Logger.debug('User info not found, skipping analytics page visit notification', { userId });
+        return;
+      }
+
+      // Format user information
+      const firstName = userInfo.first_name || 'Unknown';
+      const lastName = userInfo.last_name || '';
+      const fullName = `${firstName}${lastName ? ` ${lastName}` : ''}`.trim() || `user_${userId}`;
+      const username = userInfo.username || '';
+      const userLink = username
+        ? `[@${username}](https://t.me/${username})`
+        : `[${fullName}](tg://user?id=${userId})`;
+      
+      // Format notification message
+      const notificationMessage = 
+        '🌐 *Analytics Page Visited*\n\n' +
+        `👤 User: ${userLink}\n` +
+        `🆔 ID: \`${userId}\`\n` +
+        `📛 Name: ${fullName}\n` +
+        `⏰ Time: ${new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        })} UTC`;
+
+      await this.bot.sendMessage(channelId, notificationMessage, {
+        parse_mode: 'Markdown',
+        disable_notification: false,
+      });
+
+      Logger.info('Analytics page visit notification sent', {
+        userId,
+        username,
+        channelId,
+      });
+    } catch (error) {
+      // Don't fail the analytics API if notification fails
+      Logger.error('Error sending analytics page visit notification', {
+        userId,
         channelId,
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
@@ -1317,7 +1516,7 @@ export class TelegramBotService {
     await this.showHabitsList(userId, chatId);
   }
 
-  private async handleAnalyticsCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
+  private async handleAnalyticsCommand(chatId: number, userId: number | undefined, username: string, user?: TelegramBot.User): Promise<void> {
     if (!userId) {
       Logger.warn('Unable to identify user for analytics', { chatId });
       await this.bot.sendMessage(chatId, 'Unable to identify user.');
@@ -1350,6 +1549,14 @@ export class TelegramBotService {
     await this.bot.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       disable_web_page_preview: false, // Allow preview of the link
+    });
+
+    // Send notification to channel (async, don't block)
+    this.sendAnalyticsCommandNotification(userId, username, user).catch(error => {
+      Logger.error('Error sending analytics command notification', {
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     });
   }
 
@@ -1411,7 +1618,7 @@ export class TelegramBotService {
     // Handle habit skip confirmation
     const skipConfirmMatch = data.match(/^habit_skip_confirm:(.+)$/);
     if (skipConfirmMatch) {
-      await this.handleHabitSkipCallback(userId, chatId, username, skipConfirmMatch[1], query.message?.message_id);
+      await this.handleHabitSkipCallback(userId, chatId, username, skipConfirmMatch[1], query.message?.message_id, query.from);
       return;
     }
 
@@ -1561,6 +1768,21 @@ export class TelegramBotService {
         }
       );
 
+      // Send notification to channel (async, don't block)
+      this.sendHabitReactionNotification(
+        userId,
+        username,
+        updatedHabit.name,
+        completed ? 'completed' : 'dropped',
+        updatedHabit.streak,
+        query.from
+      ).catch(error => {
+        Logger.error('Error sending habit reaction notification', {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
+
       // Note: We don't ask about other habits here because each habit has its own reminder schedule
       // Users will receive separate reminders for each habit at their scheduled times
     } catch (error) {
@@ -1628,7 +1850,8 @@ export class TelegramBotService {
     chatId: number,
     username: string,
     habitId: string,
-    messageId?: number
+    messageId?: number,
+    user?: TelegramBot.User
   ): Promise<void> {
     try {
       const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username);
@@ -1642,6 +1865,21 @@ export class TelegramBotService {
           message_id: messageId,
         }
       );
+
+      // Send notification to channel (async, don't block)
+      this.sendHabitReactionNotification(
+        userId,
+        username,
+        updatedHabit.name,
+        'skipped',
+        updatedHabit.streak,
+        user
+      ).catch(error => {
+        Logger.error('Error sending habit skip notification', {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
 
       // Note: We don't ask about other habits here because each habit has its own reminder schedule
       // Users will receive separate reminders for each habit at their scheduled times

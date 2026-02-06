@@ -13,6 +13,7 @@ import { SetHabitReminderScheduleUseCase } from '../domain/use-cases/SetHabitRem
 import { Habit } from '../domain/entities/Habit';
 import { Logger } from '../infrastructure/logger/Logger';
 import { computeCheckHistory } from '../domain/utils/HabitAnalytics';
+import { ChannelNotifications } from '../infrastructure/notifications/ChannelNotifications';
 
 // Helper functions defined before createRemindersServer
 async function handleRemindersEndpoint(
@@ -158,6 +159,18 @@ async function handleAnalyticsEndpoint(
       userId: userIdNum,
       habitCount: analyticsData.length,
     });
+
+    // Send notification to channel (async, don't block response)
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken) {
+      const notifications = new ChannelNotifications(botToken);
+      notifications.sendAnalyticsPageVisitNotification(userIdNum).catch(error => {
+        Logger.error('Error sending analytics page visit notification', {
+          userId: userIdNum,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
+    }
 
     // Set CORS headers to allow access from the web page
     res.setHeader('Access-Control-Allow-Origin', '*');

@@ -3,6 +3,7 @@ import { VercelKVHabitRepository } from '../src/infrastructure/repositories/Verc
 import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCase';
 import { Logger } from '../src/infrastructure/logger/Logger';
 import { computeCheckHistory } from '../src/domain/utils/HabitAnalytics';
+import { ChannelNotifications } from '../src/infrastructure/notifications/ChannelNotifications';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -45,6 +46,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       userId: userIdNum,
       habitCount: analyticsData.length,
     });
+
+    // Send notification to channel (async, don't block response)
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken) {
+      const notifications = new ChannelNotifications(botToken);
+      notifications.sendAnalyticsPageVisitNotification(userIdNum).catch(error => {
+        Logger.error('Error sending analytics page visit notification', {
+          userId: userIdNum,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
+    }
 
     // Set CORS headers to allow access from the web page
     res.setHeader('Access-Control-Allow-Origin', '*');
