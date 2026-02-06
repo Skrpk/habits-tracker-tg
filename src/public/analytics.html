@@ -529,6 +529,11 @@
                 ? badges.map(b => `${badgeEmojis[b.type]} ${badgeNames[b.type]}`).join(' • ')
                 : 'No badges earned yet';
 
+            // Format schedule description
+            const schedule = habit.reminderSchedule || { type: 'daily', hour: 22, minute: 0, timezone: 'UTC' };
+            const scheduleDesc = formatScheduleDescription(schedule);
+            const reminderStatus = habit.reminderEnabled !== false ? 'Enabled' : 'Disabled';
+
             detailContainer.innerHTML = `
                 <button class="back-button" onclick="showHabitsList()">← Back to Habits</button>
                 <div class="habit-detail-header">
@@ -562,6 +567,16 @@
                 <div class="stat-card" style="grid-column: 1 / -1; margin-top: 0;">
                     <div class="stat-card-value" style="font-size: 1.5rem;">🏆 Badges</div>
                     <div class="stat-card-label" style="font-size: 0.9rem; text-transform: none; letter-spacing: 0;">${badgesDisplay}</div>
+                </div>
+
+                <div class="stat-card" style="grid-column: 1 / -1; margin-top: 0;">
+                    <div class="stat-card-value" style="font-size: 1.5rem;">⏰ Reminder Schedule</div>
+                    <div class="stat-card-label" style="font-size: 0.9rem; text-transform: none; letter-spacing: 0; line-height: 1.5;">
+                        ${scheduleDesc}<br>
+                        <span style="color: ${habit.reminderEnabled !== false ? 'var(--hb-accent-dark)' : 'var(--hb-text-muted)'}; font-weight: 600;">
+                            ${habit.reminderEnabled !== false ? '✅' : '❌'} ${reminderStatus}
+                        </span>
+                    </div>
                 </div>
 
                 <div class="chart-container">
@@ -780,6 +795,48 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function formatScheduleDescription(schedule) {
+            if (!schedule) {
+                return 'Not set';
+            }
+
+            const timeStr = `${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}`;
+            const tzStr = schedule.timezone ? ` ${schedule.timezone}` : ' UTC';
+
+            switch (schedule.type) {
+                case 'daily':
+                    return `Every day at ${timeStr}${tzStr}`;
+
+                case 'weekly': {
+                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const days = (schedule.daysOfWeek || [])
+                        .sort((a, b) => a - b)
+                        .map(d => dayNames[d])
+                        .join(', ');
+                    return `Every ${days} at ${timeStr}${tzStr}`;
+                }
+
+                case 'monthly': {
+                    const days = (schedule.daysOfMonth || [])
+                        .sort((a, b) => a - b)
+                        .map(d => {
+                            const suffix = d === 1 || d === 21 || d === 31 ? 'st' :
+                                          d === 2 || d === 22 ? 'nd' :
+                                          d === 3 || d === 23 ? 'rd' : 'th';
+                            return `${d}${suffix}`;
+                        })
+                        .join(', ');
+                    return `Every ${days} of the month at ${timeStr}${tzStr}`;
+                }
+
+                case 'interval':
+                    return `Every ${schedule.intervalDays} day${schedule.intervalDays > 1 ? 's' : ''} at ${timeStr}${tzStr}`;
+
+                default:
+                    return 'Unknown schedule';
+            }
         }
     </script>
 </body>
