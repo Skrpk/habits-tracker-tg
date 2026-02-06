@@ -19,6 +19,14 @@ export interface CheckHistoryEntry {
   streakBefore?: number; // Streak value before this check (for dropped)
 }
 
+// Badge types
+export type BadgeType = 5 | 10 | 30 | 90;
+
+export interface Badge {
+  type: BadgeType;
+  earnedAt: string; // ISO date string when badge was earned
+}
+
 // Reminder schedule types
 export type ReminderSchedule =
   | { type: 'daily'; hour: number; minute: number; timezone?: string } // Every day at specific time
@@ -40,6 +48,7 @@ export interface Habit {
   reminderSchedule?: ReminderSchedule; // Reminder schedule configuration
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
   disabled?: boolean; // Whether the habit is disabled (default false)
+  badges?: Badge[]; // Array of earned badges (backward compatible - optional)
 }
 
 export interface UserHabits {

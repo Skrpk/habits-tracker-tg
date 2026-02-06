@@ -149,6 +149,7 @@ async function handleAnalyticsEndpoint(
       lastCheckedDate: habit.lastCheckedDate,
       skipped: habit.skipped || [],
       dropped: habit.dropped || [],
+      badges: habit.badges || [], // Include badges
       checkHistory: computeCheckHistory(habit), // Compute from streak, creation date, skips, and drops
       disabled: habit.disabled || false,
       reminderSchedule: habit.reminderSchedule,

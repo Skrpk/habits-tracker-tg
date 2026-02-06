@@ -1,6 +1,7 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
 import { Habit, SkippedDay, DroppedDay, CheckedDay } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
+import { checkForNewBadges, awardBadges } from '../utils/HabitBadges';
 
 export class RecordHabitCheckUseCase {
   constructor(private habitRepository: IHabitRepository) {}
@@ -78,12 +79,29 @@ export class RecordHabitCheckUseCase {
         }
       }
       
+      // Check for new badges when streak increases
+      // This can award multiple badges if streak jumped past milestones (e.g., from 4 to 10 days)
+      let updatedBadges = habit.badges || [];
+      const newBadgeTypes = checkForNewBadges(newStreak, updatedBadges);
+      if (newBadgeTypes.length > 0) {
+        updatedBadges = awardBadges(newBadgeTypes, updatedBadges);
+        Logger.info('Badges awarded', {
+          userId,
+          username: username || 'unknown',
+          habitId,
+          habitName: habit.name,
+          badgeTypes: newBadgeTypes,
+          streak: newStreak,
+        });
+      }
+      
       // Update habit with completed check (no checkHistory stored)
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
         lastCheckedDate: today,
         skipped: habit.skipped || [], // Keep skipped days when completing
         checked: updatedChecked,
+        badges: updatedBadges,
       });
     } else {
       // Reset streak to 0 and clear skipped days
@@ -99,11 +117,13 @@ export class RecordHabitCheckUseCase {
       }
       
       // Update habit with dropped check (no checkHistory stored)
+      // Note: Badges persist even when streak is dropped - they represent achievements earned
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
         lastCheckedDate: today,
         skipped: [], // Clear skipped when dropping streak
         dropped: updatedDropped,
+        badges: habit.badges || [], // Preserve badges when dropping streak
       });
     }
 

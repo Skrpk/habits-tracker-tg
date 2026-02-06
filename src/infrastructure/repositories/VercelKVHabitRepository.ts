@@ -27,6 +27,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
           skipped: habit.skipped || [],
           dropped: habit.dropped || [],
           checked: habit.checked || [], // Initialize checked array if missing
+          badges: habit.badges || [], // Initialize badges array if missing (backward compatibility)
           // checkHistory is no longer stored - it's computed on demand
           // Set default reminder schedule if missing (daily at 22:00 UTC)
           reminderSchedule: habit.reminderSchedule || {

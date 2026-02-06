@@ -258,10 +258,19 @@ export class TelegramBotService {
       const reminderStatus = habit.reminderEnabled !== false ? '✅ Enabled' : '❌ Disabled';
       const disabledStatus = habit.disabled === true ? '⏸️ Disabled' : '▶️ Active';
       
+      // Format badges
+      let badgesText = '';
+      const badges = habit.badges || [];
+      if (badges.length > 0) {
+        const { getBadgeInfo } = await import('../../domain/utils/HabitBadges');
+        const badgeEmojis = badges.map(b => getBadgeInfo(b.type).emoji).join(' ');
+        badgesText = `\n🏆 Badges: ${badgeEmojis}`;
+      }
+      
       const message = `📋 Habit Details\n\n` +
         `Name: ${habit.name}\n` +
         `Status: ${disabledStatus}\n` +
-        `🔥 Streak: ${habit.streak} days\n` +
+        `🔥 Streak: ${habit.streak} days${badgesText}\n` +
         `⏭️ Skipped days: ${skippedCount}\n` +
         `⏰ Reminder: ${scheduleDesc} (${reminderStatus})\n` +
         `📅 Last checked: ${habit.lastCheckedDate || 'Never'}\n` +
@@ -1236,7 +1245,7 @@ export class TelegramBotService {
       // Proceed to timezone selection
       setTimeout(() => {
         this.showTimezoneSelection(chatId, userId);
-      }, 1000);
+      }, 0);
 
       Logger.info('User accepted consent', { userId });
     } catch (error) {
@@ -1753,12 +1762,36 @@ export class TelegramBotService {
     query: TelegramBot.CallbackQuery
   ): Promise<void> {
     try {
+      // Get habit before update to compare badges
+      const habitsBefore = await this.getUserHabitsUseCase.execute(userId);
+      const habitBefore = habitsBefore.find(h => h.id === habitId);
+      const badgesBefore = habitBefore?.badges || [];
+      
       const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username);
       
       const emoji = completed ? '✅' : '❌';
-      const message = completed
+      let message = completed
         ? `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`
         : `Streak reset. You can start fresh tomorrow! 💪`;
+
+      // Check if new badges were earned
+      const badgesAfter = updatedHabit.badges || [];
+      if (badgesAfter.length > badgesBefore.length) {
+        const newBadges = badgesAfter.filter(b => !badgesBefore.some(before => before.type === b.type));
+        if (newBadges.length > 0) {
+          const { getBadgeInfo } = await import('../../domain/utils/HabitBadges');
+          if (newBadges.length === 1) {
+            // Single badge
+            const badgeInfo = getBadgeInfo(newBadges[0].type);
+            message += `\n\n🎉 ${badgeInfo.emoji} Badge earned: ${badgeInfo.name}! Keep it up!`;
+          } else {
+            // Multiple badges (e.g., streak jumped from 4 to 10 days)
+            const badgeEmojis = newBadges.map(b => getBadgeInfo(b.type).emoji).join(' ');
+            const badgeNames = newBadges.map(b => getBadgeInfo(b.type).name).join(', ');
+            message += `\n\n🎉 Badges earned: ${badgeEmojis} (${badgeNames})! Amazing progress!`;
+          }
+        }
+      }
 
       await this.safeEditMessage(
         `${emoji} ${message}`,

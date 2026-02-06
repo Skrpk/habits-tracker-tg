@@ -450,6 +450,18 @@
                 const completedCount = (habit.checkHistory || []).filter(h => h.type === 'completed').length;
                 const skippedCount = habit.skipped?.length || 0;
                 const droppedCount = habit.dropped?.length || 0;
+                const badges = habit.badges || [];
+                
+                // Format badges
+                const badgeEmojis = {
+                    5: '🔥',
+                    10: '⭐',
+                    30: '🏆',
+                    90: '💎'
+                };
+                const badgesDisplay = badges.length > 0 
+                    ? badges.map(b => badgeEmojis[b.type] || '').join(' ')
+                    : '';
                 
                 card.innerHTML = `
                     <div class="habit-name">${escapeHtml(habit.name)}</div>
@@ -471,6 +483,7 @@
                             <div class="stat-label">${droppedCount}</div>
                         </div>
                     </div>
+                    ${badgesDisplay ? `<div style="margin-top: 0.75rem; font-size: 1.2rem; text-align: center;">${badgesDisplay}</div>` : ''}
                 `;
                 
                 container.appendChild(card);
@@ -497,6 +510,24 @@
             const skippedCount = habit.skipped?.length || 0;
             const droppedCount = habit.dropped?.length || 0;
             const totalChecks = (habit.checkHistory || []).length;
+            const badges = habit.badges || [];
+            
+            // Format badges
+            const badgeEmojis = {
+                5: '🔥',
+                10: '⭐',
+                30: '🏆',
+                90: '💎'
+            };
+            const badgeNames = {
+                5: '5 Days',
+                10: '10 Days',
+                30: '30 Days',
+                90: '90 Days'
+            };
+            const badgesDisplay = badges.length > 0 
+                ? badges.map(b => `${badgeEmojis[b.type]} ${badgeNames[b.type]}`).join(' • ')
+                : 'No badges earned yet';
 
             detailContainer.innerHTML = `
                 <button class="back-button" onclick="showHabitsList()">← Back to Habits</button>
@@ -526,6 +557,11 @@
                         <div class="stat-card-value">📊 ${totalChecks}</div>
                         <div class="stat-card-label">Total Checks</div>
                     </div>
+                </div>
+                
+                <div class="stat-card" style="grid-column: 1 / -1; margin-top: 0;">
+                    <div class="stat-card-value" style="font-size: 1.5rem;">🏆 Badges</div>
+                    <div class="stat-card-label" style="font-size: 0.9rem; text-transform: none; letter-spacing: 0;">${badgesDisplay}</div>
                 </div>
 
                 <div class="chart-container">
