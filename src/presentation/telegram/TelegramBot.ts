@@ -1205,7 +1205,7 @@ export class TelegramBotService {
       if (!isNewHabit) {
         setTimeout(() => {
           this.showHabitDetails(userId, chatId, habitId);
-        }, 1500);
+        }, 0);
       }
     } catch (error) {
       Logger.error('Error processing schedule input', {
@@ -2231,7 +2231,7 @@ export class TelegramBotService {
       // Show updated habit details
       setTimeout(() => {
         this.showHabitDetails(userId, chatId, habitId);
-      }, 1500);
+      }, 0);
     } catch (error) {
       Logger.error('Error confirming quick schedule', {
         userId,
@@ -2280,7 +2280,7 @@ export class TelegramBotService {
       // Show updated habit details
       setTimeout(() => {
         this.showHabitDetails(userId, chatId, habitId);
-      }, 1500);
+      }, 0);
     } catch (error) {
       Logger.error('Error confirming schedule', {
         userId,
