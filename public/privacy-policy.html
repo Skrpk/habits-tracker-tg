@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Habits Builder</title>
+    <link rel="icon" type="image/png" href="/logo.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -371,7 +372,13 @@ body.policy-page {
     gap: 0.5rem;
 }
 
-.site-logo-icon { font-size: 1.4rem; }
+        .site-logo-icon {
+            width: 4rem;
+            height: 4rem;
+            object-fit: contain;
+            display: inline-block;
+            vertical-align: middle;
+        }
 
 .site-nav {
     display: flex;
@@ -559,7 +566,7 @@ body.policy-page .footer a:hover {
 
     <header class="site-header">
         <a href="/" class="site-logo">
-            <span class="site-logo-icon">🎯</span>
+            <img src="/logo.png" alt="Habits Builder" class="site-logo-icon" />
             Habits Builder
         </a>
         <nav class="site-nav">

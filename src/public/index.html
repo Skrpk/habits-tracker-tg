@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Habits Builder — Build Healthy Habits with Telegram</title>
+    <link rel="icon" type="image/png" href="/logo.png">
     <meta name="description" content="Track your daily habits with smart reminders, streak tracking, and analytics — all inside Telegram. Free habit tracker bot with daily check-ins and personal dashboard." />
     <meta name="keywords" content="habit tracker, telegram bot, habit tracking app, streak tracker, daily habits, build habits, telegram habit tracker, habit reminders" />
     <link rel="canonical" href="https://habits-builder.com/" />
@@ -380,7 +381,13 @@ body.landing-page {
     gap: 0.5rem;
 }
 
-.site-logo-icon { font-size: 1.4rem; }
+        .site-logo-icon {
+            width: 4rem;
+            height: 4rem;
+            object-fit: contain;
+            display: inline-block;
+            vertical-align: middle;
+        }
 
 .site-nav {
     display: flex;
@@ -804,7 +811,7 @@ body.landing-page .quote-author {
 
     <header class="site-header">
         <a href="/" class="site-logo">
-            <span class="site-logo-icon">🎯</span>
+            <img src="/logo.png" alt="Habits Builder" class="site-logo-icon" />
             Habits Builder
         </a>
         <nav class="site-nav">
