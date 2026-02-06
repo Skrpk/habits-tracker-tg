@@ -438,6 +438,13 @@
     </div>
 
     <script>
+        // Initialize variables first
+        let habitsData = [];
+        let currentHabitId = null;
+        let charts = {};
+        let timelinePage = 1;
+        const TIMELINE_ITEMS_PER_PAGE = 10;
+
         // Get userId from URL query parameter or path
         const urlParams = new URLSearchParams(window.location.search);
         let userId = urlParams.get('userId');
@@ -457,12 +464,6 @@
         } else {
             loadAnalytics();
         }
-
-        let habitsData = [];
-        let currentHabitId = null;
-        let charts = {};
-        let timelinePage = 1;
-        const TIMELINE_ITEMS_PER_PAGE = 10;
 
         async function loadAnalytics() {
             try {
