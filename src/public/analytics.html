@@ -1041,6 +1041,11 @@
             timelinePage = 1; // Reset to first page when showing a new habit
             renderCharts(habit);
             renderTimeline(habit);
+            
+            // Scroll to habit detail section after content is rendered
+            setTimeout(() => {
+                detailContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 150);
         }
 
         function renderCharts(habit) {
