@@ -447,7 +447,10 @@
             userId = pathParts[pathParts.length - 1];
         }
 
-        if (!userId || isNaN(parseInt(userId))) {
+        if (userId === 'mock') {
+            // Show mock analytics page
+            loadMockAnalytics();
+        } else if (!userId || isNaN(parseInt(userId))) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
             document.getElementById('error').textContent = 'Invalid user ID in URL. Expected format: /analytics/{userId}';
@@ -483,6 +486,398 @@
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('error').textContent = `Error: ${error.message}`;
             }
+        }
+
+        function loadMockAnalytics() {
+            // Generate mock habits with various time periods and schedules
+            habitsData = generateMockHabits();
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            renderHabitsList();
+        }
+
+        function generateMockHabits() {
+            const now = new Date();
+            const habits = [];
+
+            // Helper to generate dates
+            const daysAgo = (days) => {
+                const date = new Date(now);
+                date.setDate(date.getDate() - days);
+                return date.toISOString().split('T')[0];
+            };
+
+            // Helper to generate check history
+            const generateCheckHistory = (startDate, days, completionRate = 0.8) => {
+                const history = [];
+                const start = new Date(startDate);
+                let currentStreak = 0;
+                
+                for (let i = 0; i < days; i++) {
+                    const date = new Date(start);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    // Skip if future date
+                    if (date > now) break;
+                    
+                    const shouldComplete = Math.random() < completionRate;
+                    
+                    if (shouldComplete) {
+                        currentStreak++;
+                        history.push({
+                            date: dateStr,
+                            type: 'completed',
+                            streak: currentStreak
+                        });
+                    } else if (Math.random() < 0.3) {
+                        // Skip day
+                        history.push({
+                            date: dateStr,
+                            type: 'skipped',
+                            streak: currentStreak
+                        });
+                    } else {
+                        // Drop streak
+                        const streakBefore = currentStreak;
+                        currentStreak = 0;
+                        history.push({
+                            date: dateStr,
+                            type: 'dropped',
+                            streak: currentStreak,
+                            streakBefore: streakBefore
+                        });
+                    }
+                }
+                
+                return history;
+            };
+
+            // 1. Daily schedule - 1 week old
+            const weekAgo = daysAgo(7);
+            const weekHistory = generateCheckHistory(weekAgo, 7, 0.9);
+            habits.push({
+                id: 'mock-1',
+                userId: 0,
+                name: 'Morning Meditation',
+                streak: weekHistory.filter(h => h.type === 'completed').length,
+                createdAt: weekAgo,
+                lastCheckedDate: daysAgo(0),
+                skipped: weekHistory.filter(h => h.type === 'skipped').map((h, idx) => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: weekHistory.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: weekHistory,
+                reminderSchedule: {
+                    type: 'daily',
+                    hour: 7,
+                    minute: 0,
+                    timezone: 'America/New_York'
+                },
+                reminderEnabled: true,
+                badges: weekHistory.filter(h => h.type === 'completed').length >= 5 ? [{ type: 5, earnedAt: daysAgo(2) }] : []
+            });
+
+            // 2. Daily schedule - 1 month old
+            const monthAgo = daysAgo(30);
+            const monthHistory = generateCheckHistory(monthAgo, 30, 0.85);
+            const monthStreak = monthHistory.length > 0 ? monthHistory[monthHistory.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-2',
+                userId: 0,
+                name: 'Daily Exercise',
+                streak: monthStreak,
+                createdAt: monthAgo,
+                lastCheckedDate: daysAgo(0),
+                skipped: monthHistory.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: monthHistory.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: monthHistory,
+                reminderSchedule: {
+                    type: 'daily',
+                    hour: 18,
+                    minute: 30,
+                    timezone: 'Europe/London'
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(25) },
+                    { type: 10, earnedAt: daysAgo(20) },
+                    ...(monthStreak >= 30 ? [{ type: 30, earnedAt: daysAgo(0) }] : [])
+                ]
+            });
+
+            // 3. Weekly schedule - 2 months old
+            const twoMonthsAgo = daysAgo(60);
+            const weeklyHistory = generateCheckHistory(twoMonthsAgo, 60, 0.7);
+            const weeklyStreak = weeklyHistory.length > 0 ? weeklyHistory[weeklyHistory.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-3',
+                userId: 0,
+                name: 'Weekly Reading',
+                streak: weeklyStreak,
+                createdAt: twoMonthsAgo,
+                lastCheckedDate: daysAgo(2),
+                skipped: weeklyHistory.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: weeklyHistory.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: weeklyHistory,
+                reminderSchedule: {
+                    type: 'weekly',
+                    daysOfWeek: [1, 3, 5], // Monday, Wednesday, Friday
+                    hour: 20,
+                    minute: 0,
+                    timezone: 'America/Los_Angeles'
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(55) },
+                    { type: 10, earnedAt: daysAgo(50) },
+                    { type: 30, earnedAt: daysAgo(30) }
+                ]
+            });
+
+            // 4. Weekly schedule - 3 months old
+            const threeMonthsAgo = daysAgo(90);
+            const weekly2History = generateCheckHistory(threeMonthsAgo, 90, 0.75);
+            const weekly2Streak = weekly2History.length > 0 ? weekly2History[weekly2History.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-4',
+                userId: 0,
+                name: 'Weekend Hiking',
+                streak: weekly2Streak,
+                createdAt: threeMonthsAgo,
+                lastCheckedDate: daysAgo(1),
+                skipped: weekly2History.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: weekly2History.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: weekly2History,
+                reminderSchedule: {
+                    type: 'weekly',
+                    daysOfWeek: [0, 6], // Sunday, Saturday
+                    hour: 9,
+                    minute: 0,
+                    timezone: 'America/Denver'
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(85) },
+                    { type: 10, earnedAt: daysAgo(80) },
+                    { type: 30, earnedAt: daysAgo(60) },
+                    ...(weekly2Streak >= 90 ? [{ type: 90, earnedAt: daysAgo(0) }] : [])
+                ]
+            });
+
+            // 5. Monthly schedule - 4 months old
+            const fourMonthsAgo = daysAgo(120);
+            const monthlyHistory = generateCheckHistory(fourMonthsAgo, 120, 0.6);
+            const monthlyStreak = monthlyHistory.length > 0 ? monthlyHistory[monthlyHistory.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-5',
+                userId: 0,
+                name: 'Monthly Review',
+                streak: monthlyStreak,
+                createdAt: fourMonthsAgo,
+                lastCheckedDate: daysAgo(5),
+                skipped: monthlyHistory.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: monthlyHistory.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: monthlyHistory,
+                reminderSchedule: {
+                    type: 'monthly',
+                    daysOfMonth: [1, 15], // 1st and 15th of each month
+                    hour: 19,
+                    minute: 0,
+                    timezone: 'Asia/Tokyo'
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(115) },
+                    { type: 10, earnedAt: daysAgo(110) },
+                    { type: 30, earnedAt: daysAgo(90) }
+                ]
+            });
+
+            // 6. Monthly schedule - 6 months old
+            const sixMonthsAgo = daysAgo(180);
+            const monthly2History = generateCheckHistory(sixMonthsAgo, 180, 0.65);
+            const monthly2Streak = monthly2History.length > 0 ? monthly2History[monthly2History.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-6',
+                userId: 0,
+                name: 'Budget Check',
+                streak: monthly2Streak,
+                createdAt: sixMonthsAgo,
+                lastCheckedDate: daysAgo(3),
+                skipped: monthly2History.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: monthly2History.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: monthly2History,
+                reminderSchedule: {
+                    type: 'monthly',
+                    daysOfMonth: [28], // 28th of each month
+                    hour: 10,
+                    minute: 0,
+                    timezone: 'Europe/Berlin'
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(175) },
+                    { type: 10, earnedAt: daysAgo(170) },
+                    { type: 30, earnedAt: daysAgo(150) },
+                    { type: 90, earnedAt: daysAgo(90) }
+                ]
+            });
+
+            // 7. Interval schedule (every 2 days) - 1 month old
+            const intervalHistory = generateCheckHistory(monthAgo, 30, 0.8);
+            const intervalStreak = intervalHistory.length > 0 ? intervalHistory[intervalHistory.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-7',
+                userId: 0,
+                name: 'Water Plants',
+                streak: intervalStreak,
+                createdAt: monthAgo,
+                lastCheckedDate: daysAgo(1),
+                skipped: intervalHistory.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: intervalHistory.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: intervalHistory,
+                reminderSchedule: {
+                    type: 'interval',
+                    intervalDays: 2,
+                    hour: 14,
+                    minute: 0,
+                    timezone: 'Australia/Sydney',
+                    startDate: monthAgo
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(20) },
+                    { type: 10, earnedAt: daysAgo(10) }
+                ]
+            });
+
+            // 8. Interval schedule (every 3 days) - 2 months old
+            const interval2History = generateCheckHistory(twoMonthsAgo, 60, 0.75);
+            const interval2Streak = interval2History.length > 0 ? interval2History[interval2History.length - 1].streak : 0;
+            habits.push({
+                id: 'mock-8',
+                userId: 0,
+                name: 'Deep Cleaning',
+                streak: interval2Streak,
+                createdAt: twoMonthsAgo,
+                lastCheckedDate: daysAgo(2),
+                skipped: interval2History.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: interval2History.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: interval2History,
+                reminderSchedule: {
+                    type: 'interval',
+                    intervalDays: 3,
+                    hour: 16,
+                    minute: 30,
+                    timezone: 'America/Chicago',
+                    startDate: twoMonthsAgo
+                },
+                reminderEnabled: true,
+                badges: [
+                    { type: 5, earnedAt: daysAgo(55) },
+                    { type: 10, earnedAt: daysAgo(50) },
+                    { type: 30, earnedAt: daysAgo(30) }
+                ]
+            });
+
+            // 9. Daily schedule - disabled reminders
+            const disabledHistory = generateCheckHistory(weekAgo, 7, 0.7);
+            habits.push({
+                id: 'mock-9',
+                userId: 0,
+                name: 'Journal Writing',
+                streak: disabledHistory.filter(h => h.type === 'completed').length,
+                createdAt: weekAgo,
+                lastCheckedDate: daysAgo(1),
+                skipped: disabledHistory.filter(h => h.type === 'skipped').map(h => ({
+                    streakDay: h.streak,
+                    date: h.date
+                })),
+                dropped: disabledHistory.filter(h => h.type === 'dropped').map(h => ({
+                    streakBeforeDrop: h.streakBefore,
+                    date: h.date
+                })),
+                checkHistory: disabledHistory,
+                reminderSchedule: {
+                    type: 'daily',
+                    hour: 21,
+                    minute: 0,
+                    timezone: 'UTC'
+                },
+                reminderEnabled: false,
+                badges: []
+            });
+
+            // 10. Daily schedule - brand new (just created)
+            habits.push({
+                id: 'mock-10',
+                userId: 0,
+                name: 'New Habit',
+                streak: 0,
+                createdAt: daysAgo(0),
+                lastCheckedDate: null,
+                skipped: [],
+                dropped: [],
+                checkHistory: [],
+                reminderSchedule: {
+                    type: 'daily',
+                    hour: 22,
+                    minute: 0,
+                    timezone: 'UTC'
+                },
+                reminderEnabled: true,
+                badges: []
+            });
+
+            return habits;
         }
 
         function renderHabitsList() {
