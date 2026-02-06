@@ -339,6 +339,52 @@
             margin-bottom: 1.25rem;
         }
 
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pagination-button {
+            padding: 0.5rem 1rem;
+            background: var(--hb-surface);
+            color: var(--hb-text);
+            border: 1px solid var(--hb-border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--hb-font-body);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            min-width: 40px;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background: var(--hb-accent-light);
+            border-color: var(--hb-accent);
+            color: var(--hb-accent-dark);
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-button.active {
+            background: var(--hb-accent);
+            color: white;
+            border-color: var(--hb-accent);
+        }
+
+        .pagination-info {
+            font-size: 0.85rem;
+            color: var(--hb-text-muted);
+            padding: 0 0.5rem;
+        }
+
         @media (max-width: 768px) {
             .site-header {
                 padding: 1.25rem 1.25rem;
@@ -412,6 +458,8 @@
         let habitsData = [];
         let currentHabitId = null;
         let charts = {};
+        let timelinePage = 1;
+        const TIMELINE_ITEMS_PER_PAGE = 10;
 
         async function loadAnalytics() {
             try {
@@ -590,9 +638,11 @@
                 <div class="timeline">
                     <h3>Timeline</h3>
                     <div id="timeline-items"></div>
+                    <div id="timeline-pagination" class="pagination" style="display: none;"></div>
                 </div>
             `;
 
+            timelinePage = 1; // Reset to first page when showing a new habit
             renderCharts(habit);
             renderTimeline(habit);
         }
@@ -717,16 +767,23 @@
 
         function renderTimeline(habit) {
             const timelineContainer = document.getElementById('timeline-items');
+            const paginationContainer = document.getElementById('timeline-pagination');
             const checkHistory = (habit.checkHistory || []).sort((a, b) => 
                 new Date(b.date) - new Date(a.date)
             );
 
             if (checkHistory.length === 0) {
                 timelineContainer.innerHTML = '<p style="color: var(--hb-text-muted); text-align: center; padding: 20px;">No check history yet.</p>';
+                paginationContainer.style.display = 'none';
                 return;
             }
 
-            timelineContainer.innerHTML = checkHistory.map(entry => {
+            const totalPages = Math.ceil(checkHistory.length / TIMELINE_ITEMS_PER_PAGE);
+            const startIndex = (timelinePage - 1) * TIMELINE_ITEMS_PER_PAGE;
+            const endIndex = startIndex + TIMELINE_ITEMS_PER_PAGE;
+            const paginatedHistory = checkHistory.slice(startIndex, endIndex);
+
+            timelineContainer.innerHTML = paginatedHistory.map(entry => {
                 const typeClass = entry.type;
                 const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
                 const streakInfo = entry.streakBefore !== undefined 
@@ -741,12 +798,101 @@
                     </div>
                 `;
             }).join('');
+
+            // Render pagination controls
+            if (totalPages > 1) {
+                paginationContainer.style.display = 'flex';
+                let paginationHTML = '';
+
+                // Previous button
+                paginationHTML += `
+                    <button class="pagination-button" onclick="changeTimelinePage(${timelinePage - 1})" ${timelinePage === 1 ? 'disabled' : ''}>
+                        ← Previous
+                    </button>
+                `;
+
+                // Page numbers (show up to 5 pages around current page)
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, timelinePage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                
+                // Adjust start if we're near the end
+                if (endPage - startPage < maxVisiblePages - 1) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+
+                // Show first page and ellipsis if needed
+                if (startPage > 1) {
+                    paginationHTML += `
+                        <button class="pagination-button" onclick="changeTimelinePage(1)">1</button>
+                    `;
+                    if (startPage > 2) {
+                        paginationHTML += `<span class="pagination-info">...</span>`;
+                    }
+                }
+
+                // Show page numbers
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHTML += `
+                        <button class="pagination-button ${i === timelinePage ? 'active' : ''}" onclick="changeTimelinePage(${i})">
+                            ${i}
+                        </button>
+                    `;
+                }
+
+                // Show last page and ellipsis if needed
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        paginationHTML += `<span class="pagination-info">...</span>`;
+                    }
+                    paginationHTML += `
+                        <button class="pagination-button" onclick="changeTimelinePage(${totalPages})">${totalPages}</button>
+                    `;
+                }
+
+                // Next button
+                paginationHTML += `
+                    <button class="pagination-button" onclick="changeTimelinePage(${timelinePage + 1})" ${timelinePage === totalPages ? 'disabled' : ''}>
+                        Next →
+                    </button>
+                `;
+
+                // Page info
+                paginationHTML += `
+                    <span class="pagination-info">
+                        Showing ${startIndex + 1}-${Math.min(endIndex, checkHistory.length)} of ${checkHistory.length}
+                    </span>
+                `;
+
+                paginationContainer.innerHTML = paginationHTML;
+            } else {
+                paginationContainer.style.display = 'none';
+            }
+        }
+
+        function changeTimelinePage(page) {
+            if (page < 1) return;
+            const habit = habitsData.find(h => h.id === currentHabitId);
+            if (!habit) return;
+            
+            const checkHistory = (habit.checkHistory || []).sort((a, b) => 
+                new Date(b.date) - new Date(a.date)
+            );
+            const totalPages = Math.ceil(checkHistory.length / TIMELINE_ITEMS_PER_PAGE);
+            if (page > totalPages) return;
+
+            timelinePage = page;
+            renderTimeline(habit);
+            
+            // Scroll to timeline section
+            document.getElementById('timeline-items').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function showHabitsList() {
             document.getElementById('habit-detail').className = 'habit-detail';
             document.getElementById('habits-list').style.display = 'grid';
             currentHabitId = null;
+            timelinePage = 1; // Reset pagination
             
             // Destroy charts when going back
             Object.values(charts).forEach(chart => {
