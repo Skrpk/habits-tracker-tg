@@ -1,5 +1,5 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
-import { Habit, SkippedDay, DroppedDay } from '../entities/Habit';
+import { Habit, SkippedDay, DroppedDay, CheckedDay } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 
 export class RecordHabitCheckUseCase {
@@ -64,11 +64,26 @@ export class RecordHabitCheckUseCase {
         newStreak = 1;
       }
       
+      // For non-daily habits, add today's date to checked array
+      let updatedChecked = habit.checked || [];
+      const schedule = habit.reminderSchedule;
+      const isDaily = !schedule || schedule.type === 'daily';
+      
+      if (!isDaily) {
+        // Only add if not already in checked array
+        const alreadyChecked = updatedChecked.some(c => c.date === today);
+        if (!alreadyChecked) {
+          const checkedDay: CheckedDay = { date: today };
+          updatedChecked = [...updatedChecked, checkedDay];
+        }
+      }
+      
       // Update habit with completed check (no checkHistory stored)
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
         lastCheckedDate: today,
         skipped: habit.skipped || [], // Keep skipped days when completing
+        checked: updatedChecked,
       });
     } else {
       // Reset streak to 0 and clear skipped days

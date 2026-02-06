@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Habits Analytics - Habits Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -79,27 +79,11 @@
             background: #edf2f7;
         }
 
-        .habit-card.disabled {
-            opacity: 0.6;
-        }
-
         .habit-name {
             font-size: 20px;
             font-weight: 600;
             color: #2d3748;
             margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .disabled-badge {
-            font-size: 12px;
-            padding: 2px 8px;
-            background: #cbd5e0;
-            color: #4a5568;
-            border-radius: 4px;
-            font-weight: 500;
         }
 
         .habit-stats {
@@ -174,41 +158,6 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            overflow-x: auto;
-        }
-
-        .chart-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .chart-controls button {
-            padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-
-        .chart-controls button:hover {
-            background: #5568d3;
-        }
-
-        .chart-controls button:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-        }
-
-        .chart-info {
-            font-size: 12px;
-            color: #718096;
-            margin-left: auto;
         }
 
         .stats-grid {
@@ -243,44 +192,6 @@
             margin-top: 30px;
         }
 
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .pagination-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .pagination-controls button {
-            padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-
-        .pagination-controls button:hover:not(:disabled) {
-            background: #5568d3;
-        }
-
-        .pagination-controls button:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-        }
-
-        .pagination-info {
-            font-size: 14px;
-            color: #718096;
-        }
-
         .timeline-item {
             display: flex;
             align-items: center;
@@ -301,47 +212,6 @@
 
         .timeline-item.dropped {
             border-left-color: #f56565;
-        }
-
-        .schedule-section {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f7fafc;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .schedule-section h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            color: #2d3748;
-        }
-
-        .schedule-info {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .schedule-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .schedule-label {
-            font-weight: 600;
-            color: #4a5568;
-            min-width: 120px;
-        }
-
-        .schedule-value {
-            color: #2d3748;
-        }
-
-        .schedule-disabled {
-            color: #718096;
-            font-style: italic;
         }
 
         .timeline-date {
@@ -399,15 +269,16 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>📊 Habits Analytics</h1>
-        
+
         <div id="loading" class="loading">Loading your habits...</div>
         <div id="error" class="error" style="display: none;"></div>
-        
+
         <div id="habits-list" class="habits-list" style="display: none;"></div>
-        
+
         <div id="habit-detail" class="habit-detail"></div>
     </div>
 
@@ -415,7 +286,7 @@
         // Get userId from URL query parameter or path
         const urlParams = new URLSearchParams(window.location.search);
         let userId = urlParams.get('userId');
-        
+
         if (!userId) {
             const pathParts = window.location.pathname.split('/');
             userId = pathParts[pathParts.length - 1];
@@ -432,9 +303,6 @@
         let habitsData = [];
         let currentHabitId = null;
         let charts = {};
-        let timelinePage = 1;
-        let timelinePageSize = 20;
-        let timelineTotalPages = 1;
 
         async function loadAnalytics() {
             try {
@@ -444,9 +312,9 @@
                 }
                 const data = await response.json();
                 habitsData = data.habits || [];
-                
+
                 document.getElementById('loading').style.display = 'none';
-                
+
                 if (habitsData.length === 0) {
                     document.getElementById('error').style.display = 'block';
                     document.getElementById('error').textContent = 'No habits found. Create some habits in the bot first!';
@@ -467,18 +335,15 @@
 
             habitsData.forEach(habit => {
                 const card = document.createElement('div');
-                card.className = 'habit-card' + (habit.disabled ? ' disabled' : '');
+                card.className = 'habit-card';
                 card.onclick = () => showHabitDetail(habit.id);
-                
+
                 const completedCount = (habit.checkHistory || []).filter(h => h.type === 'completed').length;
                 const skippedCount = habit.skipped?.length || 0;
                 const droppedCount = habit.dropped?.length || 0;
-                
+
                 card.innerHTML = `
-                    <div class="habit-name">
-                        ${escapeHtml(habit.name)}
-                        ${habit.disabled ? '<span class="disabled-badge">⏸️ Disabled</span>' : ''}
-                    </div>
+                    <div class="habit-name">${escapeHtml(habit.name)}</div>
                     <div class="habit-stats">
                         <div class="stat">
                             <div class="stat-value">🔥</div>
@@ -498,7 +363,7 @@
                         </div>
                     </div>
                 `;
-                
+
                 container.appendChild(card);
             });
         }
@@ -508,8 +373,7 @@
             if (!habit) return;
 
             currentHabitId = habitId;
-            timelinePage = 1; // Reset pagination when viewing a new habit
-            
+
             // Update active card
             document.querySelectorAll('.habit-card').forEach(card => {
                 card.classList.remove('active');
@@ -528,14 +392,8 @@
             detailContainer.innerHTML = `
                 <button class="back-button" onclick="showHabitsList()">← Back to Habits</button>
                 <div class="habit-detail-header">
-                    <h2>
-                        ${escapeHtml(habit.name)}
-                        ${habit.disabled ? '<span class="disabled-badge" style="margin-left: 12px;">⏸️ Disabled</span>' : ''}
-                    </h2>
-                    <p style="color: #718096;">
-                        Created: ${formatDate(habit.createdAt)}
-                        ${habit.disabled ? '<br><span style="color: #e53e3e;">⚠️ This habit is disabled and will not receive reminders</span>' : ''}
-                    </p>
+                    <h2>${escapeHtml(habit.name)}</h2>
+                    <p style="color: #718096;">Created: ${formatDate(habit.createdAt)}</p>
                 </div>
                 
                 <div class="stats-grid">
@@ -559,19 +417,9 @@
                         <div class="stat-card-value">📊 ${totalChecks}</div>
                         <div class="stat-card-label">Total Checks</div>
                     </div>
-                    ${habit.disabled ? `
-                    <div class="stat-card" style="background: #fed7d7;">
-                        <div class="stat-card-value" style="color: #c53030;">⏸️</div>
-                        <div class="stat-card-label" style="color: #742a2a;">Disabled</div>
-                    </div>
-                    ` : ''}
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-controls">
-                        <button onclick="resetZoom('streak')">Reset Zoom</button>
-                        <div class="chart-info">💡 Drag to pan, scroll to zoom</div>
-                    </div>
                     <canvas id="streakChart"></canvas>
                 </div>
 
@@ -579,37 +427,8 @@
                     <canvas id="activityChart"></canvas>
                 </div>
 
-                <div class="schedule-section">
-                    <h3>⏰ Reminder Schedule</h3>
-                    <div class="schedule-info">
-                        ${habit.reminderEnabled === false ? `
-                        <div class="schedule-item">
-                            <span class="schedule-label">Status:</span>
-                            <span class="schedule-value schedule-disabled">Reminders Disabled</span>
-                        </div>
-                        ` : ''}
-                        <div class="schedule-item">
-                            <span class="schedule-label">Schedule:</span>
-                            <span class="schedule-value">${formatSchedule(habit.reminderSchedule, habit.createdAt)}</span>
-                        </div>
-                        ${habit.reminderSchedule?.timezone ? `
-                        <div class="schedule-item">
-                            <span class="schedule-label">Timezone:</span>
-                            <span class="schedule-value">${habit.reminderSchedule.timezone}</span>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-
                 <div class="timeline">
-                    <div class="timeline-header">
-                        <h3 style="margin: 0; color: #2d3748;">Timeline</h3>
-                        <div class="pagination-controls">
-                            <button id="timeline-prev" onclick="changeTimelinePage(-1)">← Previous</button>
-                            <span class="pagination-info" id="timeline-pagination-info"></span>
-                            <button id="timeline-next" onclick="changeTimelinePage(1)">Next →</button>
-                        </div>
-                    </div>
+                    <h3 style="margin-bottom: 20px; color: #2d3748;">Timeline</h3>
                     <div id="timeline-items"></div>
                 </div>
             `;
@@ -619,7 +438,7 @@
         }
 
         function renderCharts(habit) {
-            const checkHistory = (habit.checkHistory || []).sort((a, b) => 
+            const checkHistory = (habit.checkHistory || []).sort((a, b) =>
                 new Date(a.date) - new Date(b.date)
             );
 
@@ -628,9 +447,10 @@
             if (charts.streak) {
                 charts.streak.destroy();
             }
-            
+
             const dates = checkHistory.map(h => formatDateShort(h.date));
             const streaks = checkHistory.map(h => h.streak);
+            const originalDates = checkHistory.map(h => h.date); // Store original dates for tooltip
 
             charts.streak = new Chart(streakCtx, {
                 type: 'line',
@@ -660,22 +480,27 @@
                         legend: {
                             display: false
                         },
-                        zoom: {
-                            zoom: {
-                                wheel: {
-                                    enabled: true,
+                        tooltip: {
+                            callbacks: {
+                                title: function (context) {
+                                    console.log('wWWWWWWWWW');
+                                    const index = context[0].dataIndex;
+                                    const dateStr = originalDates[index];
+                                    if (!dateStr) return '';
+                                    debugger
+                                    const date = new Date(dateStr);
+                                    if (isNaN(date.getTime())) return '';
+                                    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+                                    const fullDate = date.toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    });
+                                    return `${dayOfWeek}, ${fullDate}`;
                                 },
-                                pinch: {
-                                    enabled: true
-                                },
-                                mode: 'x',
-                            },
-                            pan: {
-                                enabled: true,
-                                mode: 'x',
-                            },
-                            limits: {
-                                x: { min: 'original', max: 'original' }
+                                label: function (context) {
+                                    return `Streak: ${context.parsed.y}`;
+                                }
                             }
                         }
                     },
@@ -734,39 +559,19 @@
 
         function renderTimeline(habit) {
             const timelineContainer = document.getElementById('timeline-items');
-            const checkHistory = (habit.checkHistory || []).sort((a, b) => 
+            const checkHistory = (habit.checkHistory || []).sort((a, b) =>
                 new Date(b.date) - new Date(a.date)
             );
 
             if (checkHistory.length === 0) {
                 timelineContainer.innerHTML = '<p style="color: #718096; text-align: center; padding: 20px;">No check history yet.</p>';
-                document.getElementById('timeline-pagination-info').textContent = '';
-                document.getElementById('timeline-prev').disabled = true;
-                document.getElementById('timeline-next').disabled = true;
                 return;
             }
 
-            // Calculate pagination
-            timelineTotalPages = Math.ceil(checkHistory.length / timelinePageSize);
-            timelinePage = Math.min(timelinePage, timelineTotalPages);
-            timelinePage = Math.max(1, timelinePage);
-
-            const startIndex = (timelinePage - 1) * timelinePageSize;
-            const endIndex = startIndex + timelinePageSize;
-            const paginatedHistory = checkHistory.slice(startIndex, endIndex);
-
-            // Update pagination info
-            document.getElementById('timeline-pagination-info').textContent = 
-                `Page ${timelinePage} of ${timelineTotalPages} (${checkHistory.length} total)`;
-            
-            // Update button states
-            document.getElementById('timeline-prev').disabled = timelinePage === 1;
-            document.getElementById('timeline-next').disabled = timelinePage === timelineTotalPages;
-
-            timelineContainer.innerHTML = paginatedHistory.map(entry => {
+            timelineContainer.innerHTML = checkHistory.map(entry => {
                 const typeClass = entry.type;
                 const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
-                const streakInfo = entry.streakBefore !== undefined 
+                const streakInfo = entry.streakBefore !== undefined
                     ? `Streak: ${entry.streakBefore} → ${entry.streak}`
                     : `Streak: ${entry.streak}`;
 
@@ -780,26 +585,11 @@
             }).join('');
         }
 
-        function changeTimelinePage(direction) {
-            timelinePage += direction;
-            const habit = habitsData.find(h => h.id === currentHabitId);
-            if (habit) {
-                renderTimeline(habit);
-            }
-        }
-
-        function resetZoom(chartId) {
-            if (charts[chartId]) {
-                charts[chartId].resetZoom();
-            }
-        }
-
         function showHabitsList() {
             document.getElementById('habit-detail').className = 'habit-detail';
             document.getElementById('habits-list').style.display = 'grid';
             currentHabitId = null;
-            timelinePage = 1;
-            
+
             // Destroy charts when going back
             Object.values(charts).forEach(chart => {
                 if (chart) chart.destroy();
@@ -810,35 +600,37 @@
         function formatDate(dateStringOrDate) {
             if (!dateStringOrDate) return 'N/A';
             // Handle both string and Date object
-            const date = dateStringOrDate instanceof Date 
-                ? dateStringOrDate 
+            const date = dateStringOrDate instanceof Date
+                ? dateStringOrDate
                 : new Date(dateStringOrDate);
-            
+
             // Check if date is valid
             if (isNaN(date.getTime())) return 'N/A';
-            
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
             });
         }
 
         function formatDateShort(dateStringOrDate) {
             if (!dateStringOrDate) return '';
             // Handle both string and Date object
-            const date = dateStringOrDate instanceof Date 
-                ? dateStringOrDate 
+            const date = dateStringOrDate instanceof Date
+                ? dateStringOrDate
                 : new Date(dateStringOrDate);
-            
+
             // Check if date is valid
             if (isNaN(date.getTime())) return '';
-            
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric',
-                month: 'short', 
-                day: 'numeric' 
+
+            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+            const monthDay = date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
             });
+
+            return `${dayOfWeek}, ${monthDay}`;
         }
 
         function escapeHtml(text) {
@@ -846,63 +638,7 @@
             div.textContent = text;
             return div.innerHTML;
         }
-
-        function formatTime(hour, minute) {
-            const h = hour % 12 || 12;
-            const m = minute.toString().padStart(2, '0');
-            const ampm = hour >= 12 ? 'PM' : 'AM';
-            return `${h}:${m} ${ampm}`;
-        }
-
-        function formatSchedule(schedule, createdAt) {
-            if (!schedule) {
-                return 'No schedule set';
-            }
-
-            const timeStr = formatTime(schedule.hour, schedule.minute);
-            const timezone = schedule.timezone || 'UTC';
-
-            switch (schedule.type) {
-                case 'daily':
-                    return `Daily at ${timeStr} (${timezone})`;
-                
-                case 'weekly': {
-                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                    const days = schedule.daysOfWeek
-                        .sort((a, b) => a - b)
-                        .map(d => dayNames[d])
-                        .join(', ');
-                    return `Weekly on ${days} at ${timeStr} (${timezone})`;
-                }
-                
-                case 'monthly': {
-                    const days = schedule.daysOfMonth
-                        .sort((a, b) => a - b)
-                        .map(d => {
-                            if (d === 1 || d === 21 || d === 31) return d + 'st';
-                            if (d === 2 || d === 22) return d + 'nd';
-                            if (d === 3 || d === 23) return d + 'rd';
-                            return d + 'th';
-                        })
-                        .join(', ');
-                    return `Monthly on the ${days} at ${timeStr} (${timezone})`;
-                }
-                
-                case 'interval': {
-                    const interval = schedule.intervalDays === 1 ? 'day' : `${schedule.intervalDays} days`;
-                    let startDate = '';
-                    if (schedule.startDate) {
-                        startDate = ` starting ${formatDate(schedule.startDate)}`;
-                    } else if (createdAt) {
-                        startDate = ` starting ${formatDate(createdAt)}`;
-                    }
-                    return `Every ${interval} at ${timeStr}${startDate} (${timezone})`;
-                }
-                
-                default:
-                    return 'Unknown schedule type';
-            }
-        }
     </script>
 </body>
+
 </html>

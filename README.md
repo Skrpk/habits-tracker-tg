@@ -197,6 +197,7 @@ habits-tracker/
 | `REDIS_URL` | Redis connection string (redis:// or rediss://) | Yes |
 | `NODE_ENV` | Environment (production/development) | Yes |
 | `WEBHOOK_URL` | Full webhook URL for production | Production only |
+| `NOTIFICATION_CHANNEL_ID` | Telegram channel ID for new user notifications | No |
 
 ## License
 

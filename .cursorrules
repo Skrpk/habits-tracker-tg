@@ -201,7 +201,10 @@ type ReminderSchedule =
 ```typescript
 interface UserPreferences {
   userId: number;
-  timezone: string; // IANA timezone (e.g., "America/New_York", "Europe/London")
+  user?: TelegramBot.User; // Full Telegram user object with all user information
+  timezone?: string; // IANA timezone (e.g., "America/New_York", "Europe/London")
+  consentAccepted?: boolean; // Whether user has accepted the privacy policy and terms
+  consentDate?: string; // ISO date string when consent was given (YYYY-MM-DD)
 }
 ```
 
@@ -224,6 +227,7 @@ interface UserPreferences {
 - `NODE_ENV`: `production` or `development`
 - `CRON_SECRET`: Secret for local cron endpoint (optional)
 - `CRON_SCHEDULE`: Cron schedule for local development (default: `* * * * *`)
+- `NOTIFICATION_CHANNEL_ID`: Telegram channel ID for new user notifications (optional)
 
 ## Important Patterns
 

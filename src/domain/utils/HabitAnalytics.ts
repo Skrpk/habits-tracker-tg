@@ -1,18 +1,15 @@
 import { Habit, CheckHistoryEntry, SkippedDay, DroppedDay } from '../entities/Habit';
 
 /**
- * Computes check history for a habit based on streak, creation date, skips, and drops.
- * This allows us to infer completion dates without storing every single check.
+ * Computes check history for a habit based on streak, creation date, skips, drops, and checked dates.
  * 
- * Logic (forward chronological):
- * - Work forward from creation date to today
- * - For daily habits (with reminders enabled and not disabled): 
- *   - If a day is not skipped, dropped, or disabled, infer it as completed
- * - Track streak incrementally:
- *   - Completed days: increment streak
- *   - Skipped days: preserve streak (no change)
- *   - Dropped days: reset streak to 0
- * - For non-daily schedules: only infer completions on scheduled days
+ * For daily habits:
+ * - Infer completions from streak, skipped days, and dropped days
+ * - Take start day, skipped days, and dropped days, and consider all days that are not among them as checked
+ * 
+ * For non-daily habits:
+ * - Use the checked array to get explicit check dates
+ * - Merge skipped, dropped, and checked dates (and start day) and analyze each check separately
  */
 export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
   const history: CheckHistoryEntry[] = [];
@@ -33,46 +30,41 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
     droppedDates.set(d.date, d);
   });
   
-  // Determine if we should infer completions and which days are scheduled
+  // Determine schedule type
   const schedule = habit.reminderSchedule;
+  const isDaily = !schedule || schedule.type === 'daily';
   const remindersEnabled = habit.reminderEnabled !== false;
   const notDisabled = habit.disabled !== true;
+  
+  // For daily habits: use inference logic
+  if (isDaily) {
+    return computeDailyHabitHistory(habit, creationDate, today, skippedDates, droppedDates, remindersEnabled, notDisabled);
+  }
+  
+  // For non-daily habits: use checked array
+  return computeNonDailyHabitHistory(habit, creationDate, today, skippedDates, droppedDates);
+}
+
+/**
+ * Computes check history for daily habits by inferring completions from streak, skipped, and dropped days.
+ * Takes start day, skipped days, and dropped days, and considers all days that are not among them as checked.
+ */
+function computeDailyHabitHistory(
+  habit: Habit,
+  creationDate: Date,
+  today: Date,
+  skippedDates: Set<string>,
+  droppedDates: Map<string, DroppedDay>,
+  remindersEnabled: boolean,
+  notDisabled: boolean
+): CheckHistoryEntry[] {
+  const history: CheckHistoryEntry[] = [];
+  
   // Only infer completions if there's evidence of user interaction:
   // - streak > 0 (user has completed at least once), OR
   // - has skipped/dropped days (user has interacted with the habit)
   const hasUserInteraction = (habit.streak || 0) > 0 || skippedDates.size > 0 || droppedDates.size > 0;
   const shouldInferCompletions = remindersEnabled && notDisabled && hasUserInteraction;
-  
-  // Helper to check if a date is a scheduled day
-  function isScheduledDay(date: Date): boolean {
-    if (!schedule || !shouldInferCompletions) return false;
-    
-    const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-    
-    switch (schedule.type) {
-      case 'daily':
-        return true;
-      case 'weekly':
-        return schedule.daysOfWeek.includes(dayOfWeek);
-      case 'monthly':
-        const dayOfMonth = date.getDate();
-        return schedule.daysOfMonth.includes(dayOfMonth);
-      case 'interval':
-        // For interval schedules, calculate from startDate or creationDate
-        const intervalStartDate = schedule.startDate 
-          ? new Date(schedule.startDate)
-          : creationDate;
-        intervalStartDate.setHours(0, 0, 0, 0);
-        
-        // Calculate days difference
-        const daysDiff = Math.floor((date.getTime() - intervalStartDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Check if this date is exactly N days from the start (where N is a multiple of intervalDays)
-        return daysDiff >= 0 && daysDiff % schedule.intervalDays === 0;
-      default:
-        return false;
-    }
-  }
   
   // If we shouldn't infer completions, only return explicit events (skips/drops)
   if (!shouldInferCompletions) {
@@ -101,55 +93,12 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
     return history;
   }
   
-  // Current streak value as we process forward
-  let currentStreak = 0;
-  
-  // Process each day forward from creation to today
-  const currentDate = new Date(creationDate);
-  
-  while (currentDate <= today) {
-    const dateStr = currentDate.toISOString().split('T')[0];
-    
-    // Check if this date has an explicit event
-    if (droppedDates.has(dateStr)) {
-      // Drop: reset streak to 0
-      const drop = droppedDates.get(dateStr)!;
-      history.push({
-        date: dateStr,
-        type: 'dropped',
-        streak: 0,
-        streakBefore: drop.streakBeforeDrop,
-      });
-      currentStreak = 0;
-    } else if (skippedDates.has(dateStr)) {
-      // Skip: preserve streak (don't increment)
-      history.push({
-        date: dateStr,
-        type: 'skipped',
-        streak: currentStreak,
-      });
-      // Streak remains the same
-    } else if (isScheduledDay(currentDate)) {
-      // Scheduled day: infer as completed if not skipped/dropped/disabled
-      currentStreak++;
-      history.push({
-        date: dateStr,
-        type: 'completed',
-        streak: currentStreak,
-      });
-    }
-    // For unscheduled days, we don't infer completions
-    
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
   // Always rebuild history to match the stored streak value exactly
   // Process ALL days from creation to today, but only mark completions for the most recent streak period
   const targetStreak = habit.streak || 0;
   if (targetStreak > 0) {
-    // First, identify which scheduled days should be marked as completed
-    // Work backwards from today, marking only the most recent N scheduled days as completed
+    // First, identify which days should be marked as completed
+    // Work backwards from today, marking only the most recent N days as completed
     // where N = habit.streak, excluding skipped/dropped days
     // Important: Drops reset the streak, so we only count completions after the most recent drop
     const completedDates = new Set<string>();
@@ -189,11 +138,9 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
         break;
       }
       
-      // If this is a scheduled day, mark it as completed
-      if (isScheduledDay(workDate)) {
-        completedDates.add(dateStr);
-        remainingCompletions--;
-      }
+      // For daily habits, all days are scheduled, so mark as completed
+      completedDates.add(dateStr);
+      remainingCompletions--;
       
       workDate.setDate(workDate.getDate() - 1);
     }
@@ -222,11 +169,9 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
             continue;
           }
           
-          // If this is a scheduled day, mark it as completed
-          if (isScheduledDay(preDropWorkDate)) {
-            completedDates.add(preDropDateStr);
-            preDropCompletions--;
-          }
+          // For daily habits, all days are scheduled, so mark as completed
+          completedDates.add(preDropDateStr);
+          preDropCompletions--;
           
           preDropWorkDate.setDate(preDropWorkDate.getDate() - 1);
         }
@@ -268,12 +213,90 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
           streak: currentStreak,
         });
       }
-      // For other days (not scheduled, or not part of any streak), we don't add anything
+      // For other days (not part of any streak), we don't add anything
       
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
     return adjustedHistory;
+  }
+  
+  return history;
+}
+
+/**
+ * Computes check history for non-daily habits using the checked array.
+ * Merges skipped, dropped, and checked dates (and start day) and analyzes each check separately.
+ */
+function computeNonDailyHabitHistory(
+  habit: Habit,
+  creationDate: Date,
+  today: Date,
+  skippedDates: Set<string>,
+  droppedDates: Map<string, DroppedDay>
+): CheckHistoryEntry[] {
+  const history: CheckHistoryEntry[] = [];
+  
+  // Get all checked dates from the checked array
+  const checkedDates = new Set((habit.checked || []).map(c => c.date));
+  
+  // Collect all event dates: checked, skipped, dropped, and creation date
+  const allEventDates = new Set<string>();
+  checkedDates.forEach(date => allEventDates.add(date));
+  skippedDates.forEach(date => allEventDates.add(date));
+  droppedDates.forEach((_, date) => allEventDates.add(date));
+  
+  // Add creation date as the start day
+  const creationDateStr = creationDate.toISOString().split('T')[0];
+  allEventDates.add(creationDateStr);
+  
+  // Sort all dates chronologically
+  const sortedDates = Array.from(allEventDates).sort((a, b) => a.localeCompare(b));
+  
+  // Process each date chronologically and build history
+  let currentStreak = 0;
+  
+  for (const dateStr of sortedDates) {
+    // Skip dates after today
+    if (dateStr > today.toISOString().split('T')[0]) {
+      continue;
+    }
+    
+    // Skip dates before creation
+    if (dateStr < creationDateStr) {
+      continue;
+    }
+    
+    if (droppedDates.has(dateStr)) {
+      // Drop: reset streak to 0
+      const drop = droppedDates.get(dateStr)!;
+      history.push({
+        date: dateStr,
+        type: 'dropped',
+        streak: 0,
+        streakBefore: drop.streakBeforeDrop,
+      });
+      currentStreak = 0;
+    } else if (skippedDates.has(dateStr)) {
+      // Skip: preserve streak (don't increment)
+      history.push({
+        date: dateStr,
+        type: 'skipped',
+        streak: currentStreak,
+      });
+      // Streak remains the same
+    } else if (checkedDates.has(dateStr)) {
+      // Checked: increment streak
+      currentStreak++;
+      history.push({
+        date: dateStr,
+        type: 'completed',
+        streak: currentStreak,
+      });
+    } else if (dateStr === creationDateStr) {
+      // Creation date: only add if it's also checked, skipped, or dropped
+      // Otherwise, we don't add it to history
+    }
   }
   
   return history;

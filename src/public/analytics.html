@@ -448,6 +448,7 @@
             
             const dates = checkHistory.map(h => formatDateShort(h.date));
             const streaks = checkHistory.map(h => h.streak);
+            const originalDates = checkHistory.map(h => h.date); // Store original dates for tooltip
 
             charts.streak = new Chart(streakCtx, {
                 type: 'line',
@@ -476,6 +477,27 @@
                         },
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const index = context[0].dataIndex;
+                                    const dateStr = originalDates[index];
+                                    if (!dateStr) return '';
+                                    const date = new Date(dateStr);
+                                    if (isNaN(date.getTime())) return '';
+                                    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+                                    const fullDate = date.toLocaleDateString('en-US', { 
+                                        year: 'numeric',
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                    });
+                                    return `${dayOfWeek}, ${fullDate}`;
+                                },
+                                label: function(context) {
+                                    return `Streak: ${context.parsed.y}`;
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -598,10 +620,13 @@
             // Check if date is valid
             if (isNaN(date.getTime())) return '';
             
-            return date.toLocaleDateString('en-US', { 
+            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+            const monthDay = date.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric' 
             });
+            
+            return `${dayOfWeek}, ${monthDay}`;
         }
 
         function escapeHtml(text) {

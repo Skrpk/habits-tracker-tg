@@ -1,19 +1,26 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
 import { UserPreferences } from '../entities/UserPreferences';
 import { Logger } from '../../infrastructure/logger/Logger';
+import TelegramBot from 'node-telegram-bot-api';
 
 export class SetUserPreferencesUseCase {
   constructor(private habitRepository: IHabitRepository) {}
 
-  async setTimezone(userId: number, timezone: string): Promise<UserPreferences> {
+  async setTimezone(userId: number, timezone: string, user?: TelegramBot.User): Promise<UserPreferences> {
     // Validate timezone (basic check - IANA timezone format)
     if (!timezone || timezone.trim().length === 0) {
       throw new Error('Timezone cannot be empty');
     }
 
+    // Get existing preferences to preserve user object and other fields
+    const existingPreferences = await this.habitRepository.getUserPreferences(userId);
+
     const preferences: UserPreferences = {
       userId,
+      user: user || existingPreferences?.user, // Preserve existing user object if new one not provided
       timezone: timezone.trim(),
+      consentAccepted: existingPreferences?.consentAccepted,
+      consentDate: existingPreferences?.consentDate,
     };
 
     await this.habitRepository.saveUserPreferences(preferences);
@@ -30,11 +37,12 @@ export class SetUserPreferencesUseCase {
     return await this.habitRepository.getUserPreferences(userId);
   }
 
-  async setConsent(userId: number, accepted: boolean): Promise<UserPreferences> {
+  async setConsent(userId: number, accepted: boolean, user?: TelegramBot.User): Promise<UserPreferences> {
     const existingPreferences = await this.habitRepository.getUserPreferences(userId);
     
     const preferences: UserPreferences = {
       userId,
+      user: user || existingPreferences?.user, // Preserve existing user object if new one not provided
       timezone: existingPreferences?.timezone,
       consentAccepted: accepted,
       consentDate: accepted ? new Date().toISOString().split('T')[0] : undefined,
@@ -46,6 +54,27 @@ export class SetUserPreferencesUseCase {
       userId,
       accepted,
       consentDate: preferences.consentDate,
+    });
+
+    return preferences;
+  }
+
+  async updateUser(userId: number, user: TelegramBot.User): Promise<UserPreferences> {
+    const existingPreferences = await this.habitRepository.getUserPreferences(userId);
+    
+    const preferences: UserPreferences = {
+      userId,
+      user,
+      timezone: existingPreferences?.timezone,
+      consentAccepted: existingPreferences?.consentAccepted,
+      consentDate: existingPreferences?.consentDate,
+    };
+
+    await this.habitRepository.saveUserPreferences(preferences);
+
+    Logger.info('User information updated', {
+      userId,
+      username: user.username,
     });
 
     return preferences;

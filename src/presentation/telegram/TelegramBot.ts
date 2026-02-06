@@ -521,6 +521,7 @@ export class TelegramBotService {
       });
       
       console.log('wwwww', update);
+      
       // Handle text messages (commands)
       if (update.message?.text) {
         const text = update.message.text;
@@ -528,10 +529,21 @@ export class TelegramBotService {
         const chatId = msg.chat.id;
         const userId = msg.from?.id;
         const username = getUsername(msg.from);
+        const user = msg.from;
         
         if (!userId) {
           Logger.warn('Message received without user ID', { chatId });
           return;
+        }
+        
+        // Update user information in Redis if we have user data (async, don't block)
+        if (user) {
+          this.setUserPreferencesUseCase.updateUser(userId, user).catch(error => {
+            Logger.error('Error updating user information', {
+              userId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          });
         }
         
         // Check for conversation state first (before processing commands)
@@ -556,8 +568,7 @@ export class TelegramBotService {
         
         // Handle /start command
         if (text.match(/^\/start/)) {
-          console.log('WWWWWW');
-          await this.handleStartCommand(chatId, userId, username);
+          await this.handleStartCommand(chatId, userId, username, msg.from);
           return;
         }
         
@@ -611,6 +622,19 @@ export class TelegramBotService {
       
       // Handle callback queries
       if (update.callback_query) {
+        const user = update.callback_query.from;
+        const userId = user?.id;
+        
+        // Update user information in Redis if we have user data (async, don't block)
+        if (userId && user) {
+          this.setUserPreferencesUseCase.updateUser(userId, user).catch(error => {
+            Logger.error('Error updating user information', {
+              userId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          });
+        }
+        
         await this.handleCallbackQuery(update.callback_query);
         return;
       }
@@ -631,7 +655,7 @@ export class TelegramBotService {
   }
 
   // Command handlers - extracted for clean manual handling
-  private async handleStartCommand(chatId: number, userId: number | undefined, username: string): Promise<void> {
+  private async handleStartCommand(chatId: number, userId: number | undefined, username: string, user?: TelegramBot.User): Promise<void> {
     Logger.info('User started bot', {
       userId,
       username,
@@ -647,6 +671,18 @@ export class TelegramBotService {
     try {
       // Check if user has accepted consent
       const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      
+      // Send notification if this is a new user (no preferences exist)
+      if (!preferences) {
+        await this.sendNewUserNotification(userId, username, user);
+        // Store user information for new users
+        if (user) {
+          await this.setUserPreferencesUseCase.updateUser(userId, user);
+        }
+      } else if (user) {
+        // Update user information if it has changed
+        await this.setUserPreferencesUseCase.updateUser(userId, user);
+      }
       
       if (!preferences || !preferences.consentAccepted) {
         // Show consent message first
@@ -691,6 +727,61 @@ export class TelegramBotService {
         stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
+    }
+  }
+
+  private async sendNewUserNotification(
+    userId: number,
+    username: string,
+    user?: TelegramBot.User
+  ): Promise<void> {
+    const channelId = process.env.NOTIFICATION_CHANNEL_ID;
+    
+    if (!channelId) {
+      Logger.debug('NOTIFICATION_CHANNEL_ID not set, skipping new user notification', { userId });
+      return;
+    }
+
+    try {
+      // Format user information
+      const firstName = user?.first_name || 'Unknown';
+      const lastName = user?.last_name || '';
+      const fullName = `${firstName}${lastName ? ` ${lastName}` : ''}`.trim() || username;
+      const userLink = user?.username 
+        ? `[@${user.username}](https://t.me/${user.username})`
+        : `[${fullName}](tg://user?id=${userId})`;
+      
+      // Format notification message
+      const notificationMessage = 
+        '🎉 *New User Joined!*\n\n' +
+        `👤 User: ${userLink}\n` +
+        `🆔 ID: \`${userId}\`\n` +
+        `📛 Name: ${fullName}\n` +
+        `⏰ Time: ${new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        })} UTC`;
+
+      await this.bot.sendMessage(channelId, notificationMessage, {
+        parse_mode: 'Markdown',
+        disable_notification: false,
+      });
+
+      Logger.info('New user notification sent', {
+        userId,
+        username,
+        channelId,
+      });
+    } catch (error) {
+      // Don't fail the start command if notification fails
+      Logger.error('Error sending new user notification', {
+        userId,
+        username,
+        channelId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
@@ -927,10 +1018,11 @@ export class TelegramBotService {
   private async handleConsentAcceptance(
     userId: number,
     chatId: number,
-    messageId?: number
+    messageId?: number,
+    user?: TelegramBot.User
   ): Promise<void> {
     try {
-      await this.setUserPreferencesUseCase.setConsent(userId, true);
+      await this.setUserPreferencesUseCase.setConsent(userId, true, user);
       
       await this.safeEditMessage(
         '✅ *Thank you for accepting our Privacy Policy and Terms of Service!*\n\n' +
@@ -960,10 +1052,11 @@ export class TelegramBotService {
   private async handleConsentDecline(
     userId: number,
     chatId: number,
-    messageId?: number
+    messageId?: number,
+    user?: TelegramBot.User
   ): Promise<void> {
     try {
-      await this.setUserPreferencesUseCase.setConsent(userId, false);
+      await this.setUserPreferencesUseCase.setConsent(userId, false, user);
       
       await this.safeEditMessage(
         '❌ *Consent Declined*\n\n' +
@@ -990,10 +1083,11 @@ export class TelegramBotService {
     userId: number,
     chatId: number,
     timezone: string,
-    messageId?: number
+    messageId?: number,
+    user?: TelegramBot.User
   ): Promise<void> {
     try {
-      await this.setUserPreferencesUseCase.setTimezone(userId, timezone);
+      await this.setUserPreferencesUseCase.setTimezone(userId, timezone, user);
       
       const timezoneName = timezone.split('/').pop()?.replace(/_/g, ' ') || timezone;
       
@@ -1399,19 +1493,19 @@ export class TelegramBotService {
 
     // Handle consent acceptance/rejection
     if (data === 'consent_accept') {
-      await this.handleConsentAcceptance(userId, chatId, query.message?.message_id);
+      await this.handleConsentAcceptance(userId, chatId, query.message?.message_id, query.from);
       return;
     }
 
     if (data === 'consent_decline') {
-      await this.handleConsentDecline(userId, chatId, query.message?.message_id);
+      await this.handleConsentDecline(userId, chatId, query.message?.message_id, query.from);
       return;
     }
 
     // Handle timezone selection
     const timezoneMatch = data.match(/^timezone_select:(.+)$/);
     if (timezoneMatch) {
-      await this.handleTimezoneSelection(userId, chatId, timezoneMatch[1], query.message?.message_id);
+      await this.handleTimezoneSelection(userId, chatId, timezoneMatch[1], query.message?.message_id, query.from);
       return;
     }
 
