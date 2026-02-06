@@ -1,188 +1,940 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habits Tracker - Build Healthy Habits</title>
-    <link rel="stylesheet" href="/styles.css">
+    <title>Habits Builder — Build Healthy Habits with Telegram</title>
+    <meta name="description" content="Track your daily habits with smart reminders, streak tracking, and analytics — all inside Telegram. Free habit tracker bot with daily check-ins and personal dashboard." />
+    <meta name="keywords" content="habit tracker, telegram bot, habit tracking app, streak tracker, daily habits, build habits, telegram habit tracker, habit reminders" />
+    <link rel="canonical" href="https://habits-builder.com/" />
+
+    <meta property="og:title" content="Habits Builder — Build Healthy Habits with Telegram" />
+    <meta property="og:description" content="Track your daily habits with smart reminders, streak tracking, and analytics — all inside Telegram." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://habits-builder.com/" />
+    <meta property="og:site_name" content="Habits Builder" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.hero {
+    margin-bottom: 50px;
+}
+
+.robot-emoji {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 12px;
+}
+
+.subtitle {
+    font-size: 20px;
+    color: #718096;
+    font-weight: 400;
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.feature {
+    padding: 30px 20px;
+    background: #f7fafc;
+    border-radius: 16px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.feature h3 {
+    font-size: 20px;
+    color: #2d3748;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.feature p {
+    font-size: 14px;
+    color: #718096;
+}
+
+.cta {
+    margin-bottom: 40px;
+}
+
+.telegram-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #0088cc;
+    color: white;
+    padding: 16px 32px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+}
+
+.telegram-button:hover {
+    background: #006ba3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 136, 204, 0.5);
+}
+
+.telegram-button svg {
+    width: 24px;
+    height: 24px;
+}
+
+.footer {
+    padding-top: 30px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.footer p {
+    color: #a0aec0;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.content-section {
+    text-align: left;
+    margin-bottom: 50px;
+    padding-top: 40px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.content-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.content-section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.content-section h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.content-section p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #4a5568;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.content-section strong {
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.content-section code {
+    background: #f7fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    color: #667eea;
+}
+
+.content-section a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.content-section a:hover {
+    color: #5568d3;
+    text-decoration: underline;
+}
+
+.faq-item {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.faq-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.faq-item h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.faq-item p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #4a5568;
+    margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+    .container { padding: 40px 24px; }
+    h1 { font-size: 32px; }
+    .subtitle { font-size: 18px; }
+    .features { grid-template-columns: 1fr; gap: 20px; }
+    .robot-emoji { font-size: 60px; }
+    .content-section { margin-bottom: 40px; padding-top: 30px; }
+    .content-section h2 { font-size: 26px; margin-bottom: 16px; }
+    .content-section h3 { font-size: 20px; margin-top: 24px; margin-bottom: 10px; }
+    .content-section p { font-size: 15px; line-height: 1.6; }
+    .faq-item { margin-bottom: 28px; padding-bottom: 20px; }
+    .faq-item h3 { font-size: 18px; }
+    .faq-item p { font-size: 14px; }
+}
+
+/* Blog post list styles */
+.blog-post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.blog-post-item {
+    padding: 30px;
+    background: #f7fafc;
+    border-radius: 16px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e2e8f0;
+}
+
+.blog-post-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e0;
+}
+
+.blog-post-item h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.blog-post-item h2 a {
+    color: #2d3748;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.blog-post-item h2 a:hover {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.blog-post-description {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #4a5568;
+    margin-bottom: 16px;
+}
+
+.blog-post-link {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+.blog-post-link a {
+    color: #667eea;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.blog-post-link a:hover {
+    color: #5568d3;
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .blog-post-item { padding: 24px; }
+    .blog-post-item h2 { font-size: 20px; }
+    .blog-post-description { font-size: 15px; }
+}
+
+
+/* ============================================================
+   REDESIGNED LANDING PAGE STYLES
+   ============================================================ */
+
+:root {
+    --hb-bg: #FAFAF8;
+    --hb-surface: #FFFFFF;
+    --hb-text: #1A1A1A;
+    --hb-text-secondary: #555555;
+    --hb-text-muted: #888888;
+    --hb-accent: #2D9F6F;
+    --hb-accent-light: #E8F5EE;
+    --hb-accent-dark: #1E7A52;
+    --hb-border: #E5E5E0;
+    --hb-card-bg: #F6F6F3;
+    --hb-font-display: 'Newsreader', Georgia, serif;
+    --hb-font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body.landing-page {
+    background: var(--hb-bg);
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+    padding: 0;
+    font-family: var(--hb-font-body);
+    color: var(--hb-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.site-header {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-logo {
+    font-family: var(--hb-font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--hb-text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.site-logo-icon { font-size: 1.4rem; }
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+}
+
+.site-nav a {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--hb-text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.site-nav a:hover { color: var(--hb-accent-dark); }
+
+body.landing-page .container {
+    max-width: 960px;
+    margin: 0 auto;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0 2rem 4rem;
+    text-align: center;
+}
+
+body.landing-page .hero {
+    margin-bottom: 0;
+    padding: 4rem 0 3.5rem;
+    position: relative;
+}
+
+body.landing-page .robot-emoji {
+    font-size: 56px;
+    margin-bottom: 1.25rem;
+    animation: float 4s ease-in-out infinite;
+}
+
+body.landing-page h1 {
+    font-family: var(--hb-font-display);
+    font-size: clamp(2.25rem, 5vw, 3.25rem);
+    font-weight: 700;
+    color: var(--hb-text);
+    margin-bottom: 0.75rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+body.landing-page .subtitle {
+    font-family: var(--hb-font-body);
+    font-size: 1.2rem;
+    color: var(--hb-text-secondary);
+    font-weight: 400;
+    line-height: 1.6;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.hero-tagline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1.75rem;
+    flex-wrap: wrap;
+}
+
+.hero-tagline-item {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--hb-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.hero-tagline-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--hb-border);
+    display: inline-block;
+}
+
+body.landing-page .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 3.5rem;
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+body.landing-page .feature {
+    padding: 2rem 1.5rem 1.75rem;
+    background: var(--hb-surface);
+    border: 1px solid var(--hb-border);
+    border-radius: 14px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    text-align: center;
+}
+
+body.landing-page .feature:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    border-color: var(--hb-accent);
+}
+
+body.landing-page .feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.9rem;
+    display: block;
+}
+
+body.landing-page .feature h3 {
+    font-family: var(--hb-font-display);
+    font-size: 1.1rem;
+    color: var(--hb-text);
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+}
+
+body.landing-page .feature p {
+    font-size: 0.875rem;
+    color: var(--hb-text-secondary);
+    line-height: 1.55;
+}
+
+body.landing-page .cta { margin-bottom: 3.5rem; }
+
+body.landing-page .telegram-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: var(--hb-accent);
+    color: #fff;
+    padding: 1rem 2.25rem;
+    border-radius: 100px;
+    text-decoration: none;
+    font-family: var(--hb-font-body);
+    font-size: 1.05rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 16px rgba(45, 159, 111, 0.3);
+    letter-spacing: 0;
+}
+
+body.landing-page .telegram-button:hover {
+    background: var(--hb-accent-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(45, 159, 111, 0.4);
+}
+
+.cta-subtext {
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--hb-text-muted);
+}
+
+.how-it-works {
+    max-width: 680px;
+    margin: 0 auto 3.5rem;
+    text-align: left;
+}
+
+.how-it-works-title {
+    font-family: var(--hb-font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--hb-text);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.step-item {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--hb-accent-light);
+    color: var(--hb-accent-dark);
+    font-family: var(--hb-font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+}
+
+.step-content h3 {
+    font-family: var(--hb-font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--hb-text);
+    margin-bottom: 0.25rem;
+}
+
+.step-content p {
+    font-size: 0.9rem;
+    color: var(--hb-text-secondary);
+    line-height: 1.6;
+}
+
+.streak-showcase {
+    max-width: 600px;
+    margin: 0 auto 3.5rem;
+    padding: 2rem;
+    background: var(--hb-surface);
+    border: 1px solid var(--hb-border);
+    border-radius: 14px;
+    text-align: center;
+}
+
+.streak-showcase-title {
+    font-family: var(--hb-font-display);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--hb-text);
+    margin-bottom: 1.25rem;
+}
+
+.streak-badges {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.streak-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 72px;
+}
+
+.streak-badge-icon { font-size: 1.6rem; }
+.streak-badge-5 { background: #FEF3C7; color: #92400E; }
+.streak-badge-10 { background: #DBEAFE; color: #1E40AF; }
+.streak-badge-30 { background: var(--hb-accent-light); color: var(--hb-accent-dark); }
+.streak-badge-90 { background: #F3E8FF; color: #6B21A8; }
+
+body.landing-page .content-section {
+    max-width: 600px;
+    margin: 0 auto 3rem;
+    text-align: center;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--hb-border);
+}
+
+body.landing-page .content-section h2 {
+    font-family: var(--hb-font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--hb-text);
+    text-align: center;
+    margin-bottom: 0.75rem;
+}
+
+body.landing-page .content-section p {
+    font-size: 0.95rem;
+    color: var(--hb-text-secondary);
+    line-height: 1.65;
+    text-align: center;
+    margin-bottom: 0.75rem;
+}
+
+body.landing-page .content-section a {
+    color: var(--hb-accent-dark);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+body.landing-page .content-section a:hover {
+    color: var(--hb-accent);
+    text-decoration: underline;
+}
+
+body.landing-page .footer {
+    max-width: 600px;
+    margin: 0 auto;
+    padding-top: 2rem;
+    border-top: 1px solid var(--hb-border);
+    text-align: center;
+}
+
+body.landing-page .footer p {
+    font-size: 0.82rem;
+    color: var(--hb-text-muted);
+    font-weight: 400;
+    letter-spacing: 0;
+    margin-bottom: 0.35rem;
+}
+
+body.landing-page .footer a {
+    color: var(--hb-text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+body.landing-page .footer a:hover {
+    color: var(--hb-accent-dark);
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .site-header { padding: 1.25rem 1.25rem; }
+    .site-nav { gap: 1rem; }
+    .site-nav a { font-size: 0.82rem; }
+    body.landing-page .container { padding: 0 1.25rem 3rem; }
+    body.landing-page .hero { padding: 2.5rem 0 2.5rem; }
+    body.landing-page .robot-emoji { font-size: 44px; }
+    body.landing-page h1 { font-size: 2rem; }
+    body.landing-page .subtitle { font-size: 1.05rem; }
+    .hero-tagline { gap: 0.75rem; }
+
+    body.landing-page .features {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+        max-width: 100%;
+    }
+
+    body.landing-page .feature {
+        padding: 1.5rem 1.25rem 1.25rem;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+        text-align: left;
+    }
+
+    body.landing-page .feature-icon {
+        font-size: 2rem;
+        margin-bottom: 0;
+    }
+
+    .feature-text h3 { margin-bottom: 0.15rem; }
+    .how-it-works { margin-bottom: 2.5rem; }
+    .how-it-works-title { font-size: 1.4rem; }
+    .step-item { gap: 1rem; }
+    .streak-showcase { padding: 1.5rem 1rem; margin-bottom: 2.5rem; }
+    .streak-badges { gap: 0.5rem; }
+    .streak-badge { min-width: 62px; padding: 0.5rem 0.65rem; font-size: 0.7rem; }
+    .streak-badge-icon { font-size: 1.3rem; }
+}
+/* ---- Quote block ---- */
+body.landing-page .quote-block {
+    max-width: 580px;
+    margin: 0 auto 3rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    text-align: center;
+    position: relative;
+}
+
+body.landing-page .quote-block::before {
+    content: '\201C';
+    font-family: var(--hb-font-display);
+    font-size: 5rem;
+    line-height: 1;
+    color: var(--hb-accent);
+    opacity: 0.25;
+    position: absolute;
+    top: -1.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+body.landing-page .quote-text {
+    font-family: var(--hb-font-display);
+    font-size: 1.4rem;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--hb-text);
+    line-height: 1.55;
+    margin-bottom: 0.6rem;
+    padding-top: 1.5rem;
+}
+
+body.landing-page .quote-author {
+    font-family: var(--hb-font-body);
+    font-size: 0.85rem;
+    color: var(--hb-text-muted);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+    body.landing-page .quote-block { margin-bottom: 2.25rem; }
+    body.landing-page .quote-block::before { font-size: 4rem; top: -1rem; }
+    body.landing-page .quote-text { font-size: 1.2rem; }
+}
+
+    </style>
 </head>
-<body>
+
+<body class="landing-page">
+
+    <header class="site-header">
+        <a href="/" class="site-logo">
+            <span class="site-logo-icon">🎯</span>
+            Habits Builder
+        </a>
+        <nav class="site-nav">
+            <a href="/blog/">Blog</a>
+            <a href="https://t.me/habits_checking_bot" target="_blank">Open Bot</a>
+        </nav>
+    </header>
+
     <div class="container">
+
         <div class="hero">
             <div class="robot-emoji">🤖</div>
-            <h1>🎯 Build Healthy Habits</h1>
-            <p class="subtitle">Track your daily routines with friendly reminders</p>
+            <h1>Build Healthy Habits,<br>One Day at a Time</h1>
+            <p class="subtitle">Track your daily routines with friendly Telegram reminders, streak tracking, and personal analytics</p>
+            <div class="hero-tagline">
+                <span class="hero-tagline-item">Simple</span>
+                <span class="hero-tagline-dot"></span>
+                <span class="hero-tagline-item">Motivating</span>
+                <span class="hero-tagline-dot"></span>
+                <span class="hero-tagline-item">Effective</span>
+            </div>
+        </div>
+
+        <div class="quote-block">
+            <p class="quote-text">Choose what is best, and habit will make it pleasant and easy.</p>
+            <p class="quote-author">— Plutarch</p>
         </div>
 
         <div class="features">
             <div class="feature">
                 <div class="feature-icon">📝</div>
-                <h3>Create Habits</h3>
-                <p>Easily add new habits to track</p>
+                <div class="feature-text">
+                    <h3>Create Habits</h3>
+                    <p>Easily add new habits to track</p>
+                </div>
             </div>
             <div class="feature">
                 <div class="feature-icon">🔥</div>
-                <h3>Track Streaks</h3>
-                <p>Build momentum with daily streaks</p>
+                <div class="feature-text">
+                    <h3>Track Streaks</h3>
+                    <p>Build momentum with daily streaks</p>
+                </div>
             </div>
             <div class="feature">
                 <div class="feature-icon">⏰</div>
-                <h3>Daily Reminders</h3>
-                <p>Never forget to check your habits</p>
+                <div class="feature-text">
+                    <h3>Daily Reminders</h3>
+                    <p>Never forget to check your habits</p>
+                </div>
             </div>
         </div>
 
         <div class="cta">
             <a href="https://t.me/habits_checking_bot" class="telegram-button" target="_blank">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.166 1.689-1.104 5.783-1.56 7.68-.196.8-.58 1.068-1.004 1.107-.84.077-1.48-.553-2.29-1.084-1.27-.832-1.99-1.29-3.22-2.07-1.424-.99-.5-1.536.31-2.373.214-.278 3.75-3.44 3.82-3.73.008-.033.016-.155-.06-.216-.075-.06-.186-.037-.267-.022-.113.02-1.91 1.21-5.39 3.55-.51.35-.97.52-1.39.51-.456-.01-1.33-.257-1.98-.47-.8-.264-1.43-.407-1.38-.86.027-.23.4-.465 1.1-.675 4.35-1.51 7.25-2.51 8.7-3.01 4.12-1.45 4.98-1.7 5.54-1.71.12-.002.39.028.56.17.13.11.17.26.19.36-.01.06.01.24 0 .38z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.166 1.689-1.104 5.783-1.56 7.68-.196.8-.58 1.068-1.004 1.107-.84.077-1.48-.553-2.29-1.084-1.27-.832-1.99-1.29-3.22-2.07-1.424-.99-.5-1.536.31-2.373.214-.278 3.75-3.44 3.82-3.73.008-.033.016-.155-.06-.216-.075-.06-.186-.037-.267-.022-.113.02-1.91 1.21-5.39 3.55-.51.35-.97.52-1.39.51-.456-.01-1.33-.257-1.98-.47-.8-.264-1.43-.407-1.38-.86.027-.23.4-.465 1.1-.675 4.35-1.51 7.25-2.51 8.7-3.01 4.12-1.45 4.98-1.7 5.54-1.71.12-.002.39.028.56.17.13.11.17.26.19.36-.01.06.01.24 0 .38z" />
                 </svg>
                 Start on Telegram
             </a>
+            <p class="cta-subtext">Free — no account needed, just Telegram</p>
+        </div>
+
+        <div class="how-it-works">
+            <h2 class="how-it-works-title">How It Works</h2>
+            <div class="step-list">
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Open the bot in Telegram</h3>
+                        <p>Hit /start, pick your timezone, and you're ready in under a minute.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Create your habits</h3>
+                        <p>Add habits and set custom schedules — daily, weekly, monthly, or interval-based.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Check in with one tap</h3>
+                        <p>When reminders arrive, tap ✅ Completed, ❌ Drop, or ⏭️ Skip. That's it.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Watch your progress grow</h3>
+                        <p>Track streaks, earn badges at milestones, and view your analytics dashboard anytime.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="streak-showcase">
+            <div class="streak-showcase-title">Earn streak badges as you go</div>
+            <div class="streak-badges">
+                <div class="streak-badge streak-badge-5">
+                    <span class="streak-badge-icon">🔥</span>
+                    <span>5 Days</span>
+                </div>
+                <div class="streak-badge streak-badge-10">
+                    <span class="streak-badge-icon">⭐</span>
+                    <span>10 Days</span>
+                </div>
+                <div class="streak-badge streak-badge-30">
+                    <span class="streak-badge-icon">🏆</span>
+                    <span>30 Days</span>
+                </div>
+                <div class="streak-badge streak-badge-90">
+                    <span class="streak-badge-icon">💎</span>
+                    <span>90 Days</span>
+                </div>
+            </div>
         </div>
 
         <section class="content-section">
-            <h2>What is Habit Tracking?</h2>
-            <p>Habit tracking is the practice of monitoring and recording your daily routines, behaviors, and activities to build consistency and achieve personal goals. Whether you want to exercise more, read daily, meditate, or quit a bad habit, tracking helps you stay accountable and see your progress over time.</p>
-            <p>The best habit tracking methods combine consistency with visibility—you need to see what you're doing (or not doing) to make meaningful changes. Modern habit tracking goes beyond simple checklists; it involves understanding patterns, maintaining streaks, and building momentum through small, daily actions.</p>
-        </section>
-
-        <section class="content-section">
-            <h2>Why Habits Matter: The Science and Psychology</h2>
-            <p>Research shows that habits account for about 40% of our daily behaviors. Understanding how habits work can help you build better ones and break bad ones.</p>
-            
-            <h3>The Habit Loop</h3>
-            <p>Every habit follows a three-part loop: <strong>cue, routine, reward</strong>. The cue triggers your brain to enter automatic mode, the routine is the behavior itself, and the reward helps your brain remember the pattern for the future. By tracking habits, you become more aware of these loops and can intentionally reshape them.</p>
-            
-            <h3>Neural Pathways and Consistency</h3>
-            <p>When you repeat a behavior consistently, your brain forms stronger neural pathways, making the action easier over time. Studies suggest it takes an average of 66 days for a new behavior to become automatic, though this varies from 18 to 254 days depending on the complexity and individual differences.</p>
-            
-            <h3>The Power of Streaks</h3>
-            <p>Streak tracking taps into our psychological desire for consistency and progress. Seeing a growing streak creates positive reinforcement and makes it harder to break the chain. This "don't break the chain" mentality, popularized by comedian Jerry Seinfeld, leverages loss aversion—we're more motivated to avoid losing progress than to gain it.</p>
-            
-            <h3>Small Wins Build Momentum</h3>
-            <p>Daily habit tracking helps you focus on small, achievable wins rather than overwhelming long-term goals. Each checkmark represents a victory, building confidence and momentum. This approach aligns with research showing that incremental progress is more sustainable than dramatic lifestyle changes.</p>
-        </section>
-
-        <section class="content-section">
-            <h2>How Habit Bots Help vs Manual Tracking</h2>
-            <p>While manual tracking (journals, apps, spreadsheets) works for some people, habit tracking bots offer unique advantages that can significantly improve your success rate.</p>
-            
-            <h3>Automated Reminders</h3>
-            <p>Unlike manual tracking where you must remember to log habits yourself, bots send you timely reminders. This reduces the cognitive load and ensures you never forget to check in, even on busy days. Our Telegram bot sends personalized reminders based on your custom schedule, respecting your timezone and preferences.</p>
-            
-            <h3>Reduced Friction</h3>
-            <p>Manual tracking requires opening an app, finding the right entry, and logging data. With a Telegram bot, checking a habit is as simple as tapping a button in a message you're already reading. This lower friction means higher compliance rates.</p>
-            
-            <h3>Contextual Engagement</h3>
-            <p>Bots engage you where you already spend time—in your messaging app. You don't need to switch contexts or remember to open a separate app. The habit check becomes part of your natural communication flow.</p>
-            
-            <h3>Smart Scheduling</h3>
-            <p>Our bot supports flexible reminder schedules: daily, weekly (specific days), monthly (specific dates), or interval-based (every N days). This level of customization is difficult to achieve with manual tracking systems.</p>
-            
-            <h3>Skip Without Breaking Streaks</h3>
-            <p>Life happens. Our bot allows you to skip days without breaking your streak, recognizing that perfect consistency isn't always possible. This flexibility reduces all-or-nothing thinking that often derails habit formation.</p>
-            
-            <h3>Visual Progress Tracking</h3>
-            <p>With built-in analytics, you can see your progress over time with charts and timelines. This visual feedback helps you identify patterns, celebrate wins, and adjust your approach when needed.</p>
-        </section>
-
-        <section class="content-section">
-            <h2>How Your Telegram Habit Tracker Works — Use Cases</h2>
-            <p>Our Telegram bot makes habit tracking simple, flexible, and effective. Here's how it works and real-world scenarios where it shines:</p>
-            
-            <h3>Getting Started</h3>
-            <p>Start a conversation with the bot, set your timezone, and begin creating habits. Each habit can have a custom name and reminder schedule tailored to your lifestyle.</p>
-            
-            <h3>Use Case 1: Daily Exercise</h3>
-            <p><strong>Scenario:</strong> You want to work out every morning at 7 AM.</p>
-            <p><strong>Setup:</strong> Create a "Morning Workout" habit with a daily reminder at 7:00 AM in your timezone.</p>
-            <p><strong>Benefit:</strong> The bot reminds you each morning. When you complete your workout, tap "Yes" to maintain your streak. If you're sick or traveling, use "Skip" to preserve your streak without guilt.</p>
-            
-            <h3>Use Case 2: Weekly Reading</h3>
-            <p><strong>Scenario:</strong> You aim to read for 30 minutes every Monday, Wednesday, and Friday evening.</p>
-            <p><strong>Setup:</strong> Create a "Reading" habit with a weekly schedule: Monday, Wednesday, Friday at 8:00 PM.</p>
-            <p><strong>Benefit:</strong> Reminders only come on the days you've committed to reading, reducing notification fatigue while keeping you accountable.</p>
-            
-            <h3>Use Case 3: Monthly Financial Review</h3>
-            <p><strong>Scenario:</strong> You want to review your budget on the 1st and 15th of each month.</p>
-            <p><strong>Setup:</strong> Create a "Budget Review" habit with a monthly schedule: days 1 and 15 at 6:00 PM.</p>
-            <p><strong>Benefit:</strong> The bot reminds you twice per month at the exact times you've chosen, helping you maintain financial discipline without daily overhead.</p>
-            
-            <h3>Use Case 4: Interval-Based Habits</h3>
-            <p><strong>Scenario:</strong> You want to water your plants every 3 days.</p>
-            <p><strong>Setup:</strong> Create a "Water Plants" habit with an interval schedule: every 3 days at 9:00 AM, starting from today.</p>
-            <p><strong>Benefit:</strong> Perfect for habits that don't follow daily or weekly patterns. The bot calculates the next due date automatically.</p>
-            
-            <h3>Use Case 5: Breaking Bad Habits</h3>
-            <p><strong>Scenario:</strong> You want to quit smoking and track your smoke-free days.</p>
-            <p><strong>Setup:</strong> Create a "No Smoking" habit with a daily reminder. Each day you don't smoke, mark it complete. If you slip, use "No" to reset your streak and start fresh.</p>
-            <p><strong>Benefit:</strong> Visual progress tracking shows your smoke-free streak, providing motivation. The analytics page helps you identify patterns and celebrate milestones.</p>
-            
-            <h3>Use Case 6: Multiple Time Zones</h3>
-            <p><strong>Scenario:</strong> You travel frequently or work across time zones.</p>
-            <p><strong>Setup:</strong> Set your timezone preference when you start. All reminders and schedules respect your chosen timezone.</p>
-            <p><strong>Benefit:</strong> Reminders arrive at the right local time, regardless of where you are or where the server is located.</p>
-        </section>
-
-        <section class="content-section">
-            <h2>FAQs About Habit Tracking and the Bot</h2>
-            
-            <div class="faq-item">
-                <h3>What is the best habit tracking app?</h3>
-                <p>The best habit tracking tool is one that fits seamlessly into your daily routine. Telegram bots like ours offer the advantage of being accessible without switching apps, with automated reminders and flexible scheduling. The key is consistency—choose a method you'll actually use.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>How do I build habits effectively?</h3>
-                <p>Start small, be specific, and track consistently. Instead of "exercise more," try "do 10 push-ups every morning at 7 AM." Use our bot to set reminders, track streaks, and maintain momentum. Remember that skipping occasionally is okay—the goal is long-term consistency, not perfection.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>How long does it take to form a habit?</h3>
-                <p>Research suggests an average of 66 days, but this varies widely (18-254 days) depending on the habit's complexity, your motivation, and individual differences. Simple habits like drinking water may take less time than complex ones like learning a new skill.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>Can I track multiple habits?</h3>
-                <p>Yes! Our bot supports unlimited habits per user. Each habit can have its own custom schedule, timezone, and reminder settings. View all your habits with the <code>/myhabits</code> command.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>What if I miss a day?</h3>
-                <p>You have three options: "Yes" (completed, streak continues), "No" (not completed, streak resets), or "Skip" (skip the day, streak preserved). The skip feature recognizes that life happens and helps you maintain momentum without all-or-nothing thinking.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>Can I change my reminder schedule?</h3>
-                <p>Absolutely! You can update any habit's reminder schedule at any time. The bot supports daily, weekly (specific days), monthly (specific dates), and interval-based (every N days) schedules, all in your preferred timezone.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>How do I see my progress?</h3>
-                <p>Use the <code>/analytics</code> command to get a link to your personal analytics page. You'll see charts showing your streak progression over time, a detailed timeline of completions, skips, and drops, plus statistics about your habit performance.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>Is my data private?</h3>
-                <p>Yes. We store only the data necessary to provide the service (habit names, completion records, preferences). Your data is stored securely and is not shared with third parties. See our <a href="/privacy-policy.html">Privacy Policy</a> for details.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>Do I need to install anything?</h3>
-                <p>No installation required! If you have Telegram installed, just start a conversation with our bot. No app downloads, no account creation beyond Telegram—it's that simple.</p>
-            </div>
-            
-            <div class="faq-item">
-                <h3>What's the difference between daily habit tracking and weekly/monthly?</h3>
-                <p>Daily tracking is great for habits you want to do every day (exercise, meditation, reading). Weekly schedules work well for habits that happen on specific days (gym on weekdays, meal prep on Sundays). Monthly schedules suit periodic tasks (budget review, deep cleaning). Choose what fits your lifestyle.</p>
-            </div>
+            <h2>Learn More</h2>
+            <p>Want the science, psychology, and real-world use cases behind habit tracking (plus how our Telegram habit tracker helps)?</p>
+            <p><a href="/blog/">Visit our Blog →</a> &nbsp;|&nbsp; <a href="/blog/habit-tracking.html">Read the Habit Tracking Guide →</a></p>
         </section>
 
         <div class="footer">
-            <p>Simple • Motivating • Effective</p>
+            <p><a href="/blog/">Blog</a> &nbsp;·&nbsp; <a href="/privacy-policy.html">Privacy</a> &nbsp;·&nbsp; <a href="/terms.html">Terms</a></p>
+            <p>Simple · Motivating · Effective</p>
         </div>
     </div>
-</body>
-</html>
 
+</body>
+
+</html>

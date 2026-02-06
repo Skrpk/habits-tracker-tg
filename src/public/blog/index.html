@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog — Habits Builder</title>
+    <meta name="description" content="Stories, guides, and insights about habit tracking. Learn how to build better habits with our Telegram bot." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.hero {
+    margin-bottom: 50px;
+}
+
+.robot-emoji {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 12px;
+}
+
+.subtitle {
+    font-size: 20px;
+    color: #718096;
+    font-weight: 400;
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.feature {
+    padding: 30px 20px;
+    background: #f7fafc;
+    border-radius: 16px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.feature h3 {
+    font-size: 20px;
+    color: #2d3748;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.feature p {
+    font-size: 14px;
+    color: #718096;
+}
+
+.cta {
+    margin-bottom: 40px;
+}
+
+.telegram-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #0088cc;
+    color: white;
+    padding: 16px 32px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+}
+
+.telegram-button:hover {
+    background: #006ba3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 136, 204, 0.5);
+}
+
+.telegram-button svg {
+    width: 24px;
+    height: 24px;
+}
+
+.footer {
+    padding-top: 30px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.footer p {
+    color: #a0aec0;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.content-section {
+    text-align: left;
+    margin-bottom: 50px;
+    padding-top: 40px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.content-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.content-section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.content-section h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.content-section p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #4a5568;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.content-section strong {
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.content-section code {
+    background: #f7fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    color: #667eea;
+}
+
+.content-section a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.content-section a:hover {
+    color: #5568d3;
+    text-decoration: underline;
+}
+
+.faq-item {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.faq-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.faq-item h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.faq-item p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #4a5568;
+    margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+    .container { padding: 40px 24px; }
+    h1 { font-size: 32px; }
+    .subtitle { font-size: 18px; }
+    .features { grid-template-columns: 1fr; gap: 20px; }
+    .robot-emoji { font-size: 60px; }
+    .content-section { margin-bottom: 40px; padding-top: 30px; }
+    .content-section h2 { font-size: 26px; margin-bottom: 16px; }
+    .content-section h3 { font-size: 20px; margin-top: 24px; margin-bottom: 10px; }
+    .content-section p { font-size: 15px; line-height: 1.6; }
+    .faq-item { margin-bottom: 28px; padding-bottom: 20px; }
+    .faq-item h3 { font-size: 18px; }
+    .faq-item p { font-size: 14px; }
+}
+
+/* Blog post list styles */
+.blog-post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.blog-post-item {
+    padding: 30px;
+    background: #f7fafc;
+    border-radius: 16px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e2e8f0;
+}
+
+.blog-post-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e0;
+}
+
+.blog-post-item h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.blog-post-item h2 a {
+    color: #2d3748;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.blog-post-item h2 a:hover {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.blog-post-description {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #4a5568;
+    margin-bottom: 16px;
+}
+
+.blog-post-link {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+.blog-post-link a {
+    color: #667eea;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.blog-post-link a:hover {
+    color: #5568d3;
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .blog-post-item { padding: 24px; }
+    .blog-post-item h2 { font-size: 20px; }
+    .blog-post-description { font-size: 15px; }
+}
+
+
+/* ============================================================
+   REDESIGNED BLOG INDEX STYLES
+   ============================================================ */
+
+:root {
+    --hb-bg: #FAFAF8;
+    --hb-surface: #FFFFFF;
+    --hb-text: #1A1A1A;
+    --hb-text-secondary: #555555;
+    --hb-text-muted: #888888;
+    --hb-accent: #2D9F6F;
+    --hb-accent-light: #E8F5EE;
+    --hb-accent-dark: #1E7A52;
+    --hb-border: #E5E5E0;
+    --hb-font-display: 'Newsreader', Georgia, serif;
+    --hb-font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body.blog-page {
+    background: var(--hb-bg);
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+    padding: 0;
+    font-family: var(--hb-font-body);
+    color: var(--hb-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Site header / nav ---- */
+.site-header {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-logo {
+    font-family: var(--hb-font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--hb-text);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.site-logo-icon { font-size: 1.4rem; }
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+}
+
+.site-nav a {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--hb-text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.site-nav a:hover { color: var(--hb-accent-dark); }
+
+/* ---- Container override ---- */
+body.blog-page .container {
+    max-width: 760px;
+    margin: 0 auto;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0 2rem 4rem;
+    text-align: center;
+}
+
+/* ---- Hero ---- */
+body.blog-page .hero {
+    margin-bottom: 0;
+    padding: 3rem 0 2.5rem;
+}
+
+body.blog-page .robot-emoji {
+    font-size: 48px;
+    margin-bottom: 1rem;
+    animation: float 4s ease-in-out infinite;
+}
+
+body.blog-page h1 {
+    font-family: var(--hb-font-display);
+    font-size: clamp(2rem, 4.5vw, 2.75rem);
+    font-weight: 700;
+    color: var(--hb-text);
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+body.blog-page .subtitle {
+    font-family: var(--hb-font-body);
+    font-size: 1.1rem;
+    color: var(--hb-text-secondary);
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+/* ---- CTA buttons ---- */
+body.blog-page .cta {
+    margin-bottom: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+body.blog-page .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--hb-surface);
+    color: var(--hb-text);
+    border: 1px solid var(--hb-border);
+    padding: 0.7rem 1.5rem;
+    border-radius: 100px;
+    text-decoration: none;
+    font-family: var(--hb-font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+body.blog-page .btn-secondary:hover {
+    border-color: var(--hb-accent);
+    color: var(--hb-accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+body.blog-page .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--hb-accent);
+    color: #fff;
+    padding: 0.7rem 1.5rem;
+    border-radius: 100px;
+    text-decoration: none;
+    font-family: var(--hb-font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(45, 159, 111, 0.25);
+}
+
+body.blog-page .btn-primary:hover {
+    background: var(--hb-accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(45, 159, 111, 0.35);
+}
+
+/* ---- Blog post cards ---- */
+body.blog-page .content-section {
+    text-align: left;
+    margin-bottom: 2.5rem;
+    padding-top: 0;
+    border-top: none;
+}
+
+body.blog-page .blog-post-list {
+    gap: 1.25rem;
+}
+
+body.blog-page .blog-post-item {
+    padding: 1.75rem 2rem;
+    background: var(--hb-surface);
+    border: 1px solid var(--hb-border);
+    border-radius: 14px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    text-align: left;
+}
+
+body.blog-page .blog-post-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    border-color: var(--hb-accent);
+}
+
+body.blog-page .blog-post-item h2 {
+    font-family: var(--hb-font-display);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--hb-text);
+    margin-bottom: 0.6rem;
+    line-height: 1.35;
+}
+
+body.blog-page .blog-post-item h2 a {
+    color: var(--hb-text);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+body.blog-page .blog-post-item h2 a:hover {
+    color: var(--hb-accent-dark);
+}
+
+body.blog-page .blog-post-description {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--hb-text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+body.blog-page .blog-post-link {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+body.blog-page .blog-post-link a {
+    color: var(--hb-accent-dark);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+body.blog-page .blog-post-link a:hover {
+    color: var(--hb-accent);
+    text-decoration: underline;
+}
+
+/* ---- Footer ---- */
+body.blog-page .footer {
+    max-width: 600px;
+    margin: 0 auto;
+    padding-top: 2rem;
+    border-top: 1px solid var(--hb-border);
+    text-align: center;
+}
+
+body.blog-page .footer p {
+    font-size: 0.82rem;
+    color: var(--hb-text-muted);
+    font-weight: 400;
+    letter-spacing: 0;
+    margin-bottom: 0.35rem;
+}
+
+body.blog-page .footer a {
+    color: var(--hb-text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+body.blog-page .footer a:hover {
+    color: var(--hb-accent-dark);
+    text-decoration: underline;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+    .site-header { padding: 1.25rem; }
+    .site-nav { gap: 1rem; }
+    .site-nav a { font-size: 0.82rem; }
+    body.blog-page .container { padding: 0 1.25rem 3rem; }
+    body.blog-page .hero { padding: 2rem 0 2rem; }
+    body.blog-page .robot-emoji { font-size: 38px; }
+    body.blog-page h1 { font-size: 1.75rem; }
+    body.blog-page .subtitle { font-size: 1rem; }
+    body.blog-page .cta { gap: 0.5rem; }
+    body.blog-page .btn-secondary,
+    body.blog-page .btn-primary { font-size: 0.82rem; padding: 0.6rem 1.15rem; }
+    body.blog-page .blog-post-item { padding: 1.25rem 1.25rem; }
+    body.blog-page .blog-post-item h2 { font-size: 1.15rem; }
+    body.blog-page .blog-post-description { font-size: 0.85rem; }
+}
+    </style>
+</head>
+<body class="blog-page">
+
+    <header class="site-header">
+        <a href="/" class="site-logo">
+            <span class="site-logo-icon">🎯</span>
+            Habits Builder
+        </a>
+        <nav class="site-nav">
+            <a href="/">Home</a>
+            <a href="/blog/">Blog</a>
+            <a href="https://t.me/habits_checking_bot" target="_blank">Open Bot</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <div class="robot-emoji">📚</div>
+            <h1>Blog</h1>
+            <p class="subtitle">Stories, guides, and insights about habit tracking</p>
+        </div>
+
+        <div class="cta">
+            <a href="/" class="btn-secondary">← Back to Home</a>
+            <a href="https://t.me/habits_checking_bot" class="btn-primary" target="_blank">Start on Telegram</a>
+        </div>
+
+        <section class="content-section">
+            <div class="blog-post-list">
+                <article class="blog-post-item">
+                    <h2><a href="/blog/how-i-quit-smoking-telegram-bot.html">How I Quit Smoking Using a Telegram Bot — My 90-Day Streak Story</a></h2>
+                    <p class="blog-post-description">I quit smoking after 8 years using a Telegram habit tracker bot. Here's how daily reminders, streak tracking, and honest analytics helped me finally break the habit for good.</p>
+                    <p class="blog-post-link"><a href="/blog/how-i-quit-smoking-telegram-bot.html">Read more →</a></p>
+                </article>
+
+                <article class="blog-post-item">
+                    <h2><a href="/blog/habit-tracking.html">Habit Tracking Guide</a></h2>
+                    <p class="blog-post-description">Science, strategy, and practical use cases. Learn about the psychology of habits, how habit tracking bots help vs manual tracking, and real-world scenarios where our Telegram habit tracker shines.</p>
+                    <p class="blog-post-link"><a href="/blog/habit-tracking.html">Read more →</a></p>
+                </article>
+            </div>
+        </section>
+
+        <div class="footer">
+            <p><a href="/">Home</a> &nbsp;·&nbsp; <a href="/blog/">Blog</a> &nbsp;·&nbsp; <a href="/privacy-policy.html">Privacy</a> &nbsp;·&nbsp; <a href="/terms.html">Terms</a></p>
+            <p>Simple · Motivating · Effective</p>
+        </div>
+    </div>
+
+</body>
+</html>

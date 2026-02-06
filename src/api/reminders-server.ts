@@ -215,13 +215,18 @@ async function serveStaticFile(
     }
   }
   
-  // Determine file path
-  let filePath = url === '/' ? '/index.html' : url;
-  // Remove leading slash and query parameters
-  filePath = filePath.split('?')[0];
+  // Remove query parameters
+  let filePath = url.split('?')[0];
+  
+  // Handle root path
+  if (filePath === '/') {
+    filePath = '/index.html';
+  }
+  
+  // Remove leading slash
   filePath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
   
-  const fullPath = resolve(publicDir, filePath);
+  let fullPath = resolve(publicDir, filePath);
   
   // Security: prevent directory traversal
   if (!fullPath.startsWith(publicDir)) {
@@ -230,46 +235,68 @@ async function serveStaticFile(
     return;
   }
   
-  // Check if file exists
-  if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
-    // If file doesn't exist, try serving index.html for SPA routing
-    const indexPath = join(publicDir, 'index.html');
+  // Check if file exists as-is
+  if (existsSync(fullPath) && statSync(fullPath).isFile()) {
+    // File exists, serve it
+    const content = readFileSync(fullPath);
+    const ext = extname(fullPath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+      '.ttf': 'font/ttf',
+    };
+    const contentType = contentTypeMap[ext] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content);
+    return;
+  }
+  
+  // If it's a directory, try serving index.html from that directory
+  if (existsSync(fullPath) && statSync(fullPath).isDirectory()) {
+    const indexPath = join(fullPath, 'index.html');
     if (existsSync(indexPath)) {
       const content = readFileSync(indexPath);
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(content);
       return;
     }
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not found');
+  }
+  
+  // If file doesn't exist, try adding .html extension
+  if (!filePath.endsWith('.html')) {
+    const htmlPath = filePath + '.html';
+    const htmlFullPath = resolve(publicDir, htmlPath);
+    
+    // Security check again
+    if (htmlFullPath.startsWith(publicDir) && existsSync(htmlFullPath) && statSync(htmlFullPath).isFile()) {
+      const content = readFileSync(htmlFullPath);
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(content);
+      return;
+    }
+  }
+  
+  // If still not found, try serving root index.html for SPA routing
+  const indexPath = join(publicDir, 'index.html');
+  if (existsSync(indexPath)) {
+    const content = readFileSync(indexPath);
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(content);
     return;
   }
   
-  // Read and serve the file
-  const content = readFileSync(fullPath);
-  const ext = extname(fullPath).toLowerCase();
-  
-  // Set content type based on file extension
-  const contentTypeMap: Record<string, string> = {
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'application/javascript',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2',
-    '.ttf': 'font/ttf',
-  };
-  
-  const contentType = contentTypeMap[ext] || 'application/octet-stream';
-  
-  res.writeHead(200, { 'Content-Type': contentType });
-  res.end(content);
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not found');
 }
 
 /**

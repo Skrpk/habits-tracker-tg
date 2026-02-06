@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habits Analytics - Habits Tracker</title>
+    <title>Habits Analytics — Habits Builder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -12,43 +15,102 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
+        :root {
+            --hb-bg: #FAFAF8;
+            --hb-surface: #FFFFFF;
+            --hb-text: #1A1A1A;
+            --hb-text-secondary: #555555;
+            --hb-text-muted: #888888;
+            --hb-accent: #2D9F6F;
+            --hb-accent-light: #E8F5EE;
+            --hb-accent-dark: #1E7A52;
+            --hb-border: #E5E5E0;
+            --hb-card-bg: #F6F6F3;
+            --hb-font-display: 'Newsreader', Georgia, serif;
+            --hb-font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
+
+        body {
+            font-family: var(--hb-font-body);
+            background: var(--hb-bg);
+            min-height: 100vh;
+            padding: 0;
+            color: var(--hb-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .site-header {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .site-logo {
+            font-family: var(--hb-font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .site-logo-icon { font-size: 1.4rem; }
+
+        .site-nav {
+            display: flex;
+            align-items: center;
+            gap: 1.75rem;
+        }
+
+        .site-nav a {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--hb-text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .site-nav a:hover { color: var(--hb-accent-dark); }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 40px;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 2rem 2rem 4rem;
         }
 
         h1 {
-            font-size: 36px;
-            color: #2d3748;
-            margin-bottom: 30px;
+            font-family: var(--hb-font-display);
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            margin-bottom: 2rem;
             text-align: center;
         }
 
         .loading {
             text-align: center;
             padding: 40px;
-            color: #718096;
+            color: var(--hb-text-secondary);
+            font-size: 1rem;
         }
 
         .error {
             text-align: center;
-            padding: 40px;
-            color: #e53e3e;
+            padding: 1.5rem;
+            color: #742a2a;
             background: #fed7d7;
             border-radius: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 2rem;
+            border: 1px solid #feb2b2;
         }
 
         .habits-list {
@@ -59,30 +121,31 @@
         }
 
         .habit-card {
-            background: #f7fafc;
-            border-radius: 12px;
-            padding: 20px;
+            background: var(--hb-surface);
+            border-radius: 14px;
+            padding: 1.5rem;
             cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
+            transition: all 0.25s ease;
+            border: 1px solid var(--hb-border);
         }
 
         .habit-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+            border-color: var(--hb-accent);
         }
 
         .habit-card.active {
-            border-color: #667eea;
-            background: #edf2f7;
+            border-color: var(--hb-accent);
+            background: var(--hb-accent-light);
         }
 
         .habit-name {
-            font-size: 20px;
+            font-family: var(--hb-font-display);
+            font-size: 1.2rem;
             font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 10px;
+            color: var(--hb-text);
+            margin-bottom: 1rem;
         }
 
         .habit-stats {
@@ -96,39 +159,45 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 8px 12px;
-            background: white;
-            border-radius: 8px;
+            padding: 0.65rem 0.9rem;
+            background: var(--hb-card-bg);
+            border-radius: 10px;
             min-width: 70px;
         }
 
         .stat-value {
-            font-size: 24px;
+            font-size: 1.5rem;
             font-weight: 700;
-            color: #667eea;
+            color: var(--hb-accent-dark);
         }
 
         .stat-label {
-            font-size: 12px;
-            color: #718096;
-            margin-top: 4px;
+            font-size: 0.75rem;
+            color: var(--hb-text-muted);
+            margin-top: 0.25rem;
+            font-weight: 500;
         }
 
         .back-button {
             display: inline-block;
-            padding: 10px 20px;
-            background: #667eea;
+            padding: 0.7rem 1.5rem;
+            background: var(--hb-accent);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 100px;
             cursor: pointer;
-            font-size: 16px;
-            margin-bottom: 20px;
+            font-family: var(--hb-font-body);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
             text-decoration: none;
+            transition: all 0.25s ease;
         }
 
         .back-button:hover {
-            background: #5568d3;
+            background: var(--hb-accent-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(45, 159, 111, 0.3);
         }
 
         .habit-detail {
@@ -144,19 +213,26 @@
         }
 
         .habit-detail-header h2 {
-            font-size: 32px;
-            color: #2d3748;
-            margin-bottom: 10px;
+            font-family: var(--hb-font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            margin-bottom: 0.5rem;
+        }
+
+        .habit-detail-header p {
+            color: var(--hb-text-secondary);
+            font-size: 0.9rem;
         }
 
         .chart-container {
             position: relative;
             height: 400px;
-            margin-bottom: 30px;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            background: var(--hb-surface);
+            padding: 1.5rem;
+            border-radius: 14px;
+            border: 1px solid var(--hb-border);
         }
 
         .stats-grid {
@@ -167,24 +243,27 @@
         }
 
         .stat-card {
-            background: #f7fafc;
-            padding: 20px;
-            border-radius: 12px;
+            background: var(--hb-surface);
+            padding: 1.5rem;
+            border-radius: 14px;
             text-align: center;
+            border: 1px solid var(--hb-border);
         }
 
         .stat-card-value {
-            font-size: 36px;
+            font-family: var(--hb-font-display);
+            font-size: 2.25rem;
             font-weight: 700;
-            color: #667eea;
-            margin-bottom: 8px;
+            color: var(--hb-accent-dark);
+            margin-bottom: 0.5rem;
         }
 
         .stat-card-label {
-            font-size: 14px;
-            color: #718096;
+            font-size: 0.75rem;
+            color: var(--hb-text-muted);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.05em;
+            font-weight: 600;
         }
 
         .timeline {
@@ -194,15 +273,16 @@
         .timeline-item {
             display: flex;
             align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: #f7fafc;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            background: var(--hb-surface);
+            border-radius: 10px;
+            border: 1px solid var(--hb-border);
+            border-left: 4px solid var(--hb-accent);
         }
 
         .timeline-item.completed {
-            border-left-color: #48bb78;
+            border-left-color: var(--hb-accent);
         }
 
         .timeline-item.skipped {
@@ -215,8 +295,9 @@
 
         .timeline-date {
             font-weight: 600;
-            color: #2d3748;
+            color: var(--hb-text);
             min-width: 120px;
+            font-size: 0.9rem;
         }
 
         .timeline-type {
@@ -229,8 +310,8 @@
         }
 
         .timeline-type.completed {
-            background: #c6f6d5;
-            color: #22543d;
+            background: var(--hb-accent-light);
+            color: var(--hb-accent-dark);
         }
 
         .timeline-type.skipped {
@@ -246,22 +327,41 @@
         .timeline-streak {
             margin-left: auto;
             font-weight: 600;
-            color: #667eea;
+            color: var(--hb-accent-dark);
+            font-size: 0.9rem;
+        }
+
+        .timeline h3 {
+            font-family: var(--hb-font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            margin-bottom: 1.25rem;
         }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 20px;
+            .site-header {
+                padding: 1.25rem 1.25rem;
             }
-
+            .site-nav {
+                gap: 1rem;
+            }
+            .site-nav a {
+                font-size: 0.82rem;
+            }
+            .container {
+                padding: 1.25rem 1.25rem 3rem;
+            }
+            h1 {
+                font-size: 1.75rem;
+            }
             .habits-list {
                 grid-template-columns: 1fr;
             }
-
             .chart-container {
                 height: 300px;
+                padding: 1rem;
             }
-
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -269,6 +369,17 @@
     </style>
 </head>
 <body>
+    <header class="site-header">
+        <a href="/" class="site-logo">
+            <span class="site-logo-icon">🎯</span>
+            Habits Builder
+        </a>
+        <nav class="site-nav">
+            <a href="/blog/">Blog</a>
+            <a href="https://t.me/habits_checking_bot" target="_blank">Open Bot</a>
+        </nav>
+    </header>
+
     <div class="container">
         <h1>📊 Habits Analytics</h1>
         
@@ -391,7 +502,7 @@
                 <button class="back-button" onclick="showHabitsList()">← Back to Habits</button>
                 <div class="habit-detail-header">
                     <h2>${escapeHtml(habit.name)}</h2>
-                    <p style="color: #718096;">Created: ${formatDate(habit.createdAt)}</p>
+                    <p>Created: ${formatDate(habit.createdAt)}</p>
                 </div>
                 
                 <div class="stats-grid">
@@ -426,7 +537,7 @@
                 </div>
 
                 <div class="timeline">
-                    <h3 style="margin-bottom: 20px; color: #2d3748;">Timeline</h3>
+                    <h3>Timeline</h3>
                     <div id="timeline-items"></div>
                 </div>
             `;
@@ -457,8 +568,8 @@
                     datasets: [{
                         label: 'Streak',
                         data: streaks,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderColor: '#2D9F6F',
+                        backgroundColor: 'rgba(45, 159, 111, 0.1)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
@@ -528,7 +639,7 @@
                     datasets: [{
                         data: [completed, skipped, dropped],
                         backgroundColor: [
-                            '#48bb78',
+                            '#2D9F6F',
                             '#ed8936',
                             '#f56565'
                         ],
@@ -560,7 +671,7 @@
             );
 
             if (checkHistory.length === 0) {
-                timelineContainer.innerHTML = '<p style="color: #718096; text-align: center; padding: 20px;">No check history yet.</p>';
+                timelineContainer.innerHTML = '<p style="color: var(--hb-text-muted); text-align: center; padding: 20px;">No check history yet.</p>';
                 return;
             }
 

@@ -31,6 +31,7 @@ services:
       - PORT=3000
       - ADMIN_ID=148654904
       - OPENAI_API_KEY=
+      - NOTIFICATION_CHANNEL_ID=-1003841190105
     volumes:
       - ./src:/app/src
       - ./package.json:/app/package.json
