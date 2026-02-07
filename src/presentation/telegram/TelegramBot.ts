@@ -101,6 +101,10 @@ export class TelegramBotService {
           command: 'analytics',
           description: 'View your habits analytics',
         },
+        {
+          command: 'settings',
+          description: 'Manage your settings',
+        },
       ]);
       Logger.info('Bot commands menu set successfully');
     } catch (error) {
@@ -600,6 +604,12 @@ export class TelegramBotService {
           return;
         }
         
+        // Handle /settings command
+        if (text.match(/^\/settings/)) {
+          await this.handleSettingsCommand(chatId, userId, username);
+          return;
+        }
+        
         // Handle /analytics command
         if (text.match(/^\/analytics/)) {
           await this.handleAnalyticsCommand(chatId, userId, username, msg.from);
@@ -717,6 +727,7 @@ export class TelegramBotService {
         '/newhabit - Create a new habit\n\n' +
         '/myhabits - View all your habits\n\n' +
         '/analytics - View detailed analytics and graphs\n\n' +
+        '/settings - Manage your settings\n\n' +
         'The bot will remind you daily to check your habits! ⏰\n\n',
         { parse_mode: 'Markdown' }
       );
@@ -1287,36 +1298,196 @@ export class TelegramBotService {
     }
   }
 
+  private async handleSettingsCommand(
+    chatId: number,
+    userId: number | undefined,
+    username: string,
+    messageId?: number
+  ): Promise<void> {
+    if (!userId) {
+      Logger.warn('Unable to identify user for settings command', { chatId });
+      await this.bot.sendMessage(chatId, 'Unable to identify user.');
+      return;
+    }
+
+    try {
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const currentTimezone = preferences?.timezone || 'Not set';
+      const timezoneDisplay = currentTimezone !== 'Not set' 
+        ? currentTimezone.split('/').pop()?.replace(/_/g, ' ') || currentTimezone
+        : 'Not set';
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🌍 Change Timezone', callback_data: 'settings_timezone' },
+          ],
+          // Add more settings options here in the future
+          // Example:
+          // [{ text: '🔔 Notification Settings', callback_data: 'settings_notifications' }],
+          // [{ text: '🌐 Language', callback_data: 'settings_language' }],
+        ],
+      };
+
+      const message = `⚙️ *Settings*\n\n` +
+        `*Current Settings:*\n` +
+        `🌍 Timezone: ${timezoneDisplay}\n\n` +
+        `Select an option to change:`;
+
+      if (messageId) {
+        await this.safeEditMessage(message, {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: keyboard,
+        });
+      } else {
+        await this.bot.sendMessage(chatId, message, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard,
+        });
+      }
+
+      Logger.info('Settings menu shown', { userId, chatId });
+    } catch (error) {
+      Logger.error('Error showing settings menu', {
+        userId,
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async showTimezoneSelectionFromSettings(
+    userId: number,
+    chatId: number,
+    messageId?: number
+  ): Promise<void> {
+    // 24 unique timezones covering all UTC offsets from -12 to +12
+    const timezones = [
+      // UTC-12:00 to UTC-01:00
+      { text: '🌴 Baker Island (BIT)', tz: 'Pacific/Baker_Island' }, // UTC-12:00
+      { text: '🏝️ Niue (NUT)', tz: 'Pacific/Niue' }, // UTC-11:00
+      { text: '🌺 Hawaii (HST)', tz: 'Pacific/Honolulu' }, // UTC-10:00
+      { text: '🏔️ Alaska (AKST)', tz: 'America/Anchorage' }, // UTC-09:00
+      { text: '🌴 Los Angeles (PST)', tz: 'America/Los_Angeles' }, // UTC-08:00
+      { text: '⛰️ Denver (MST)', tz: 'America/Denver' }, // UTC-07:00
+      { text: '🏙️ Chicago (CST)', tz: 'America/Chicago' }, // UTC-06:00
+      { text: '🗽 New York (EST)', tz: 'America/New_York' }, // UTC-05:00
+      { text: '🌊 Halifax (AST)', tz: 'America/Halifax' }, // UTC-04:00
+      { text: '🇧🇷 São Paulo (BRT)', tz: 'America/Sao_Paulo' }, // UTC-03:00
+      { text: '🏔️ South Georgia (GST)', tz: 'Atlantic/South_Georgia' }, // UTC-02:00
+      { text: '🏝️ Cape Verde (CVT)', tz: 'Atlantic/Cape_Verde' }, // UTC-01:00
+      // UTC±00:00 to UTC+12:00
+      { text: '🇬🇧 London (GMT)', tz: 'Europe/London' }, // UTC±00:00
+      { text: '🇫🇷 Paris (CET)', tz: 'Europe/Paris' }, // UTC+01:00
+      { text: '🇺🇦 Kyiv (EET)', tz: 'Europe/Kyiv' }, // UTC+02:00
+      { text: '🇷🇺 Moscow (MSK)', tz: 'Europe/Moscow' }, // UTC+03:00
+      { text: '🇦🇪 Dubai (GST)', tz: 'Asia/Dubai' }, // UTC+04:00
+      { text: '🇵🇰 Karachi (PKT)', tz: 'Asia/Karachi' }, // UTC+05:00
+      { text: '🇮🇳 Mumbai (IST)', tz: 'Asia/Kolkata' }, // UTC+05:30
+      { text: '🇧🇩 Dhaka (BST)', tz: 'Asia/Dhaka' }, // UTC+06:00
+      { text: '🇹🇭 Bangkok (ICT)', tz: 'Asia/Bangkok' }, // UTC+07:00
+      { text: '🇨🇳 Shanghai (CST)', tz: 'Asia/Shanghai' }, // UTC+08:00
+      { text: '🇯🇵 Tokyo (JST)', tz: 'Asia/Tokyo' }, // UTC+09:00
+      { text: '🇦🇺 Sydney (AEST)', tz: 'Australia/Sydney' }, // UTC+10:00
+      { text: '🏝️ Solomon Islands (SBT)', tz: 'Pacific/Guadalcanal' }, // UTC+11:00
+      { text: '🇳🇿 Auckland (NZST)', tz: 'Pacific/Auckland' }, // UTC+12:00
+    ];
+
+    // Create keyboard with timezone buttons (2 columns)
+    const keyboard = {
+      inline_keyboard: [] as any[][],
+    };
+
+    for (let i = 0; i < timezones.length; i += 2) {
+      const row = [timezones[i]];
+      if (i + 1 < timezones.length) {
+        row.push(timezones[i + 1]);
+      }
+      keyboard.inline_keyboard.push(
+        row.map(tz => ({
+          text: tz.text,
+          callback_data: `timezone_select:${tz.tz}:settings`,
+        }))
+      );
+    }
+
+    // Add back button
+    keyboard.inline_keyboard.push([
+      { text: '← Back to Settings', callback_data: 'settings_menu' },
+    ]);
+
+    const message = '🌍 *Change Timezone*\n\n' +
+      'Select your timezone:';
+
+    if (messageId) {
+      await this.safeEditMessage(message, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+    } else {
+      await this.bot.sendMessage(chatId, message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+    }
+  }
+
   private async handleTimezoneSelection(
     userId: number,
     chatId: number,
     timezone: string,
     messageId?: number,
-    user?: TelegramBot.User
+    user?: TelegramBot.User,
+    isFromSettings: boolean = false
   ): Promise<void> {
     try {
       await this.setUserPreferencesUseCase.setTimezone(userId, timezone, user);
       
       const timezoneName = timezone.split('/').pop()?.replace(/_/g, ' ') || timezone;
       
-      await this.safeEditMessage(
-        `✅ Timezone set to ${timezoneName}\n\n` +
-        '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
-        '— Plutarch\n\n' +
-        '*Welcome to Habits Tracker! 🎯*\n\n' +
-        'Commands:\n' +
-        '/newhabit - Create a new habit\n\n' +
-        '/myhabits - View all your habits\n\n' +
-        '/analytics - View detailed analytics and graphs\n\n' +
-        'The bot will remind you daily to check your habits! ⏰\n\n',
-        {
-          chat_id: chatId,
-          message_id: messageId,
-          parse_mode: 'Markdown',
-        }
-      );
+      if (isFromSettings) {
+        // Return to settings menu after timezone change
+        await this.safeEditMessage(
+          `✅ Timezone updated to ${timezoneName}\n\n` +
+          'Returning to settings...',
+          {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'Markdown',
+          }
+        );
+        
+        // Show settings menu again after a brief delay
+        setTimeout(async () => {
+          await this.handleSettingsCommand(chatId, userId, user?.username || 'unknown', messageId);
+        }, 1000);
+      } else {
+        // Original welcome message flow
+        await this.safeEditMessage(
+          `✅ Timezone set to ${timezoneName}\n\n` +
+          '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
+          '— Plutarch\n\n' +
+          '*Welcome to Habits Tracker! 🎯*\n\n' +
+          'Commands:\n' +
+          '/newhabit - Create a new habit\n\n' +
+          '/myhabits - View all your habits\n\n' +
+          '/analytics - View detailed analytics and graphs\n\n' +
+          '/settings - Manage your settings\n\n' +
+          'The bot will remind you daily to check your habits! ⏰\n\n',
+          {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'Markdown',
+          }
+        );
+      }
 
-      Logger.info('User timezone set', { userId, timezone });
+      Logger.info('User timezone set', { userId, timezone, isFromSettings });
     } catch (error) {
       Logger.error('Error setting timezone', {
         userId,
@@ -1718,10 +1889,23 @@ export class TelegramBotService {
       return;
     }
 
+    // Handle settings menu actions
+    if (data === 'settings_menu') {
+      await this.handleSettingsCommand(userId, chatId, username, query.message?.message_id);
+      return;
+    }
+
+    if (data === 'settings_timezone') {
+      await this.showTimezoneSelectionFromSettings(userId, chatId, query.message?.message_id);
+      return;
+    }
+
     // Handle timezone selection
-    const timezoneMatch = data.match(/^timezone_select:(.+)$/);
+    const timezoneMatch = data.match(/^timezone_select:(.+?)(?::(.+))?$/);
     if (timezoneMatch) {
-      await this.handleTimezoneSelection(userId, chatId, timezoneMatch[1], query.message?.message_id, query.from);
+      const timezone = timezoneMatch[1];
+      const isFromSettings = timezoneMatch[2] === 'settings';
+      await this.handleTimezoneSelection(userId, chatId, timezone, query.message?.message_id, query.from, isFromSettings);
       return;
     }
 
