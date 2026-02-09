@@ -1980,7 +1980,7 @@ export class TelegramBotService {
             // Multiple badges (e.g., streak jumped from 4 to 10 days)
             const badgeEmojis = newBadges.map(b => getBadgeInfo(b.type).emoji).join(' ');
             const badgeNames = newBadges.map(b => getBadgeInfo(b.type).name).join(', ');
-            message += `\n\n🎉 Badges earned: ${badgeEmojis} (${badgeNames})! Amazing progress!`;
+            message += `\n\n🎉 Badges earned: ${badgeEmojis} (${badgeNames})! Amazing progress!\n\n[@habits_checking_bot](t.me/habits_checking_bot)`;
           }
         }
       }
@@ -1990,6 +1990,7 @@ export class TelegramBotService {
         {
           chat_id: chatId,
           message_id: query.message?.message_id,
+          parse_mode: 'Markdown',
         }
       );
 
