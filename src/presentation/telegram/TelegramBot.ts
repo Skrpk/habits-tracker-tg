@@ -432,12 +432,17 @@ export class TelegramBotService {
         }
       );
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Logger.error('Error checking habits', {
         userId,
         chatId,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       });
-      await this.bot.sendMessage(chatId, `Error checking habits: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      await this.bot.sendMessage(chatId, `Error checking habits: ${errorMessage}`);
+      
+      // Send notification to channel
+      await this.sendErrorNotification(userId, undefined, 'Error checking habits', errorMessage);
     }
   }
 
@@ -513,13 +518,27 @@ export class TelegramBotService {
       ],
     };
 
-    await this.bot.sendMessage(
-      userId,
-      `⏰ Reminder: Did you "${habit.name}" today?`,
-      {
-        reply_markup: keyboard,
-      }
-    );
+    try {
+      await this.bot.sendMessage(
+        userId,
+        `⏰ Reminder: Did you "${habit.name}" today?`,
+        {
+          reply_markup: keyboard,
+        }
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Logger.error('Error sending habit reminder', {
+        userId,
+        habitId: habit.id,
+        habitName: habit.name,
+        error: errorMessage,
+      });
+      
+      // Send notification to channel
+      await this.sendErrorNotification(userId, habit.name, 'Error sending habit reminder', errorMessage);
+      throw error;
+    }
   }
 
   getBot(): TelegramBot {
@@ -801,6 +820,55 @@ export class TelegramBotService {
         channelId,
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  }
+
+  private async sendErrorNotification(
+    userId: number,
+    habitName: string | undefined,
+    context: string,
+    errorMessage: string
+  ): Promise<void> {
+    const channelId = process.env.NOTIFICATION_CHANNEL_ID;
+    
+    if (!channelId) {
+      Logger.debug('NOTIFICATION_CHANNEL_ID not set, skipping error notification', { userId });
+      return;
+    }
+
+    try {
+      const notificationMessage = 
+        '⚠️ *Error Notification*\n\n' +
+        `📝 Context: ${context}\n` +
+        `🆔 User ID: \`${userId}\`\n` +
+        (habitName ? `📛 Habit Name: ${habitName}\n` : '') +
+        `❌ Error: \`${errorMessage}\`\n` +
+        `⏰ Time: ${new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        })} UTC`;
+
+      await this.bot.sendMessage(channelId, notificationMessage, {
+        parse_mode: 'Markdown',
+        disable_notification: false,
+      });
+
+      Logger.info('Error notification sent', {
+        userId,
+        habitName,
+        context,
+        channelId,
+      });
+    } catch (error) {
+      // Don't fail the main operation if notification fails
+      Logger.error('Error sending error notification', {
+        userId,
+        habitName,
+        context,
+        channelId,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
