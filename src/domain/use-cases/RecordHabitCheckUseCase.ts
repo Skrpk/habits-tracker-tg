@@ -107,14 +107,11 @@ export class RecordHabitCheckUseCase {
       // Reset streak to 0 and clear skipped days
       newStreak = 0;
       
-      // Track drop date if there was a streak before dropping
-      if (habit.streak > 0) {
-        const droppedDay: DroppedDay = {
-          streakBeforeDrop: habit.streak,
-          date: today,
-        };
-        updatedDropped = [...(habit.dropped || []), droppedDay];
-      }
+      const droppedDay: DroppedDay = {
+        streakBeforeDrop: habit.streak,
+        date: today,
+      };
+      updatedDropped = [...(habit.dropped || []), droppedDay];
       
       // Update habit with dropped check (no checkHistory stored)
       // Note: Badges persist even when streak is dropped - they represent achievements earned
