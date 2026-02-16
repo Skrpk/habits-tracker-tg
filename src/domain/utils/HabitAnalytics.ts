@@ -94,15 +94,18 @@ function computeDailyHabitHistory(
   }
   
   // For daily habits: all days from creation to today are considered completed
-  // unless they are in the skipped or dropped list
-  // Process all days chronologically and build history
+  // unless they are in the skipped or dropped list.
+  // Do not infer today as completed if the habit hasn't been checked yet (lastCheckedDate !== today).
   const adjustedHistory: CheckHistoryEntry[] = [];
   let currentStreak = 0;
   const currentDate = new Date(creationDate);
-  
+  const todayStr = today.toISOString().split('T')[0];
+
   while (currentDate <= today) {
     const dateStr = currentDate.toISOString().split('T')[0];
-    
+    const isToday = dateStr === todayStr;
+    const checkedToday = (habit.lastCheckedDate || '') === todayStr;
+
     if (droppedDates.has(dateStr)) {
       // Drop: reset streak to 0
       const drop = droppedDates.get(dateStr)!;
@@ -121,6 +124,9 @@ function computeDailyHabitHistory(
         streak: currentStreak,
       });
       // Streak remains the same
+    } else if (isToday && !checkedToday) {
+      // Today but habit not checked yet — don't infer as completed
+      // (no entry added; streak unchanged)
     } else {
       // All other days are considered completed
       currentStreak++;
@@ -130,10 +136,10 @@ function computeDailyHabitHistory(
         streak: currentStreak,
       });
     }
-    
+
     currentDate.setDate(currentDate.getDate() + 1);
   }
-  
+
   return adjustedHistory;
 }
 
