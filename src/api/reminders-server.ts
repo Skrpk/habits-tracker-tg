@@ -66,12 +66,25 @@ async function handleRemindersEndpoint(
       habitsByUser.get(habit.userId)!.push(habit);
     }
 
+    // Skip users who have blocked the bot (they won't receive messages until they /start again)
+    const usersToNotify: Array<[number, Habit[]]> = [];
+    let skippedBlockedCount = 0;
+    for (const [userId, habits] of habitsByUser.entries()) {
+      const prefs = await habitRepository.getUserPreferences(userId);
+      if (prefs?.blocked) {
+        Logger.info('Skipping reminder for blocked user', { userId, habitCount: habits.length });
+        skippedBlockedCount++;
+        continue;
+      }
+      usersToNotify.push([userId, habits]);
+    }
+
     let successCount = 0;
     let errorCount = 0;
     const errors: Array<{ userId: number; error: string }> = [];
 
     // Send reminders grouped by user
-    for (const [userId, habits] of habitsByUser.entries()) {
+    for (const [userId, habits] of usersToNotify) {
       try {
         Logger.info('Sending reminder to user', { userId, habitCount: habits.length });
         await botService.sendHabitReminders(userId, habits);
@@ -90,6 +103,7 @@ async function handleRemindersEndpoint(
     Logger.info('Hourly reminders request completed', {
       totalHabitsDue: habitsDue.length,
       totalUsers: habitsByUser.size,
+      skippedBlocked: skippedBlockedCount,
       successCount,
       errorCount,
       errors: errors.length > 0 ? errors : undefined,
@@ -101,6 +115,7 @@ async function handleRemindersEndpoint(
       message: 'Reminders processed',
       totalHabitsDue: habitsDue.length,
       totalUsers: habitsByUser.size,
+      skippedBlocked: skippedBlockedCount,
       successCount,
       errorCount,
       errors: errors.length > 0 ? errors : undefined,

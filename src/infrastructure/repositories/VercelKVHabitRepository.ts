@@ -223,6 +223,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
         timezone: mergedPreferences.timezone,
         consentAccepted: mergedPreferences.consentAccepted,
         consentDate: mergedPreferences.consentDate,
+        blocked: mergedPreferences.blocked,
       });
       await kv.set(this.getUserPreferencesKey(preferences.userId), mergedPreferences);
       Logger.info('User preferences saved successfully', {

@@ -37,6 +37,28 @@ export class SetUserPreferencesUseCase {
     return await this.habitRepository.getUserPreferences(userId);
   }
 
+  async setBlocked(userId: number, blocked: boolean): Promise<UserPreferences> {
+    const existingPreferences = await this.habitRepository.getUserPreferences(userId);
+
+    const preferences: UserPreferences = {
+      userId,
+      user: existingPreferences?.user,
+      timezone: existingPreferences?.timezone,
+      consentAccepted: existingPreferences?.consentAccepted,
+      consentDate: existingPreferences?.consentDate,
+      blocked,
+    };
+
+    await this.habitRepository.saveUserPreferences(preferences);
+
+    Logger.info('User blocked status updated', {
+      userId,
+      blocked,
+    });
+
+    return preferences;
+  }
+
   async setConsent(userId: number, accepted: boolean, user?: TelegramBot.User): Promise<UserPreferences> {
     const existingPreferences = await this.habitRepository.getUserPreferences(userId);
     
@@ -68,6 +90,7 @@ export class SetUserPreferencesUseCase {
       timezone: existingPreferences?.timezone,
       consentAccepted: existingPreferences?.consentAccepted,
       consentDate: existingPreferences?.consentDate,
+      blocked: existingPreferences?.blocked,
     };
 
     await this.habitRepository.saveUserPreferences(preferences);
