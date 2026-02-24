@@ -5,9 +5,9 @@
          "id":"1765816187141-t04h48sjk",
          "userId":148654904,
          "name":"no smoke",
-         "streak":56,
+         "streak":64,
          "createdAt":"2025-12-15T00:00:00.000Z",
-         "lastCheckedDate":"2026-02-08",
+         "lastCheckedDate":"2026-02-16",
          "skipped":[
             
          ],
@@ -44,9 +44,9 @@
          "id":"1769549612937-rz10hcctz",
          "userId":148654904,
          "name":"Eat healthy",
-         "streak":4,
+         "streak":12,
          "createdAt":"2026-01-27T21:33:32.937Z",
-         "lastCheckedDate":"2026-02-08",
+         "lastCheckedDate":"2026-02-16",
          "skipped":[
             
          ],
@@ -57,6 +57,14 @@
             {
                "streakBeforeDrop":7,
                "date":"2026-02-04"
+            },
+            {
+               "streakBeforeDrop":7,
+               "date":"2026-02-14"
+            },
+            {
+               "streakBeforeDrop":7,
+               "date":"2026-02-15"
             }
          ],
          "reminderSchedule":{
@@ -68,16 +76,23 @@
          "reminderEnabled":true,
          "disabled":false,
          "badges":[
-            
+            {
+               "type":5,
+               "earnedAt":"2026-02-09T21:04:23.123Z"
+            },
+            {
+               "type":10,
+               "earnedAt":"2026-02-14T21:02:14.680Z"
+            }
          ]
       },
       {
          "id":"1769549636591-uwcwh2d9t",
          "userId":148654904,
          "name":"Gym",
-         "streak":1,
+         "streak":2,
          "createdAt":"2026-01-27T21:33:56.591Z",
-         "lastCheckedDate":"2026-02-08",
+         "lastCheckedDate":"2026-02-15",
          "skipped":[
             {
                "skippedDay":3,
@@ -109,6 +124,18 @@
             },
             {
                "date":"2026-02-08"
+            },
+            {
+               "date":"2026-02-10"
+            },
+            {
+               "date":"2026-02-12"
+            },
+            {
+               "date":"2026-02-14"
+            },
+            {
+               "date":"2026-02-15"
             }
          ],
          "reminderSchedule":{
@@ -133,9 +160,9 @@
          "id":"1769549738351-g28v4ja7f",
          "userId":148654904,
          "name":"❌🌽",
-         "streak":1,
+         "streak":0,
          "createdAt":"2026-01-27T21:35:38.351Z",
-         "lastCheckedDate":"2026-02-08",
+         "lastCheckedDate":"2026-02-16",
          "skipped":[
             
          ],
@@ -154,6 +181,22 @@
             {
                "streakBeforeDrop":4,
                "date":"2026-02-07"
+            },
+            {
+               "streakBeforeDrop":2,
+               "date":"2026-02-10"
+            },
+            {
+               "streakBeforeDrop":1,
+               "date":"2026-02-12"
+            },
+            {
+               "streakBeforeDrop":2,
+               "date":"2026-02-15"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-16"
             }
          ],
          "reminderSchedule":{
@@ -172,9 +215,9 @@
          "id":"1770491276363-h1hw35po8",
          "userId":148654904,
          "name":"Cleaning🧼 🧹",
-         "streak":0,
+         "streak":1,
          "createdAt":"2026-02-07T19:07:56.363Z",
-         "lastCheckedDate":"",
+         "lastCheckedDate":"2026-02-14",
          "skipped":[
             
          ],
@@ -182,7 +225,9 @@
             
          ],
          "checked":[
-            
+            {
+               "date":"2026-02-14"
+            }
          ],
          "reminderSchedule":{
             "type":"weekly",
