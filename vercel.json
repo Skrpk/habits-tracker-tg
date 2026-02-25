@@ -5,6 +5,26 @@
     {
       "source": "/analytics/:userId",
       "destination": "/analytics.html?userId=:userId"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/blog/habit-tracking",
+      "destination": "/blog/habit-tracking.html"
+    },
+    {
+      "source": "/blog/how-i-quit-smoking-telegram-bot",
+      "destination": "/blog/how-i-quit-smoking-telegram-bot.html"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
     }
   ],
   "functions": {
