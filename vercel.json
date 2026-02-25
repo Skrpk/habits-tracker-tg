@@ -19,12 +19,12 @@
       "destination": "/blog/how-i-quit-smoking-telegram-bot.html"
     },
     {
-      "source": "/privacy-policy",
-      "destination": "/privacy-policy.html"
-    },
-    {
       "source": "/terms",
       "destination": "/terms.html"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
     }
   ],
   "functions": {
