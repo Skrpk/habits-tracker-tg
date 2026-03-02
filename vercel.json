@@ -23,6 +23,10 @@
       "destination": "/terms.html"
     },
     {
+      "source": "/blog",
+      "destination": "/blog.html"
+    },
+    {
       "source": "/privacy-policy",
       "destination": "/privacy-policy.html"
     }
