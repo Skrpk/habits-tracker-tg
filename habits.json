@@ -4,10 +4,10 @@
       {
          "id":"1765816187141-t04h48sjk",
          "userId":148654904,
-         "name":"no smoke",
-         "streak":64,
+         "name":"no smoke (CHECK TOMORROW)",
+         "streak":85,
          "createdAt":"2025-12-15T00:00:00.000Z",
-         "lastCheckedDate":"2026-02-16",
+         "lastCheckedDate":"2026-03-10",
          "skipped":[
             
          ],
@@ -19,8 +19,8 @@
          ],
          "reminderSchedule":{
             "type":"daily",
-            "hour":22,
-            "minute":0,
+            "hour":0,
+            "minute":1,
             "timezone":"Europe/Paris"
          },
          "reminderEnabled":true,
@@ -44,9 +44,9 @@
          "id":"1769549612937-rz10hcctz",
          "userId":148654904,
          "name":"Eat healthy",
-         "streak":12,
+         "streak":1,
          "createdAt":"2026-01-27T21:33:32.937Z",
-         "lastCheckedDate":"2026-02-16",
+         "lastCheckedDate":"2026-03-11",
          "skipped":[
             
          ],
@@ -65,12 +65,28 @@
             {
                "streakBeforeDrop":7,
                "date":"2026-02-15"
+            },
+            {
+               "streakBeforeDrop":7,
+               "date":"2026-03-08"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-03-09"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-03-10"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-03-11"
             }
          ],
          "reminderSchedule":{
             "type":"daily",
             "hour":22,
-            "minute":0,
+            "minute":49,
             "timezone":"Europe/Paris"
          },
          "reminderEnabled":true,
@@ -90,21 +106,21 @@
          "id":"1769549636591-uwcwh2d9t",
          "userId":148654904,
          "name":"Gym",
-         "streak":2,
+         "streak":0,
          "createdAt":"2026-01-27T21:33:56.591Z",
-         "lastCheckedDate":"2026-02-15",
+         "lastCheckedDate":"2026-03-10",
          "skipped":[
-            {
-               "skippedDay":3,
-               "date":"2026-01-31"
-            },
-            {
-               "skippedDay":3,
-               "date":"2026-02-07"
-            }
+            
          ],
          "dropped":[
-            
+            {
+               "streakBeforeDrop":1,
+               "date":"2026-03-07"
+            },
+            {
+               "streakBeforeDrop":1,
+               "date":"2026-03-10"
+            }
          ],
          "checked":[
             {
@@ -136,6 +152,30 @@
             },
             {
                "date":"2026-02-15"
+            },
+            {
+               "date":"2026-02-17"
+            },
+            {
+               "date":"2026-02-19"
+            },
+            {
+               "date":"2026-02-24"
+            },
+            {
+               "date":"2026-02-26"
+            },
+            {
+               "date":"2026-03-01"
+            },
+            {
+               "date":"2026-03-03"
+            },
+            {
+               "date":"2026-03-05"
+            },
+            {
+               "date":"2026-03-08"
             }
          ],
          "reminderSchedule":{
@@ -162,7 +202,7 @@
          "name":"❌🌽",
          "streak":0,
          "createdAt":"2026-01-27T21:35:38.351Z",
-         "lastCheckedDate":"2026-02-16",
+         "lastCheckedDate":"2026-03-11",
          "skipped":[
             
          ],
@@ -197,6 +237,46 @@
             {
                "streakBeforeDrop":0,
                "date":"2026-02-16"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-17"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-18"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-19"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-20"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-21"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-02-22"
+            },
+            {
+               "streakBeforeDrop":6,
+               "date":"2026-03-07"
+            },
+            {
+               "streakBeforeDrop":1,
+               "date":"2026-03-09"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-03-10"
+            },
+            {
+               "streakBeforeDrop":0,
+               "date":"2026-03-11"
             }
          ],
          "reminderSchedule":{
@@ -208,25 +288,37 @@
          "reminderEnabled":true,
          "disabled":false,
          "badges":[
-            
+            {
+               "type":5,
+               "earnedAt":"2026-02-27T21:00:36.682Z"
+            }
          ]
       },
       {
          "id":"1770491276363-h1hw35po8",
          "userId":148654904,
          "name":"Cleaning🧼 🧹",
-         "streak":1,
+         "streak":0,
          "createdAt":"2026-02-07T19:07:56.363Z",
-         "lastCheckedDate":"2026-02-14",
+         "lastCheckedDate":"2026-03-07",
          "skipped":[
             
          ],
          "dropped":[
-            
+            {
+               "streakBeforeDrop":1,
+               "date":"2026-03-07"
+            }
          ],
          "checked":[
             {
                "date":"2026-02-14"
+            },
+            {
+               "date":"2026-02-21"
+            },
+            {
+               "date":"2026-02-28"
             }
          ],
          "reminderSchedule":{
@@ -241,6 +333,91 @@
          "reminderEnabled":true,
          "badges":[
             
+         ],
+         "disabled":false
+      },
+      {
+         "id":"1772538671201-dl47c1v99",
+         "userId":148654904,
+         "name":"job: time report",
+         "streak":1,
+         "createdAt":"2026-03-03T11:51:11.201Z",
+         "lastCheckedDate":"2026-03-05",
+         "skipped":[
+            
+         ],
+         "dropped":[
+            
+         ],
+         "checked":[
+            {
+               "date":"2026-03-05"
+            }
+         ],
+         "reminderSchedule":{
+            "type":"weekly",
+            "daysOfWeek":[
+               4
+            ],
+            "hour":17,
+            "minute":0,
+            "timezone":"Europe/Paris"
+         },
+         "reminderEnabled":true,
+         "badges":[
+            
+         ],
+         "disabled":false
+      },
+      {
+         "id":"1773266019007-6xc19cagt",
+         "userId":148654904,
+         "name":"weeklytest",
+         "streak":5,
+         "createdAt":"2026-03-05T21:53:39.008Z",
+         "lastCheckedDate":"2026-03-11",
+         "skipped":[
+            
+         ],
+         "dropped":[
+            
+         ],
+         "checked":[
+            {
+               "date":"2026-03-05"
+            },
+            {
+               "date":"2026-03-06"
+            },
+            {
+               "date":"2026-03-07"
+            },
+            {
+               "date":"2026-03-08"
+            },
+            {
+               "date":"2026-03-11"
+            }
+         ],
+         "reminderSchedule":{
+            "type":"weekly",
+            "daysOfWeek":[
+               3,
+               4,
+               5,
+               6,
+               7
+            ],
+            "hour":23,
+            "minute":30,
+            "timezone":"Europe/Paris"
+         },
+         "reminderEnabled":true,
+         "badges":[
+            {
+               "type":5,
+               "earnedAt":"2026-03-11T22:30:09.323Z"
+            }
          ],
          "disabled":false
       }

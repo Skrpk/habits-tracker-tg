@@ -126,13 +126,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let errorCount = 0;
     const errors: Array<{ userId: number; error: string }> = [];
 
-    // Send reminders grouped by user
+    // Send reminders grouped by user (targetDate = user's "today" in their timezone)
     for (const [userId, habits] of usersToNotify) {
       try {
-        Logger.info('Sending reminder to user', { userId, habitCount: habits.length });
-        
-        // Send reminders for this user's habits
-        await botService.sendHabitReminders(userId, habits);
+        const prefs = await habitRepository.getUserPreferences(userId);
+        const userTimezone = prefs?.timezone || 'UTC';
+        const targetDate = new Intl.DateTimeFormat('en-CA', {
+          timeZone: userTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(now);
+        Logger.info('Sending reminder to user', { userId, habitCount: habits.length, targetDate });
+
+        await botService.sendHabitReminders(userId, habits, targetDate);
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -477,24 +477,24 @@ export class TelegramBotService {
     }
   }
 
-  async sendHabitReminders(userId: number, habits: Habit[]): Promise<void> {
+  async sendHabitReminders(userId: number, habits: Habit[], targetDate: string): Promise<void> {
     try {
-      Logger.info('Sending habit reminders', { 
-        userId, 
+      Logger.info('Sending habit reminders', {
+        userId,
         habitCount: habits.length,
         habitIds: habits.map(h => h.id),
+        targetDate,
       });
-      
+
       if (habits.length === 0) {
         Logger.info('No habits to remind', { userId });
         return;
       }
 
-      // Send reminders for each habit individually
       for (const habit of habits) {
-        await this.sendSingleHabitReminder(userId, habit);
+        await this.sendSingleHabitReminder(userId, habit, targetDate);
       }
-      
+
       Logger.info('Habit reminders sent successfully', { userId });
     } catch (error) {
       Logger.error('Error sending habit reminders', {
@@ -505,15 +505,16 @@ export class TelegramBotService {
     }
   }
 
-  private async sendSingleHabitReminder(userId: number, habit: Habit): Promise<void> {
+  private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string): Promise<void> {
+    const suffix = targetDate ? `:${targetDate}` : '';
     const keyboard = {
       inline_keyboard: [
         [
-          { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes` },
+          { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` },
         ],
         [
-          { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no` },
-          { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip` },
+          { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
+          { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
         ],
       ],
     };
@@ -1839,28 +1840,29 @@ export class TelegramBotService {
     // Answer callback query immediately to remove loading state
     await this.bot.answerCallbackQuery(query.id);
 
-    // Handle habit check (Yes/No/Skip/Cancel)
-    const checkMatch = data.match(/^habit_check:(.+):(yes|no|skip|cancel)$/);
+    // Handle habit check (Yes/No/Skip/Cancel); optional 4th segment = targetDate (reminder's day)
+    const checkMatch = data.match(/^habit_check:(.+):(yes|no|skip|cancel)(?::(.+))?$/);
     if (checkMatch) {
+      const habitId = checkMatch[1];
       const action = checkMatch[2];
+      const targetDate = checkMatch[3] || undefined; // YYYY-MM-DD when from reminder
       if (action === 'skip') {
-        // Show confirmation for skip
-        await this.handleHabitSkipConfirmation(userId, chatId, checkMatch[1], query.message?.message_id);
+        await this.handleHabitSkipConfirmation(userId, chatId, habitId, query.message?.message_id, targetDate);
         return;
       }
       if (action === 'cancel') {
-        // Cancel skip - go back to habit check question
         const habits = await this.getUserHabitsUseCase.execute(userId);
-        const habit = habits.find(h => h.id === checkMatch[1]);
+        const habit = habits.find(h => h.id === habitId);
         if (habit) {
+          const suffix = targetDate ? `:${targetDate}` : '';
           const keyboard = {
             inline_keyboard: [
               [
-                { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes` },
+                { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` },
               ],
               [
-                { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no` },
-                { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip` },
+                { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
+                { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
               ],
             ],
           };
@@ -1875,14 +1877,15 @@ export class TelegramBotService {
         }
         return;
       }
-      await this.handleHabitCheckCallback(userId, chatId, username, checkMatch[1], action === 'yes', query);
+      await this.handleHabitCheckCallback(userId, chatId, username, habitId, action === 'yes', query, targetDate);
       return;
     }
 
-    // Handle habit skip confirmation
-    const skipConfirmMatch = data.match(/^habit_skip_confirm:(.+)$/);
+    // Handle habit skip confirmation; optional 2nd segment = targetDate
+    const skipConfirmMatch = data.match(/^habit_skip_confirm:([^:]+)(?::(.+))?$/);
     if (skipConfirmMatch) {
-      await this.handleHabitSkipCallback(userId, chatId, username, skipConfirmMatch[1], query.message?.message_id, query.from);
+      const targetDate = skipConfirmMatch[2] || undefined;
+      await this.handleHabitSkipCallback(userId, chatId, username, skipConfirmMatch[1], query.message?.message_id, query.from, targetDate);
       return;
     }
 
@@ -2027,15 +2030,15 @@ export class TelegramBotService {
     username: string,
     habitId: string,
     completed: boolean,
-    query: TelegramBot.CallbackQuery
+    query: TelegramBot.CallbackQuery,
+    targetDate?: string
   ): Promise<void> {
     try {
-      // Get habit before update to compare badges
       const habitsBefore = await this.getUserHabitsUseCase.execute(userId);
       const habitBefore = habitsBefore.find(h => h.id === habitId);
       const badgesBefore = habitBefore?.badges || [];
-      
-      const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username);
+
+      const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username, targetDate);
       
       const emoji = completed ? '✅' : '❌';
       let message = completed
@@ -2106,7 +2109,8 @@ export class TelegramBotService {
     userId: number,
     chatId: number,
     habitId: string,
-    messageId?: number
+    messageId?: number,
+    targetDate?: string
   ): Promise<void> {
     try {
       const habits = await this.getUserHabitsUseCase.execute(userId);
@@ -2121,11 +2125,12 @@ export class TelegramBotService {
         return;
       }
 
+      const suffix = targetDate ? `:${targetDate}` : '';
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '✅ Yes, skip', callback_data: `habit_skip_confirm:${habitId}` },
-            { text: '❌ Cancel', callback_data: `habit_check:${habitId}:cancel` },
+            { text: '✅ Yes, skip', callback_data: `habit_skip_confirm:${habitId}${suffix}` },
+            { text: '❌ Cancel', callback_data: `habit_check:${habitId}:cancel${suffix}` },
           ],
         ],
       };
@@ -2153,10 +2158,11 @@ export class TelegramBotService {
     username: string,
     habitId: string,
     messageId?: number,
-    user?: TelegramBot.User
+    user?: TelegramBot.User,
+    targetDate?: string
   ): Promise<void> {
     try {
-      const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username);
+      const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
       
       const message = `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`;
 

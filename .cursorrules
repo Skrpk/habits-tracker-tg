@@ -18,7 +18,7 @@ The project follows **Clean Architecture** principles with clear separation of c
      - `DeleteHabitUseCase`: Deletes habits
      - `GetUserHabitsUseCase`: Retrieves user's habits
      - `GetHabitsToCheckUseCase`: Gets habits that need checking
-     - `RecordHabitCheckUseCase`: Records habit completion/skipping
+     - `RecordHabitCheckUseCase`: Records habit completion/drop/skip; accepts optional `targetDate` (reminder's day) so checks can be attributed to that day when user responds late
      - `SetUserPreferencesUseCase`: Manages user preferences (timezone)
      - `SetHabitReminderScheduleUseCase`: Sets/updates habit reminder schedules
      - `CheckHabitReminderDueUseCase`: Checks if a habit is due for reminder
@@ -51,15 +51,17 @@ The project follows **Clean Architecture** principles with clear separation of c
 
 3. **Habit Tracking**
    - Reminders sent automatically based on each habit's schedule
+   - Each reminder is attached to a **target date** (the day that reminder is for). When the user taps Yes/No/Skip—even the next day or later—the check is recorded for that target date, not the current calendar day. So a reminder at 23:50 for "today" that the user answers at 00:10 tomorrow still counts for the original day; they then get a new reminder for the new day.
    - Three options when checking habits:
      - ✅ Yes (completes habit, increments streak)
-     - ❌ No (drop streak) (resets streak to 0, clears skipped days)
+     - ❌ No (drop streak) (resets streak to 0, clears skipped days; dropped day is always recorded, including when streak was 0)
      - ⏭️ Skip (keep streak) (records skipped day, maintains streak)
 
 4. **Streak Management**
-   - Streaks increment on consecutive completions
+   - Streaks increment on consecutive completions (using "day before check date" for continuity when `targetDate` is used)
    - Streaks reset to 0 if habit is not completed (without skipping)
    - Skipped days are tracked in `skipped` array with `streakDay` and `date`
+   - Dropped days are always recorded in `dropped` array with `streakBeforeDrop` and `date` (even on first day)
    - Skipped days count displayed in habit details
 
 5. **Reminder Scheduling**
@@ -71,6 +73,8 @@ The project follows **Clean Architecture** principles with clear separation of c
    - Schedules are configured in user's timezone
    - Default schedule: Daily at 22:00 in user's timezone
    - Reminders checked hourly via cron jobs
+   - When sending reminders, the cron computes each user's "today" in their timezone and passes that as **targetDate** to `sendHabitReminders(userId, habits, targetDate)`. Reminder buttons include targetDate in callback_data (e.g. `habit_check:{habitId}:yes:{YYYY-MM-DD}`) so late responses count for the correct day.
+   - Users who have **blocked** the bot are skipped (no reminders sent) until they send `/start` again, which clears the blocked flag.
    - Production: Vercel Cron Jobs (`0 * * * *` - every hour at minute 0)
    - Development: Docker cron container (configurable schedule)
 
@@ -89,7 +93,8 @@ habits-tracker/
 │   │   ├── repositories/
 │   │   ├── use-cases/
 │   │   └── utils/               # Domain utilities
-│   │       └── HabitAnalytics.ts # History inference logic
+│   │       ├── HabitAnalytics.ts # History inference logic
+│   │       └── HabitBadges.ts    # Badge milestones and award logic
 │   ├── infrastructure/          # Infrastructure layer (external services)
 │   │   ├── config/             # Redis configuration
 │   │   ├── logger/             # Logging utilities
@@ -107,8 +112,13 @@ habits-tracker/
 │   └── setup-webhook.ts        # Webhook setup script
 ├── docker/                      # Docker configuration
 │   └── cron/                   # Cron container files
+├── __tests__/                  # Unit tests (Vitest)
+│   ├── api/                    # API route tests (reminders, analytics, webhook)
+│   ├── reminders-server/      # Local reminders server handler tests
+│   └── domain/use-cases/       # Use case tests (RecordHabitCheck, CheckReminderDue, CreateHabit, GetUserHabits)
 ├── docker-compose.yml          # Local development setup
 ├── Dockerfile.dev              # Bot service Dockerfile
+├── vitest.config.ts            # Vitest configuration
 ├── vercel.json                 # Vercel deployment config
 ├── tsconfig.json               # TypeScript configuration
 └── package.json                # Dependencies and scripts
@@ -124,11 +134,12 @@ habits-tracker/
    - Uses singleton pattern for bot service in serverless functions
 
 2. **Cron Jobs**: Vercel Cron calls `/api/reminders` hourly at minute 0
-   - Secured with `x-vercel-cron` header and `Authorization` header
+   - Secured with `x-vercel-cron` header and `Authorization` header (Bearer token)
    - Fetches all active users from Redis
-   - For each user, converts server time to user's timezone
-   - Checks which habits are due for reminders based on their schedules
-   - Sends reminder messages for habits that are due and not yet checked today
+   - Skips users with `preferences.blocked === true`
+   - For each user, converts server time to user's timezone and computes **targetDate** (user's "today" YYYY-MM-DD)
+   - Checks which habits are due for reminders based on their schedules (and not already checked for that day)
+   - Sends reminder messages with `sendHabitReminders(userId, habits, targetDate)` so callback_data includes targetDate
 
 3. **Static Files**: `public/` folder served at root URL (`/`)
    - Landing page with quote and features
@@ -167,10 +178,14 @@ interface Habit {
   name: string;
   streak: number;
   createdAt: Date;
-  lastCheckedDate: string; // YYYY-MM-DD
-  skipped: SkippedDay[];  // Array of skipped days
+  lastCheckedDate: string; // YYYY-MM-DD — last day user completed/dropped/skipped (can be from reminder targetDate)
+  skipped: SkippedDay[];   // Array of skipped days
+  dropped: DroppedDay[];   // Array of dropped days (always recorded on drop, including streak 0)
+  checked?: CheckedDay[];  // Explicit check dates for non-daily habits
+  badges?: Badge[];        // Earned streak badges (5, 10, 30, 90 days)
   reminderSchedule?: ReminderSchedule; // Custom reminder schedule
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
+  disabled?: boolean;      // Whether habit is paused
 }
 
 interface SkippedDay {
@@ -205,6 +220,7 @@ interface UserPreferences {
   timezone?: string; // IANA timezone (e.g., "America/New_York", "Europe/London")
   consentAccepted?: boolean; // Whether user has accepted the privacy policy and terms
   consentDate?: string; // ISO date string when consent was given (YYYY-MM-DD)
+  blocked?: boolean; // When true, user has blocked the bot; skip reminders until they /start again
 }
 ```
 
@@ -265,6 +281,7 @@ interface UserPreferences {
 9. **Analytics Data Inference** (`computeCheckHistory`):
    - Reconstructs habit history from minimal stored data (no per-day storage)
    - Only infers completions when `streak > 0` OR there are skipped/dropped days (user interaction)
+   - **Does not infer today as completed** if the habit has not been checked yet (`lastCheckedDate !== today`), so "today" does not show as a phantom completion.
    - Works backwards from today to match stored streak value exactly
    - Processes all days from creation to today, but only marks completions for:
      - Current streak period (most recent N days where N = streak)
@@ -272,6 +289,12 @@ interface UserPreferences {
    - Handles drops (reset streak to 0) and skips (preserve streak)
    - Supports all schedule types (daily, weekly, monthly, interval)
    - Returns chronological history with correct streak progression
+
+10. **Reminder Target Date**:
+   - Reminders send buttons with optional targetDate in callback_data: `habit_check:{id}:yes`, `habit_check:{id}:yes:{YYYY-MM-DD}`. When present, `RecordHabitCheckUseCase.execute(..., targetDate)` and `skipHabit(..., targetDate)` use that as the check date (not server "today"), so late responses count for the reminder's day. Streak continuity uses `dayBefore(checkDate)`.
+
+11. **Blocked Users**:
+   - If sending a message fails with "bot was blocked by the user", the user is marked `blocked: true` in preferences. Reminder cron and reminders-server skip users with `preferences.blocked === true`. When the user sends `/start` again, `blocked` is set to false so they receive reminders again.
 
 ## Build Process
 
@@ -284,8 +307,17 @@ interface UserPreferences {
 - `npm run dev`: Start bot in polling mode (local)
 - `npm run dev:reminders`: Start local reminders server
 - `npm run build`: Build for production
+- `npm run test`: Run unit tests (Vitest)
+- `npm run test:watch`: Run tests in watch mode
 - `npm run setup-webhook`: Set Telegram webhook (production)
 - `docker-compose up`: Start local development environment
+
+## Testing
+
+- **Vitest** is used for unit tests. Tests live in `__tests__/`.
+- **API tests** (`__tests__/api/`): reminders (auth, 200/401/500), analytics (method, userId validation, CORS, 500), webhook (method, secret, 200/500). Dependencies mocked (repository, bot).
+- **Reminders-server tests** (`__tests__/reminders-server/`): `handleRemindersEndpoint` (CRON_SECRET auth, 200, skipped blocked users), `handleAnalyticsEndpoint` (userId required, invalid userId, 200 with habits).
+- **Domain use case tests** (`__tests__/domain/use-cases/`): `CheckHabitReminderDueUseCase` (isDue for daily/weekly/monthly/interval, getScheduleDescription), `RecordHabitCheckUseCase` (execute: not found, already checked, first check, consecutive day, gap, drop, skip, badge; skipHabit: unchanged when already checked), `CreateHabitUseCase` (empty name, trim, timezone from prefs or param), `GetUserHabitsUseCase` (null => [], habits => habits).
 
 ## Security Considerations
 

@@ -1,21 +1,97 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
-import { Habit, SkippedDay, DroppedDay, CheckedDay } from '../entities/Habit';
+import { Habit, SkippedDay, DroppedDay, CheckedDay, ReminderSchedule } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { checkForNewBadges, awardBadges } from '../utils/HabitBadges';
+
+/** Returns YYYY-MM-DD for the day before the given date string. */
+function dayBefore(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Returns the YYYY-MM-DD of the previous scheduled date relative to checkDate.
+ * For daily (or no schedule), this is simply yesterday.
+ * For other schedule types, it's the most recent scheduled day before checkDate.
+ */
+function getPreviousScheduledDate(checkDate: string, schedule?: ReminderSchedule): string {
+  if (!schedule || schedule.type === 'daily') {
+    return dayBefore(checkDate);
+  }
+
+  const d = new Date(checkDate + 'T12:00:00Z');
+
+  switch (schedule.type) {
+    case 'weekly': {
+      const currentDay = d.getUTCDay();
+      const sorted = [...schedule.daysOfWeek].sort((a, b) => a - b);
+      let prevDay: number | undefined;
+      for (let i = sorted.length - 1; i >= 0; i--) {
+        if (sorted[i] < currentDay) {
+          prevDay = sorted[i];
+          break;
+        }
+      }
+      const daysBack = prevDay !== undefined
+        ? currentDay - prevDay
+        : 7 - sorted[sorted.length - 1] + currentDay;
+      d.setUTCDate(d.getUTCDate() - daysBack);
+      return d.toISOString().split('T')[0];
+    }
+
+    case 'monthly': {
+      const currentDayOfMonth = d.getUTCDate();
+      const sorted = [...schedule.daysOfMonth].sort((a, b) => a - b);
+      let prevDayOfMonth: number | undefined;
+      for (let i = sorted.length - 1; i >= 0; i--) {
+        if (sorted[i] < currentDayOfMonth) {
+          prevDayOfMonth = sorted[i];
+          break;
+        }
+      }
+      if (prevDayOfMonth !== undefined) {
+        d.setUTCDate(prevDayOfMonth);
+      } else {
+        const largest = sorted[sorted.length - 1];
+        d.setUTCDate(1);
+        d.setUTCMonth(d.getUTCMonth() - 1);
+        const daysInMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+        d.setUTCDate(Math.min(largest, daysInMonth));
+      }
+      return d.toISOString().split('T')[0];
+    }
+
+    case 'interval': {
+      d.setUTCDate(d.getUTCDate() - schedule.intervalDays);
+      return d.toISOString().split('T')[0];
+    }
+
+    default:
+      return dayBefore(checkDate);
+  }
+}
 
 export class RecordHabitCheckUseCase {
   constructor(private habitRepository: IHabitRepository) {}
 
-  async execute(userId: number, habitId: string, completed: boolean, username?: string): Promise<Habit> {
+  /**
+   * Records a habit check (complete or drop).
+   * @param targetDate - Optional. The day this check applies to (e.g. reminder's target date). If omitted, uses server today.
+   */
+  async execute(userId: number, habitId: string, completed: boolean, username?: string, targetDate?: string): Promise<Habit> {
+    const checkDate = targetDate || new Date().toISOString().split('T')[0];
+
     Logger.info('Recording habit check', {
       userId,
       username: username || 'unknown',
       habitId,
       completed,
+      checkDate,
     });
 
     const userHabits = await this.habitRepository.getUserHabits(userId);
-    
+
     if (!userHabits) {
       Logger.error('User habits not found', { userId, habitId });
       throw new Error('User habits not found');
@@ -27,60 +103,46 @@ export class RecordHabitCheckUseCase {
       throw new Error('Habit not found');
     }
 
-    const today = new Date().toISOString().split('T')[0];
     const lastCheckedDate = habit.lastCheckedDate;
 
-    // If already checked today, don't update
-    if (lastCheckedDate === today) {
-      Logger.info('Habit already checked today', {
+    if (lastCheckedDate === checkDate) {
+      Logger.info('Habit already checked for this day', {
         userId,
         username: username || 'unknown',
         habitId,
         habitName: habit.name,
         lastCheckedDate,
+        checkDate,
       });
       return habit;
     }
 
     let newStreak = habit.streak;
     let updatedDropped = habit.dropped || [];
-    
+    const previousScheduledDate = getPreviousScheduledDate(checkDate, habit.reminderSchedule);
+
     if (completed) {
-      // Check if yesterday was checked (for streak continuity)
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
       if (!lastCheckedDate || lastCheckedDate === '') {
-        // First check ever
         newStreak = 1;
-      } else if (lastCheckedDate === yesterdayStr) {
-        // Continue streak (checked yesterday, checking today)
+      } else if (lastCheckedDate === previousScheduledDate) {
         newStreak = habit.streak + 1;
-      } else if (lastCheckedDate === today) {
-        // Already checked today, don't update streak
+      } else if (lastCheckedDate === checkDate) {
         return habit;
       } else {
-        // Gap in checking - streak broken, start new streak
         newStreak = 1;
       }
-      
-      // For non-daily habits, add today's date to checked array
+
       let updatedChecked = habit.checked || [];
       const schedule = habit.reminderSchedule;
       const isDaily = !schedule || schedule.type === 'daily';
-      
+
       if (!isDaily) {
-        // Only add if not already in checked array
-        const alreadyChecked = updatedChecked.some(c => c.date === today);
+        const alreadyChecked = updatedChecked.some(c => c.date === checkDate);
         if (!alreadyChecked) {
-          const checkedDay: CheckedDay = { date: today };
-          updatedChecked = [...updatedChecked, checkedDay];
+          updatedChecked = [...updatedChecked, { date: checkDate }];
         }
       }
-      
-      // Check for new badges when streak increases
-      // This can award multiple badges if streak jumped past milestones (e.g., from 4 to 10 days)
+
       let updatedBadges = habit.badges || [];
       const newBadgeTypes = checkForNewBadges(newStreak, updatedBadges);
       if (newBadgeTypes.length > 0) {
@@ -94,33 +156,28 @@ export class RecordHabitCheckUseCase {
           streak: newStreak,
         });
       }
-      
-      // Update habit with completed check (no checkHistory stored)
+
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
-        lastCheckedDate: today,
-        skipped: habit.skipped || [], // Keep skipped days when completing
+        lastCheckedDate: checkDate,
+        skipped: habit.skipped || [],
         checked: updatedChecked,
         badges: updatedBadges,
       });
     } else {
-      // Reset streak to 0 and clear skipped days
       newStreak = 0;
-      
-      const droppedDay: DroppedDay = {
+
+      updatedDropped = [...(habit.dropped || []), {
         streakBeforeDrop: habit.streak,
-        date: today,
-      };
-      updatedDropped = [...(habit.dropped || []), droppedDay];
-      
-      // Update habit with dropped check (no checkHistory stored)
-      // Note: Badges persist even when streak is dropped - they represent achievements earned
+        date: checkDate,
+      }];
+
       await this.habitRepository.updateHabit(userId, habitId, {
         streak: newStreak,
-        lastCheckedDate: today,
-        skipped: [], // Clear skipped when dropping streak
+        lastCheckedDate: checkDate,
+        skipped: [],
         dropped: updatedDropped,
-        badges: habit.badges || [], // Preserve badges when dropping streak
+        badges: habit.badges || [],
       });
     }
 
@@ -141,15 +198,22 @@ export class RecordHabitCheckUseCase {
     return updatedHabit;
   }
 
-  async skipHabit(userId: number, habitId: string, username?: string): Promise<Habit> {
+  /**
+   * Records a skip for a habit. Preserves streak.
+   * @param targetDate - Optional. The day this skip applies to. If omitted, uses server today.
+   */
+  async skipHabit(userId: number, habitId: string, username?: string, targetDate?: string): Promise<Habit> {
+    const checkDate = targetDate || new Date().toISOString().split('T')[0];
+
     Logger.info('Skipping habit', {
       userId,
       username: username || 'unknown',
       habitId,
+      checkDate,
     });
 
     const userHabits = await this.habitRepository.getUserHabits(userId);
-    
+
     if (!userHabits) {
       Logger.error('User habits not found', { userId, habitId });
       throw new Error('User habits not found');
@@ -161,37 +225,31 @@ export class RecordHabitCheckUseCase {
       throw new Error('Habit not found');
     }
 
-    const today = new Date().toISOString().split('T')[0];
     const lastCheckedDate = habit.lastCheckedDate;
 
-    // If already checked today, don't update
-    if (lastCheckedDate === today) {
-      Logger.info('Habit already checked today', {
+    if (lastCheckedDate === checkDate) {
+      Logger.info('Habit already checked for this day', {
         userId,
         username: username || 'unknown',
         habitId,
         habitName: habit.name,
         lastCheckedDate,
+        checkDate,
       });
       return habit;
     }
 
-    // Get current streak (before skipping)
     const currentStreak = habit.streak;
-    
-    // Add skipped day
     const skippedDay: SkippedDay = {
       skippedDay: currentStreak,
-      date: today,
+      date: checkDate,
     };
 
     const updatedSkipped = [...(habit.skipped || []), skippedDay];
 
     await this.habitRepository.updateHabit(userId, habitId, {
       skipped: updatedSkipped,
-      lastCheckedDate: today,
-      // Keep streak unchanged when skipping
-      // No checkHistory stored - it's computed on demand
+      lastCheckedDate: checkDate,
     });
 
     const updatedHabits = await this.habitRepository.getUserHabits(userId);

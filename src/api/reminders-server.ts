@@ -15,8 +15,8 @@ import { Logger } from '../infrastructure/logger/Logger';
 import { computeCheckHistory } from '../domain/utils/HabitAnalytics';
 import { ChannelNotifications } from '../infrastructure/notifications/ChannelNotifications';
 
-// Helper functions defined before createRemindersServer
-async function handleRemindersEndpoint(
+// Helper functions defined before createRemindersServer (exported for unit tests)
+export async function handleRemindersEndpoint(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   botService: TelegramBotService,
@@ -83,11 +83,19 @@ async function handleRemindersEndpoint(
     let errorCount = 0;
     const errors: Array<{ userId: number; error: string }> = [];
 
-    // Send reminders grouped by user
+    // Send reminders grouped by user (targetDate = user's "today" in their timezone)
     for (const [userId, habits] of usersToNotify) {
       try {
-        Logger.info('Sending reminder to user', { userId, habitCount: habits.length });
-        await botService.sendHabitReminders(userId, habits);
+        const prefs = await habitRepository.getUserPreferences(userId);
+        const userTimezone = prefs?.timezone || 'UTC';
+        const targetDate = new Intl.DateTimeFormat('en-CA', {
+          timeZone: userTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(now);
+        Logger.info('Sending reminder to user', { userId, habitCount: habits.length, targetDate });
+        await botService.sendHabitReminders(userId, habits, targetDate);
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -130,7 +138,7 @@ async function handleRemindersEndpoint(
   }
 }
 
-async function handleAnalyticsEndpoint(
+export async function handleAnalyticsEndpoint(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   habitRepository: VercelKVHabitRepository
