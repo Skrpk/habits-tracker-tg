@@ -7,6 +7,10 @@
       "destination": "/analytics.html?userId=:userId"
     },
     {
+      "source": "/analytics",
+      "destination": "/analytics.html"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     },
@@ -42,6 +46,9 @@
       "maxDuration": 10
     },
     "api/analytics.ts": {
+      "maxDuration": 10
+    },
+    "api/auth.ts": {
       "maxDuration": 10
     }
   }

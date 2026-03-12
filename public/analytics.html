@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
             margin: 0;
@@ -452,32 +453,50 @@
         let timelinePage = 1;
         const TIMELINE_ITEMS_PER_PAGE = 10;
 
-        // Get userId from URL query parameter or path
+        // Check for mock mode via URL
         const urlParams = new URLSearchParams(window.location.search);
-        let userId = urlParams.get('userId');
-        
-        if (!userId) {
+        let urlUserId = urlParams.get('userId');
+        if (!urlUserId) {
             const pathParts = window.location.pathname.split('/');
-            userId = pathParts[pathParts.length - 1];
+            urlUserId = pathParts[pathParts.length - 1];
         }
 
-        if (userId === 'mock') {
-            // Show mock analytics page
+        if (urlUserId === 'mock') {
             loadMockAnalytics();
-        } else if (!userId || isNaN(parseInt(userId))) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('error').textContent = 'Invalid user ID in URL. Expected format: /analytics/{userId}';
         } else {
             loadAnalytics();
         }
 
         async function loadAnalytics() {
             try {
-                const response = await fetch(`/api/analytics?userId=${userId}`);
+                const tg = window.Telegram && window.Telegram.WebApp;
+
+                if (!tg || !tg.initData) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = 'Please open this page from the Telegram bot using the /analytics command.';
+                    return;
+                }
+
+                tg.ready();
+
+                const response = await fetch('/api/analytics', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData }),
+                });
+
+                if (response.status === 401) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = 'Authentication failed. Please reopen this page from the Telegram bot.';
+                    return;
+                }
+
                 if (!response.ok) {
                     throw new Error(`Failed to load analytics: ${response.statusText}`);
                 }
+
                 const data = await response.json();
                 habitsData = data.habits || [];
                 
