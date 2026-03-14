@@ -1621,6 +1621,63 @@ export class TelegramBotService {
     }
   }
 
+  private async handleScheduleBackNew(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      await this.setConversationState(userId, `setting_schedule_new:${habitId}`);
+
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+      const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: '📅 Daily', callback_data: `schedule_type_new:${habitId}:daily` },
+            { text: '📆 Weekly', callback_data: `schedule_type_new:${habitId}:weekly` },
+          ],
+          [
+            { text: '🗓️ Monthly', callback_data: `schedule_type_new:${habitId}:monthly` },
+            { text: '⏱️ Interval', callback_data: `schedule_type_new:${habitId}:interval` },
+          ],
+          [
+            { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
+          ],
+        ],
+      };
+
+      await this.safeEditMessage(
+        `⏰ Set up reminder schedule for "${habit.name}":\n\n` +
+        `Choose a schedule type or skip to use the default (daily at 22:00 ${timezoneName}).`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: keyboard,
+        }
+      );
+    } catch (error) {
+      Logger.error('Error going back to schedule picker', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   private async handleHabitNameInput(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
     const trimmedName = habitName.trim();
     
@@ -1914,6 +1971,13 @@ export class TelegramBotService {
     const scheduleSkipNewMatch = data.match(/^schedule_skip_new:(.+)$/);
     if (scheduleSkipNewMatch) {
       await this.handleScheduleSkipNew(userId, chatId, scheduleSkipNewMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle back to schedule type picker for new habits
+    const scheduleBackNewMatch = data.match(/^schedule_back_new:(.+)$/);
+    if (scheduleBackNewMatch) {
+      await this.handleScheduleBackNew(userId, chatId, scheduleBackNewMatch[1], query.message?.message_id);
       return;
     }
 
@@ -2406,10 +2470,15 @@ export class TelegramBotService {
           return;
       }
 
+      const scheduleUrl = `https://habits-builder.com/schedule?habitId=${habitId}&type=${scheduleType}&chatId=${chatId}&msgId=${messageId}&isNew=${isNewHabit ? '1' : '0'}`;
+
       keyboard = {
         inline_keyboard: [
           [
-            { text: '← Back', callback_data: isNewHabit ? `schedule_skip_new:${habitId}` : `habit_set_schedule:${habitId}` },
+            { text: '🌐 Configure in MiniApp', web_app: { url: scheduleUrl } },
+          ],
+          [
+            { text: '← Back', callback_data: isNewHabit ? `schedule_back_new:${habitId}` : `habit_set_schedule:${habitId}` },
           ],
         ],
       };
@@ -2423,24 +2492,6 @@ export class TelegramBotService {
       // Set conversation state to wait for schedule input
       const statePrefix = isNewHabit ? 'setting_schedule_new' : 'set_schedule';
       await this.setConversationState(userId, `${statePrefix}:${habitId}:${scheduleType}`);
-      
-      // Update back button for new habits
-      if (isNewHabit && keyboard) {
-        keyboard.inline_keyboard = keyboard.inline_keyboard || [];
-        // Replace back button with skip button
-        const backButtonIndex = keyboard.inline_keyboard.findIndex((row: any[]) => 
-          row.some((btn: any) => btn.callback_data?.includes('Back'))
-        );
-        if (backButtonIndex >= 0) {
-          keyboard.inline_keyboard[backButtonIndex] = [
-            { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
-          ];
-        } else {
-          keyboard.inline_keyboard.push([
-            { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
-          ]);
-        }
-      }
     } catch (error) {
       Logger.error('Error handling schedule type', {
         userId,

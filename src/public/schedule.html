@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Schedule — Habits Builder</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --hb-bg: #FAFAF8;
+            --hb-surface: #FFFFFF;
+            --hb-text: #1A1A1A;
+            --hb-text-secondary: #555555;
+            --hb-text-muted: #888888;
+            --hb-accent: #2D9F6F;
+            --hb-accent-light: #E8F5EE;
+            --hb-accent-dark: #1E7A52;
+            --hb-border: #E5E5E0;
+            --hb-card-bg: #F6F6F3;
+            --hb-font-display: 'Newsreader', Georgia, serif;
+            --hb-font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --hb-danger: #f56565;
+            --hb-warn: #ed8936;
+        }
+
+        body {
+            font-family: var(--hb-font-body);
+            background: var(--hb-bg);
+            min-height: 100vh;
+            padding: 0;
+            color: var(--hb-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 1.25rem 1.25rem 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 {
+            font-family: var(--hb-font-display);
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .habit-name {
+            font-size: 1rem;
+            color: var(--hb-text-secondary);
+            font-weight: 500;
+        }
+
+        .timezone-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.85rem;
+            background: var(--hb-card-bg);
+            border: 1px solid var(--hb-border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--hb-text-secondary);
+            margin-top: 0.75rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--hb-text-secondary);
+        }
+
+        .error {
+            text-align: center;
+            padding: 1.5rem;
+            color: #742a2a;
+            background: #fed7d7;
+            border-radius: 12px;
+            border: 1px solid #feb2b2;
+        }
+
+        /* Schedule type tabs */
+        .type-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .type-tab {
+            flex: 1;
+            min-width: 0;
+            padding: 0.6rem 0.5rem;
+            border: 1px solid var(--hb-border);
+            border-radius: 10px;
+            background: var(--hb-surface);
+            font-family: var(--hb-font-body);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--hb-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .type-tab:hover { border-color: var(--hb-accent); color: var(--hb-accent-dark); }
+        .type-tab.active {
+            background: var(--hb-accent);
+            color: white;
+            border-color: var(--hb-accent);
+        }
+
+        /* Schedule sections */
+        .schedule-section { display: none; }
+        .schedule-section.active { display: block; }
+
+        .section-card {
+            background: var(--hb-surface);
+            border: 1px solid var(--hb-border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--hb-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        /* Quick picks */
+        .quick-picks {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .quick-pick {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--hb-border);
+            border-radius: 100px;
+            background: var(--hb-surface);
+            font-family: var(--hb-font-body);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--hb-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-pick:hover { border-color: var(--hb-accent); color: var(--hb-accent-dark); }
+        .quick-pick.active {
+            background: var(--hb-accent-light);
+            border-color: var(--hb-accent);
+            color: var(--hb-accent-dark);
+        }
+
+        /* Time input */
+        .time-input-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .time-input {
+            font-family: var(--hb-font-display);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            text-align: center;
+            border: none;
+            background: transparent;
+            width: 100%;
+            max-width: 200px;
+            outline: none;
+        }
+
+        .time-input::-webkit-calendar-picker-indicator { display: none; }
+
+        /* Day pills (weekly) */
+        .day-pills {
+            display: flex;
+            gap: 0.4rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .day-pill {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 2px solid var(--hb-border);
+            background: var(--hb-surface);
+            font-family: var(--hb-font-body);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--hb-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .day-pill:hover { border-color: var(--hb-accent); }
+        .day-pill.active {
+            background: var(--hb-accent);
+            border-color: var(--hb-accent);
+            color: white;
+        }
+
+        /* Calendar grid (monthly) */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.35rem;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 1px solid var(--hb-border);
+            background: var(--hb-surface);
+            font-family: var(--hb-font-body);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--hb-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-day:hover { border-color: var(--hb-accent); }
+        .calendar-day.active {
+            background: var(--hb-accent);
+            border-color: var(--hb-accent);
+            color: white;
+        }
+
+        .calendar-note {
+            font-size: 0.75rem;
+            color: var(--hb-text-muted);
+            text-align: center;
+            margin-top: 0.75rem;
+            font-style: italic;
+            display: none;
+        }
+
+        .calendar-note.visible { display: block; }
+
+        /* Stepper (interval) */
+        .stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .stepper-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 2px solid var(--hb-border);
+            background: var(--hb-surface);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--hb-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stepper-btn:hover { border-color: var(--hb-accent); color: var(--hb-accent-dark); }
+        .stepper-btn:active { background: var(--hb-accent-light); }
+        .stepper-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .stepper-value {
+            font-family: var(--hb-font-display);
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--hb-accent-dark);
+            min-width: 80px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .stepper-label {
+            text-align: center;
+            font-size: 0.95rem;
+            color: var(--hb-text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .stepper-hint {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--hb-text-muted);
+            margin-top: 0.25rem;
+            font-style: italic;
+            min-height: 1.2em;
+        }
+
+        .interval-preview-dates {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--hb-text-muted);
+            margin-top: 0.75rem;
+        }
+
+        /* Preview & save */
+        .preview {
+            text-align: center;
+            padding: 1rem;
+            background: var(--hb-accent-light);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--hb-accent-dark);
+            min-height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .save-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background: var(--hb-accent);
+            color: white;
+            border: none;
+            border-radius: 100px;
+            font-family: var(--hb-font-body);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .save-btn:hover:not(:disabled) {
+            background: var(--hb-accent-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(45, 159, 111, 0.3);
+        }
+
+        .save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .save-btn.saving {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        @media (max-width: 380px) {
+            .day-pill { width: 38px; height: 38px; font-size: 0.7rem; }
+            .calendar-grid { gap: 0.25rem; }
+            .calendar-day { font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">Loading schedule configuration...</div>
+        <div id="error" class="error" style="display:none;"></div>
+
+        <div id="app" style="display:none;">
+            <div class="header">
+                <h1>⏰ Set Schedule</h1>
+                <div id="habit-name-display" class="habit-name"></div>
+                <div id="timezone-display" class="timezone-badge"></div>
+            </div>
+
+            <div class="type-tabs" id="type-tabs">
+                <button class="type-tab" data-type="daily">📅 Daily</button>
+                <button class="type-tab" data-type="weekly">📆 Weekly</button>
+                <button class="type-tab" data-type="monthly">🗓️ Monthly</button>
+                <button class="type-tab" data-type="interval">⏱️ Interval</button>
+            </div>
+
+            <!-- Daily -->
+            <div class="schedule-section" id="section-daily">
+                <div class="section-card">
+                    <div class="section-label">Quick pick</div>
+                    <div class="quick-picks">
+                        <button class="quick-pick" data-time="08:00">🌅 Morning 08:00</button>
+                        <button class="quick-pick" data-time="13:00">☀️ Afternoon 13:00</button>
+                        <button class="quick-pick" data-time="20:00">🌙 Evening 20:00</button>
+                    </div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Custom time</div>
+                    <div class="time-input-wrapper">
+                        <input type="time" class="time-input" id="daily-time" value="20:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly -->
+            <div class="schedule-section" id="section-weekly">
+                <div class="section-card">
+                    <div class="section-label">Quick pick</div>
+                    <div class="quick-picks">
+                        <button class="quick-pick" data-days="1,2,3,4,5">Weekdays</button>
+                        <button class="quick-pick" data-days="0,6">Weekends</button>
+                        <button class="quick-pick" data-days="1,3,5">Mon/Wed/Fri</button>
+                    </div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Select days</div>
+                    <div class="day-pills" id="day-pills">
+                        <button class="day-pill" data-day="1">Mon</button>
+                        <button class="day-pill" data-day="2">Tue</button>
+                        <button class="day-pill" data-day="3">Wed</button>
+                        <button class="day-pill" data-day="4">Thu</button>
+                        <button class="day-pill" data-day="5">Fri</button>
+                        <button class="day-pill" data-day="6">Sat</button>
+                        <button class="day-pill" data-day="0">Sun</button>
+                    </div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Time</div>
+                    <div class="time-input-wrapper">
+                        <input type="time" class="time-input" id="weekly-time" value="20:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly -->
+            <div class="schedule-section" id="section-monthly">
+                <div class="section-card">
+                    <div class="section-label">Quick pick</div>
+                    <div class="quick-picks">
+                        <button class="quick-pick" data-month-days="1">1st of month</button>
+                        <button class="quick-pick" data-month-days="15">15th</button>
+                        <button class="quick-pick" data-month-days="1,15">1st &amp; 15th</button>
+                    </div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Select dates</div>
+                    <div class="calendar-grid" id="calendar-grid"></div>
+                    <div class="calendar-note" id="calendar-note">Months with fewer days will skip selected dates (e.g., Feb&nbsp;30).</div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Time</div>
+                    <div class="time-input-wrapper">
+                        <input type="time" class="time-input" id="monthly-time" value="20:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interval -->
+            <div class="schedule-section" id="section-interval">
+                <div class="section-card">
+                    <div class="section-label">Every N days</div>
+                    <div class="stepper">
+                        <button class="stepper-btn" id="interval-minus">−</button>
+                        <div class="stepper-value" id="interval-value">2</div>
+                        <button class="stepper-btn" id="interval-plus">+</button>
+                    </div>
+                    <div class="stepper-label" id="interval-label">Every 2 days</div>
+                    <div class="stepper-hint" id="interval-hint"></div>
+                    <div class="interval-preview-dates" id="interval-dates"></div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Time</div>
+                    <div class="time-input-wrapper">
+                        <input type="time" class="time-input" id="interval-time" value="20:00">
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview" id="preview">Select a schedule to see preview</div>
+            <button class="save-btn" id="save-btn" disabled>Save schedule</button>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const habitId = params.get('habitId');
+        const initialType = params.get('type') || 'daily';
+        const chatId = params.get('chatId');
+        const msgId = params.get('msgId');
+        const isNew = params.get('isNew') || '0';
+
+        let currentType = initialType;
+        let userTimezone = 'UTC';
+        let habitName = '';
+        let intervalDays = 2;
+        let selectedWeekDays = new Set();
+        let selectedMonthDays = new Set();
+        let saving = false;
+
+        const tg = window.Telegram && window.Telegram.WebApp;
+
+        init();
+
+        async function init() {
+            if (!tg || !tg.initData) {
+                showError('Please open this page from the Telegram bot.');
+                return;
+            }
+            tg.ready();
+            tg.expand();
+
+            if (!habitId) {
+                showError('Missing habit information. Please try again from the bot.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData, habitId }),
+                });
+
+                if (res.status === 401) {
+                    showError('Authentication failed. Please reopen from the bot.');
+                    return;
+                }
+                if (!res.ok) throw new Error('Failed to load schedule data');
+
+                const data = await res.json();
+                userTimezone = data.timezone || 'UTC';
+                habitName = data.habitName || '';
+
+                // Pre-fill from current schedule if available
+                if (data.currentSchedule) {
+                    prefillSchedule(data.currentSchedule);
+                }
+
+                document.getElementById('habit-name-display').textContent = habitName;
+
+                const tzShort = userTimezone.split('/').pop().replace(/_/g, ' ');
+                document.getElementById('timezone-display').textContent = '🌐 ' + tzShort + ' (' + userTimezone + ')';
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+
+                buildCalendarGrid();
+                setupEventListeners();
+                switchType(currentType);
+            } catch (err) {
+                showError('Error: ' + err.message);
+            }
+        }
+
+        function prefillSchedule(schedule) {
+            if (schedule.hour !== undefined && schedule.minute !== undefined) {
+                const timeStr = pad(schedule.hour) + ':' + pad(schedule.minute);
+                document.getElementById('daily-time').value = timeStr;
+                document.getElementById('weekly-time').value = timeStr;
+                document.getElementById('monthly-time').value = timeStr;
+                document.getElementById('interval-time').value = timeStr;
+            }
+
+            if (schedule.type === 'weekly' && schedule.daysOfWeek) {
+                selectedWeekDays = new Set(schedule.daysOfWeek);
+                currentType = 'weekly';
+            } else if (schedule.type === 'monthly' && schedule.daysOfMonth) {
+                selectedMonthDays = new Set(schedule.daysOfMonth);
+                currentType = 'monthly';
+            } else if (schedule.type === 'interval' && schedule.intervalDays) {
+                intervalDays = schedule.intervalDays;
+                currentType = 'interval';
+            } else if (schedule.type === 'daily') {
+                currentType = 'daily';
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').textContent = msg;
+        }
+
+        function pad(n) { return n.toString().padStart(2, '0'); }
+
+        function buildCalendarGrid() {
+            const grid = document.getElementById('calendar-grid');
+            for (let d = 1; d <= 31; d++) {
+                const btn = document.createElement('button');
+                btn.className = 'calendar-day';
+                btn.textContent = d;
+                btn.dataset.day = d;
+                if (selectedMonthDays.has(d)) btn.classList.add('active');
+                btn.addEventListener('click', () => toggleMonthDay(d, btn));
+                grid.appendChild(btn);
+            }
+        }
+
+        function setupEventListeners() {
+            // Type tabs
+            document.querySelectorAll('.type-tab').forEach(tab => {
+                tab.addEventListener('click', () => switchType(tab.dataset.type));
+            });
+
+            // Daily quick picks
+            document.querySelectorAll('#section-daily .quick-pick').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('daily-time').value = btn.dataset.time;
+                    document.querySelectorAll('#section-daily .quick-pick').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updatePreview();
+                });
+            });
+
+            // Weekly quick picks
+            document.querySelectorAll('#section-weekly .quick-pick').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedWeekDays = new Set(btn.dataset.days.split(',').map(Number));
+                    syncDayPills();
+                    document.querySelectorAll('#section-weekly .quick-pick').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updatePreview();
+                });
+            });
+
+            // Day pills
+            document.querySelectorAll('.day-pill').forEach(pill => {
+                pill.addEventListener('click', () => {
+                    const day = Number(pill.dataset.day);
+                    if (selectedWeekDays.has(day)) {
+                        selectedWeekDays.delete(day);
+                        pill.classList.remove('active');
+                    } else {
+                        selectedWeekDays.add(day);
+                        pill.classList.add('active');
+                    }
+                    document.querySelectorAll('#section-weekly .quick-pick').forEach(b => b.classList.remove('active'));
+                    updatePreview();
+                });
+            });
+
+            // Monthly quick picks
+            document.querySelectorAll('#section-monthly .quick-pick').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedMonthDays = new Set(btn.dataset.monthDays.split(',').map(Number));
+                    syncCalendarGrid();
+                    document.querySelectorAll('#section-monthly .quick-pick').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updatePreview();
+                });
+            });
+
+            // Interval stepper
+            document.getElementById('interval-minus').addEventListener('click', () => {
+                if (intervalDays > 2) { intervalDays--; updateIntervalUI(); updatePreview(); }
+            });
+            document.getElementById('interval-plus').addEventListener('click', () => {
+                if (intervalDays < 30) { intervalDays++; updateIntervalUI(); updatePreview(); }
+            });
+
+            // Time input changes
+            ['daily-time', 'weekly-time', 'monthly-time', 'interval-time'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    if (id === 'daily-time') {
+                        document.querySelectorAll('#section-daily .quick-pick').forEach(b => b.classList.remove('active'));
+                    }
+                    updatePreview();
+                });
+            });
+
+            // Save button
+            document.getElementById('save-btn').addEventListener('click', saveSchedule);
+        }
+
+        function switchType(type) {
+            currentType = type;
+            document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
+            document.querySelectorAll('.schedule-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('section-' + type).classList.add('active');
+            updatePreview();
+        }
+
+        function syncDayPills() {
+            document.querySelectorAll('.day-pill').forEach(pill => {
+                pill.classList.toggle('active', selectedWeekDays.has(Number(pill.dataset.day)));
+            });
+        }
+
+        function syncCalendarGrid() {
+            document.querySelectorAll('.calendar-day').forEach(btn => {
+                btn.classList.toggle('active', selectedMonthDays.has(Number(btn.dataset.day)));
+            });
+            const note = document.getElementById('calendar-note');
+            const hasHighDays = [...selectedMonthDays].some(d => d > 28);
+            note.classList.toggle('visible', hasHighDays);
+        }
+
+        function toggleMonthDay(day, btn) {
+            if (selectedMonthDays.has(day)) {
+                selectedMonthDays.delete(day);
+                btn.classList.remove('active');
+            } else {
+                selectedMonthDays.add(day);
+                btn.classList.add('active');
+            }
+            document.querySelectorAll('#section-monthly .quick-pick').forEach(b => b.classList.remove('active'));
+            const note = document.getElementById('calendar-note');
+            const hasHighDays = [...selectedMonthDays].some(d => d > 28);
+            note.classList.toggle('visible', hasHighDays);
+            updatePreview();
+        }
+
+        function updateIntervalUI() {
+            document.getElementById('interval-value').textContent = intervalDays;
+            document.getElementById('interval-label').textContent = 'Every ' + intervalDays + ' day' + (intervalDays > 1 ? 's' : '');
+            document.getElementById('interval-minus').disabled = intervalDays <= 2;
+            document.getElementById('interval-plus').disabled = intervalDays >= 30;
+
+            let hint = '';
+            if (intervalDays === 7) hint = 'Same as weekly';
+            else if (intervalDays === 14) hint = 'Same as every 2 weeks';
+            else if (intervalDays === 30) hint = 'Roughly monthly';
+            document.getElementById('interval-hint').textContent = hint;
+
+            // Show next 3 reminder dates
+            const today = new Date();
+            const dates = [];
+            for (let i = 1; dates.length < 3; i++) {
+                const d = new Date(today);
+                d.setDate(d.getDate() + intervalDays * i);
+                dates.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+            document.getElementById('interval-dates').textContent = 'Next: ' + dates.join(', ');
+        }
+
+        function getTimeForType() {
+            const inputId = currentType + '-time';
+            return document.getElementById(inputId).value;
+        }
+
+        function isValid() {
+            const time = getTimeForType();
+            if (!time) return false;
+
+            switch (currentType) {
+                case 'daily': return true;
+                case 'weekly': return selectedWeekDays.size > 0;
+                case 'monthly': return selectedMonthDays.size > 0;
+                case 'interval': return intervalDays >= 2;
+            }
+            return false;
+        }
+
+        function buildPreviewText() {
+            const time = getTimeForType();
+            if (!time) return 'Select a time';
+
+            const tzShort = userTimezone.split('/').pop().replace(/_/g, ' ');
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+            switch (currentType) {
+                case 'daily':
+                    return 'Every day at ' + time + ' ' + tzShort;
+
+                case 'weekly':
+                    if (selectedWeekDays.size === 0) return 'Select at least one day';
+                    const wDays = [...selectedWeekDays].sort((a,b) => a-b).map(d => dayNames[d].slice(0,3)).join(', ');
+                    return 'Every ' + wDays + ' at ' + time;
+
+                case 'monthly':
+                    if (selectedMonthDays.size === 0) return 'Select at least one date';
+                    const mDays = [...selectedMonthDays].sort((a,b) => a-b).map(d => ordinal(d)).join(', ');
+                    return 'Every ' + mDays + ' at ' + time;
+
+                case 'interval':
+                    return 'Every ' + intervalDays + ' days at ' + time;
+            }
+        }
+
+        function ordinal(n) {
+            const s = n === 1 || n === 21 || n === 31 ? 'st' :
+                      n === 2 || n === 22 ? 'nd' :
+                      n === 3 || n === 23 ? 'rd' : 'th';
+            return n + s;
+        }
+
+        function updatePreview() {
+            document.getElementById('preview').textContent = buildPreviewText();
+            document.getElementById('save-btn').disabled = !isValid();
+
+            if (currentType === 'interval') updateIntervalUI();
+        }
+
+        function buildScheduleObject() {
+            const time = getTimeForType();
+            const [h, m] = time.split(':').map(Number);
+
+            switch (currentType) {
+                case 'daily':
+                    return { type: 'daily', hour: h, minute: m, timezone: userTimezone };
+
+                case 'weekly':
+                    return { type: 'weekly', daysOfWeek: [...selectedWeekDays].sort((a,b)=>a-b), hour: h, minute: m, timezone: userTimezone };
+
+                case 'monthly':
+                    return { type: 'monthly', daysOfMonth: [...selectedMonthDays].sort((a,b)=>a-b), hour: h, minute: m, timezone: userTimezone };
+
+                case 'interval':
+                    return { type: 'interval', intervalDays, hour: h, minute: m, timezone: userTimezone, startDate: new Date().toISOString().split('T')[0] };
+            }
+        }
+
+        async function saveSchedule() {
+            if (saving || !isValid()) return;
+            saving = true;
+
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.classList.add('saving');
+            btn.textContent = 'Saving...';
+
+            try {
+                const schedule = buildScheduleObject();
+                const res = await fetch('/api/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        initData: tg.initData,
+                        habitId,
+                        schedule,
+                        chatId,
+                        msgId,
+                        isNew,
+                    }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || 'Failed to save schedule');
+                }
+
+                btn.textContent = 'Saved ✓';
+                setTimeout(() => tg.close(), 600);
+            } catch (err) {
+                btn.textContent = 'Save schedule';
+                btn.disabled = false;
+                btn.classList.remove('saving');
+                saving = false;
+                alert('Error saving schedule: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>

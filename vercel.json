@@ -11,6 +11,10 @@
       "destination": "/analytics.html"
     },
     {
+      "source": "/schedule",
+      "destination": "/schedule.html"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     },
@@ -49,6 +53,9 @@
       "maxDuration": 10
     },
     "api/auth.ts": {
+      "maxDuration": 10
+    },
+    "api/schedule.ts": {
       "maxDuration": 10
     }
   }

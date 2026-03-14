@@ -12,7 +12,6 @@ import { createRemindersServer } from './api/reminders-server';
 const isProduction = process.env.NODE_ENV === 'production';
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
-console.log('Bot token:', botToken);
 if (!botToken) {
   throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
 }
