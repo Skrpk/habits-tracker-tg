@@ -1,11 +1,13 @@
 export interface SkippedDay {
   skippedDay: number; // The streak day that was skipped
   date: string; // YYYY-MM-DD format
+  note?: string; // Optional note (premium only)
 }
 
 export interface DroppedDay {
   streakBeforeDrop: number; // The streak value before it was dropped
   date: string; // YYYY-MM-DD format
+  note?: string; // Optional note (premium only)
 }
 
 export interface CheckedDay {
@@ -17,6 +19,7 @@ export interface CheckHistoryEntry {
   type: 'completed' | 'skipped' | 'dropped'; // Type of check
   streak: number; // Streak value after this check
   streakBefore?: number; // Streak value before this check (for dropped)
+  note?: string; // Note for skipped/dropped (from stored entry)
 }
 
 // Badge types
@@ -49,6 +52,7 @@ export interface Habit {
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
   disabled?: boolean; // Whether the habit is disabled (default false)
   badges?: Badge[]; // Array of earned badges (backward compatible - optional)
+  imgIndex?: number; // Index of the image folder used for celebration images (1-based, cycles through MAX_IMG_FOLDER_INDEX)
 }
 
 export interface UserHabits {

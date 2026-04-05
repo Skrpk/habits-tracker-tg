@@ -197,7 +197,8 @@ habits-tracker/
 | `REDIS_URL` | Redis connection string (redis:// or rediss://) | Yes |
 | `NODE_ENV` | Environment (production/development) | Yes |
 | `WEBHOOK_URL` | Full webhook URL for production | Production only |
-| `NOTIFICATION_CHANNEL_ID` | Telegram channel ID for new user notifications | No |
+| `NOTIFICATION_CHANNEL_ID` | Telegram channel ID for ops notifications (new users, and unhandled chat text after setup) | No |
+| `ADMIN_USERS` | JSON array of numeric Telegram user IDs allowed to use the Admin MiniApp, `POST /api/users`, and `POST /api/send-message` (e.g. `[123456789]`) | No |
 
 ## License
 

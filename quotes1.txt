@@ -1,144 +1,130 @@
+Отличная идея — у тебя уже получился **нарратив роста привычки через путешествие**. Можно сделать ещё несколько миров, где **персонаж растёт, а окружение становится масштабнее**. Ниже 4 сеттинга + **20 готовых промптов** (по 5 стадий).
 
-> habits-tracker@1.0.0 group-quotes
-> tsx scripts/group-quotes-by-author.ts
+Я сделал их так, чтобы:
 
+* стиль оставался **cartoon / cute mascot**
+* **aspect ratio 3:2**
+* персонаж **один и тот же**
+* сцены **постепенно становятся эпичнее**
 
-📊 Quotes grouped by author:
+---
 
-============================================================
+# 1️⃣ Космическое путешествие 🚀
 
-📝 Цицерон (152 quotes)
-------------------------------------------------------------
-  1. Когда нечем гордиться в настоящем, хвастаются вчерашними заслугами.
-  2. Величайшее из достоинств оратора — не только сказать то, что нужно, но и не сказ...
-  3. Красивые слова — пустое колебание воздуха.
-  ... and 149 more
+Символ: исследование и амбиции.
 
+### 1. Seed
 
-📝 Гиппократ (87 quotes)
-------------------------------------------------------------
-  1. Старики болеют меньше, чем молодые, но их болезни кончаются лишь вместе с жизнью
-  2. Болезни, происходящие от переутомления, лечатся покоем, а те, что происходят от ...
-  3. Противоположное излечивается противоположным.
-  ... and 84 more
+Cute seed astronaut sitting inside a tiny homemade rocket on a launchpad, looking excited before launch, futuristic spaceport in background, bright colors, cartoon style, adorable character, cinematic lighting, highly detailed, vibrant, 3:2 aspect ratio
 
-📝 Сенека (87 quotes)
-------------------------------------------------------------
-  1. Никто не становится хорошим человеком случайно.
-  2. Избыток пищи мешает тонкости ума.
-  3. Нас делают наши мысли.
-  ... and 84 more
+### 2. Sprout
 
-📝 Плутарх (85 quotes)
-------------------------------------------------------------
-  1. В браке большее благо любить, чем быть любимым.
-  2. Сон — это малая мистерия смерти, сон есть первое посвящение в смерть.
-  3. Умная жена, пока разгневанный муж кричит и бранится, хранит молчание, и лишь ког...
-  ... and 82 more
+Cute sprout astronaut piloting a small spaceship flying through space, Earth visible in the distance, stars and nebulae around, colorful cosmic scene, joyful expression, cartoon mascot style, vibrant lighting, detailed, 3:2
 
-📝 Эпиктет (71 quotes)
-------------------------------------------------------------
-  1. Если хочешь учиться, будь готов считаться дураком и тупицей.
-  2. Речь смелая, но бессвязная — что тупой меч.
-  3. Без власти над собой невозможно обрести свободу.
-  ... and 68 more
+### 3. Young Sprout
 
-📝 Платон (60 quotes)
-------------------------------------------------------------
-  1. Чтобы речь вышла хорошей, прекрасной, разве разум оратора не должен постичь исти...
-  2. Любимое часто ослепляет любящего.
-  3. Во всех государствах справедливостью считается одно и то же, а именно то, что пр...
-  ... and 57 more
+Young sprout captain standing on the bridge of a medium spaceship wearing a captain helmet, looking through a holographic telescope at a colorful alien planet, glowing galaxies around, adventurous mood, bright cartoon illustration, 3:2
 
-📝 Эпикур (53 quotes)
-------------------------------------------------------------
-  1. Изучение природы создаёт людей не хвастливых и велеречивых, и не выставляющих на...
-  2. Знать свой изъян — первый шаг к здоровью.
-  3. Величайший плод ограничения желаний — свобода.
-  ... and 50 more
+### 4. Young Tree
 
-📝 Сенека младший (50 quotes)
-------------------------------------------------------------
-  1. Проводи время только с теми, кто сделает тебя лучше, допускай к себе только тех,...
-  2. Порицание со стороны дурных людей — та же похвала.
-  3. Свои способности человек может узнать, только попытавшись применить их на деле.
-  ... and 47 more
+Young tree relaxing in zero gravity inside a large futuristic starship observation deck, wearing cool space sunglasses, floating drink pouch nearby, planets outside the panoramic window, bright colorful sci-fi cartoon style, 3:2
 
-📝 Аристотель (45 quotes)
-------------------------------------------------------------
-  1. Стыдно не уметь защищать себя рукою, но еще более стыдно не уметь защищать себя ...
-  2. Кто по природе принадлежит не самому себе, а другому, и при этом все-таки челове...
-  3. На что ты рассчитываешь, то и обретёшь.
-  ... and 42 more
+### 5. Big Tree
 
-📝 Гораций (41 quotes)
-------------------------------------------------------------
-  1. Человек, хорошо подготовленный, сохраняет надежду в несчастье и боится перемены ...
-  2. Carpe diem!
-  3. Кто мешает, смеясь, говорить правду?
-  ... and 38 more
+Large wise tree commanding a massive flagship spaceship, standing proudly on the command deck while the ship approaches a huge glowing galaxy, epic scale, bright optimistic atmosphere, cartoon mascot style, vibrant colors, 3:2
 
-📝 Тацит (32 quotes)
-------------------------------------------------------------
-  1. Каждому свою честь воздаёт потомство.
-  2. Жажда славы — последняя, от которой отрешаются мудрецы.
-  3. Честная смерть лучше позорной жизни.
-  ... and 29 more
+---
 
-📝 Диоген Синопский (24 quotes)
-------------------------------------------------------------
-  1. Те, кто содержат животных, должны признать, что скорее они служат животным, чем ...
-  2. Торжество над самим собой есть венец философии.
-  3. Бедность — это добродетель, которой можно научить самого себя.
-  ... and 21 more
+# 2️⃣ Горное приключение 🏔️
 
-📝 Антисфен (23 quotes)
-------------------------------------------------------------
-  1. Лекарство от любви — брак.
-  2. Братская близость единомыслящих крепче всяких стен.
-  3. Мудрец женится, чтобы иметь детей, притом от самых красивых женщин; он не будет ...
-  ... and 20 more
+Символ: преодоление трудностей.
 
-📝 Катон старший (19 quotes)
-------------------------------------------------------------
-  1. Одно дело успевать, другое — спешить.
-  2. Мужчинам: «Едва женщины станут вровень с вами, как тотчас окажутся выше вас».
-  3. Кто серьёзен в смешных делах, тот будет смешон в серьёзных.
-  ... and 16 more
+### 1. Seed
 
-📝 Тит Ливий (17 quotes)
-------------------------------------------------------------
-  1. Самое страшное оружие - это паника.
-  2. Никакое преступление не может иметь законного основания.
-  3. Люди пугают других, чтобы не пугаться самим.
-  ... and 14 more
+Cute seed hiker starting a journey at the base of huge mountains, wearing a tiny backpack and standing near a wooden trail sign, sunny day, alpine forest around, cheerful cartoon illustration, bright colors, 3:2
 
-📝 Вергилий (17 quotes)
-------------------------------------------------------------
-  1. Слепой случай меняет всё.
-  2. Молва — это бедствие, быстрее которого нет ничего на свете.
-  3. Мудрость сильнее рока.
-  ... and 14 more
+### 2. Sprout
 
-📝 Демосфен (4 quotes)
-------------------------------------------------------------
-  1. Человек, получивший благодеяние, должен всю жизнь помнить об этом, а человек, ок...
-  2. Легче всего обмануть самого себя.
-  3. Маленькие возможности часто являются началом великих проектов.
-  ... and 1 more
+Cute sprout climbing a rocky mountain trail using a walking stick, small backpack, waterfalls and pine trees around, determined but happy expression, bright colorful cartoon style, cinematic lighting, 3:2
 
-📝 Unknown (3 quotes)
-------------------------------------------------------------
-  1. Диоген просил подаяния у статуи; на вопрос, зачем он это делает, он сказал: «Что...
-  2. Увидев прихорашивающуюся старуху, Диоген сказал: «Если для живых — ты опоздала, ...
-  3. На вопрос Александра Македонского: «Чего бы ты от меня хотел?» Диоген ответил: «...
+### 3. Young Sprout
 
-============================================================
+Young sprout mountaineer wearing a helmet and rope gear climbing a steep cliff, looking through binoculars toward a high snowy peak, dramatic mountains in background, adventurous cartoon illustration, 3:2
 
-✅ Total authors: 19
-📚 Total quotes: 967
+### 4. Young Tree
 
-📈 Summary:
-   Most quotes: Цицерон (152)
-   Least quotes: Unknown (3)
+Young tree resting on a scenic mountain plateau wearing sunglasses, sitting on a rock with hot tea and a backpack nearby, clouds drifting below the mountains, peaceful bright cartoon scene, 3:2
 
+### 5. Big Tree
+
+Large majestic tree standing on the summit of a huge mountain with a flag planted beside it, sunrise illuminating the mountains and clouds below, epic victorious moment, vibrant cartoon illustration, 3:2
+
+---
+
+# 3️⃣ Средневековое фэнтези ⚔️
+
+Символ: геройский рост.
+
+### 1. Seed
+
+Cute seed adventurer leaving a medieval village with a tiny sword and backpack, wooden houses and castle walls behind, bright fantasy cartoon style, cheerful mood, colorful illustration, 3:2
+
+### 2. Sprout
+
+Cute sprout knight riding a small horse along a forest road, wearing shiny armor and a little helmet, magical forest around, bright fantasy cartoon illustration, 3:2
+
+### 3. Young Sprout
+
+Young sprout warrior standing on castle walls wearing captain armor and looking through a spyglass toward distant lands, banners waving in the wind, epic fantasy cartoon style, 3:2
+
+### 4. Young Tree
+
+Young tree hero relaxing in a royal castle garden wearing sunglasses, goblet drink and fruit nearby, fountains and flowers around, bright colorful fantasy cartoon style, 3:2
+
+### 5. Big Tree
+
+Large majestic tree king standing on a castle balcony overlooking a vast kingdom, crown on its head, banners flying, golden sunset lighting, epic fantasy cartoon illustration, 3:2
+
+---
+
+# 4️⃣ Глубоководное путешествие 🌊
+
+Символ: исследование глубины.
+
+### 1. Seed
+
+Cute seed explorer sitting inside a tiny yellow submarine starting a dive near the ocean surface, seagulls and sunlight above water, cheerful cartoon style, bright colors, 3:2
+
+### 2. Sprout
+
+Cute sprout submarine pilot navigating a small submarine through colorful coral reefs, tropical fish swimming around, bright underwater cartoon scene, vibrant lighting, 3:2
+
+### 3. Young Sprout
+
+Young sprout explorer standing inside a larger research submarine looking through a big glass window at giant sea creatures and glowing corals, adventurous mood, detailed cartoon illustration, 3:2
+
+### 4. Young Tree
+
+Young tree relaxing in a luxurious underwater research station lounge wearing sunglasses, sipping a tropical drink, sharks and dolphins swimming outside the glass walls, vibrant cartoon style, 3:2
+
+### 5. Big Tree
+
+Large wise tree captain inside a massive futuristic deep-sea vessel exploring a glowing underwater city, giant jellyfish floating around, epic scale underwater world, bright colorful cartoon illustration, 3:2
+
+---
+
+💡 **Совет для консистентности персонажа**
+
+В каждый prompt можно добавить одну фразу:
+
+> same cute seed mascot character, round body, big shiny eyes, small leaves on head
+
+Это поможет генератору сохранять **одного и того же персонажа**.
+
+---
+
+Если хочешь, я ещё могу:
+
+* 🎨 сделать **10–15 сеттингов** (у тебя получится 75+ сцен для бота)
+* 🎮 придумать **систему миров для привычек**
+* 🧠 сделать **prompt template**, который стабильно генерирует одинакового персонажа.

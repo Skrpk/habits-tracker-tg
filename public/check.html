@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check habit — Habits Builder</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --hb-bg: #FAFAF8;
+            --hb-surface: #FFFFFF;
+            --hb-text: #1A1A1A;
+            --hb-text-secondary: #555555;
+            --hb-text-muted: #888888;
+            --hb-accent: #2D9F6F;
+            --hb-accent-light: #E8F5EE;
+            --hb-accent-dark: #1E7A52;
+            --hb-border: #E5E5E0;
+            --hb-card-bg: #F6F6F3;
+            --hb-font-display: 'Newsreader', Georgia, serif;
+            --hb-font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --hb-danger: #f56565;
+            --hb-warn: #ed8936;
+        }
+
+        body {
+            font-family: var(--hb-font-body);
+            background: var(--hb-bg);
+            min-height: 100vh;
+            padding: 0;
+            color: var(--hb-text);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 1.25rem 1.25rem 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 {
+            font-family: var(--hb-font-display);
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .habit-name {
+            font-size: 1rem;
+            color: var(--hb-text-secondary);
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--hb-text-secondary);
+        }
+
+        .error {
+            text-align: center;
+            padding: 1.5rem;
+            color: #742a2a;
+            background: #fed7d7;
+            border-radius: 12px;
+            border: 1px solid #feb2b2;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .action-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--hb-border);
+            border-radius: 14px;
+            background: var(--hb-surface);
+            font-family: var(--hb-font-body);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--hb-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            border-color: var(--hb-accent);
+            color: var(--hb-accent-dark);
+        }
+
+        .action-btn.active {
+            border-color: var(--hb-accent);
+            background: var(--hb-accent-light);
+            color: var(--hb-accent-dark);
+        }
+
+        .action-btn.complete.active { border-color: var(--hb-accent); background: var(--hb-accent-light); color: var(--hb-accent-dark); }
+        .action-btn.skip.active { border-color: var(--hb-warn); background: #fff7ed; color: #c05621; }
+        .action-btn.drop.active { border-color: var(--hb-danger); background: #fff5f5; color: #c53030; }
+
+        .note-section {
+            display: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .note-section.visible {
+            display: block;
+        }
+
+        .note-section label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--hb-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .note-section textarea {
+            width: 100%;
+            min-height: 88px;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--hb-border);
+            border-radius: 12px;
+            font-family: var(--hb-font-body);
+            font-size: 0.95rem;
+            color: var(--hb-text);
+            resize: vertical;
+            outline: none;
+        }
+
+        .note-section textarea:focus {
+            border-color: var(--hb-accent);
+        }
+
+        .note-section textarea::placeholder {
+            color: var(--hb-text-muted);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: none;
+            border-radius: 14px;
+            background: var(--hb-accent);
+            color: white;
+            font-family: var(--hb-font-body);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .submit-btn.sending {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .success-msg {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--hb-accent-dark);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">Loading habit...</div>
+        <div id="error" class="error" style="display:none;"></div>
+
+        <div id="app" style="display:none;">
+            <div class="header">
+                <h1>✅ Check habit</h1>
+                <div id="habit-name-display" class="habit-name"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button type="button" class="action-btn complete" data-action="complete">✅ Complete</button>
+                <button type="button" class="action-btn skip" data-action="skip">⏭️ Skip</button>
+                <button type="button" class="action-btn drop" data-action="drop">❌ Drop</button>
+            </div>
+
+            <div id="note-section" class="note-section">
+                <label for="note-input">Note (optional)</label>
+                <textarea id="note-input" placeholder="Why skip or drop (optional)" maxlength="500"></textarea>
+            </div>
+
+            <button type="button" class="submit-btn" id="submit-btn" disabled>Submit</button>
+            <div id="success-msg" class="success-msg" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const habitId = params.get('habitId');
+        const targetDate = params.get('targetDate') || new Date().toISOString().split('T')[0];
+        const chatId = params.get('chatId');
+        const msgId = params.get('msgId');
+
+        let selectedAction = null;
+        let saving = false;
+
+        const tg = window.Telegram && window.Telegram.WebApp;
+
+        init();
+
+        async function init() {
+            if (!tg || !tg.initData) {
+                showError('Please open this page from the Telegram bot.');
+                return;
+            }
+            tg.ready();
+            tg.expand();
+
+            if (!habitId) {
+                showError('Missing habit information. Please try again from the bot.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: tg.initData, habitId }),
+                });
+
+                if (res.status === 401) {
+                    showError('Authentication failed. Please reopen from the bot.');
+                    return;
+                }
+                if (res.status === 404) {
+                    showError('Habit not found.');
+                    return;
+                }
+                if (!res.ok) throw new Error('Failed to load habit');
+
+                const data = await res.json();
+                document.getElementById('habit-name-display').textContent = data.habitName || 'Habit';
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+
+                document.querySelectorAll('.action-btn').forEach(btn => {
+                    btn.addEventListener('click', () => selectAction(btn.dataset.action));
+                });
+                document.getElementById('submit-btn').addEventListener('click', submit);
+            } catch (err) {
+                showError('Error: ' + (err.message || 'Could not load habit'));
+            }
+        }
+
+        function selectAction(action) {
+            selectedAction = action;
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.action === action);
+            });
+            const noteSection = document.getElementById('note-section');
+            if (action === 'skip' || action === 'drop') {
+                noteSection.classList.add('visible');
+            } else {
+                noteSection.classList.remove('visible');
+            }
+            document.getElementById('submit-btn').disabled = false;
+        }
+
+        async function submit() {
+            if (saving || !selectedAction) return;
+            saving = true;
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.classList.add('sending');
+            submitBtn.disabled = true;
+
+            const noteEl = document.getElementById('note-input');
+            const note = (noteEl && noteEl.value && noteEl.value.trim()) ? noteEl.value.trim().slice(0, 500) : undefined;
+
+            try {
+                const body = {
+                    initData: tg.initData,
+                    habitId,
+                    action: selectedAction,
+                    note: note || undefined,
+                    targetDate,
+                };
+                if (chatId) body.chatId = chatId;
+                if (msgId) body.msgId = msgId;
+                const res = await fetch('/api/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (res.status === 401) {
+                    showError('Authentication failed. Please reopen from the bot.');
+                    saving = false;
+                    submitBtn.classList.remove('sending');
+                    submitBtn.disabled = false;
+                    return;
+                }
+                if (res.status === 404) {
+                    showError('Habit not found.');
+                    saving = false;
+                    submitBtn.classList.remove('sending');
+                    submitBtn.disabled = false;
+                    return;
+                }
+                if (!res.ok) {
+                    throw new Error(data.error || data.message || 'Request failed');
+                }
+
+                document.getElementById('success-msg').style.display = 'block';
+                document.getElementById('success-msg').textContent = data.ok ? 'Done! Streak: ' + (data.streak ?? '—') : 'Saved.';
+                submitBtn.style.display = 'none';
+                document.querySelector('.action-buttons').style.display = 'none';
+                document.getElementById('note-section').classList.remove('visible');
+
+                if (tg.close) {
+                    setTimeout(() => tg.close(), 1200);
+                }
+            } catch (err) {
+                showError('Error: ' + (err.message || 'Could not save'));
+                submitBtn.classList.remove('sending');
+                submitBtn.disabled = false;
+            }
+            saving = false;
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').textContent = msg;
+        }
+    </script>
+</body>
+</html>

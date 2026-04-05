@@ -308,6 +308,13 @@
             font-size: 0.9rem;
         }
 
+        @media (max-width: 764px) {
+            .timeline-date {
+                min-width: 85px;
+                font-size: 0.8rem;
+            }
+        }
+
         .timeline-type {
             margin-left: 20px;
             padding: 4px 12px;
@@ -330,6 +337,18 @@
         .timeline-type.dropped {
             background: #fed7d7;
             color: #742a2a;
+        }
+
+        @media (max-width: 764px) {
+            .timeline-type {
+                padding: 4px 8px;
+                margin-left: 4px;
+                margin-right: 4px;
+                font-size: 1.1rem;
+                text-transform: none;
+                min-width: 2em;
+                text-align: center;
+            }
         }
 
         .timeline-streak {
@@ -393,6 +412,66 @@
             padding: 0 0.5rem;
         }
 
+        .insights-wrapper {
+            margin-top: 30px;
+            background: var(--hb-surface);
+            padding: 1.5rem;
+            border-radius: 14px;
+            border: 1px solid var(--hb-border);
+        }
+
+        .insights-wrapper .insights-title {
+            font-family: var(--hb-font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            margin-bottom: 1rem;
+        }
+
+        .insights-section {
+            margin-bottom: 1rem;
+        }
+
+        .insights-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .insights-paragraph {
+            font-size: 0.95rem;
+            color: var(--hb-text-secondary);
+            line-height: 1.6;
+            margin-bottom: 0.75rem;
+        }
+
+        .insights-highlight {
+            color: var(--hb-accent-dark);
+            font-weight: 600;
+        }
+
+        .insights-list {
+            margin: 0.5rem 0 0.75rem 1.25rem;
+            padding: 0;
+        }
+
+        .insights-item {
+            font-size: 0.95rem;
+            color: var(--hb-text-secondary);
+            line-height: 1.5;
+            margin-bottom: 0.35rem;
+        }
+
+        .insights-tip {
+            font-size: 0.9rem;
+            color: var(--hb-text-muted);
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+
+        .insights-loading {
+            color: var(--hb-text-muted);
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 768px) {
             .site-header {
                 padding: 1.25rem 1.25rem;
@@ -452,6 +531,9 @@
         let charts = {};
         let timelinePage = 1;
         const TIMELINE_ITEMS_PER_PAGE = 10;
+        let insightsData = {};
+        let isPremium = false;
+        let insightsLoading = false;
 
         // Check for mock mode via URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -483,7 +565,7 @@
                 const response = await fetch('/api/analytics', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ initData: tg.initData }),
+                    body: JSON.stringify({ initData: {} }),
                 });
 
                 if (response.status === 401) {
@@ -494,19 +576,48 @@
                 }
 
                 if (!response.ok) {
-                    throw new Error(`Failed to load analytics: ${response.statusText}`);
+                    const data = await response.json();
+                    console.log('DATA', data);
+                    throw new Error(`Failed to load analytics: ${JSON.stringify(data)}!`);
                 }
 
                 const data = await response.json();
                 habitsData = data.habits || [];
-                
+                isPremium = data.premium === true;
+
                 document.getElementById('loading').style.display = 'none';
-                
+
                 if (habitsData.length === 0) {
                     document.getElementById('error').style.display = 'block';
                     document.getElementById('error').textContent = 'No habits found. Create some habits in the bot first!';
                 } else {
                     renderHabitsList();
+                }
+
+                if (isPremium && habitsData.length > 0) {
+                    insightsLoading = true;
+                    fetch('/api/analytics-insights', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ initData: {} }),
+                        // body: JSON.stringify({ initData: tg.initData }),
+                    })
+                        .then(r => r.ok ? r.json() : { insights: {} })
+                        .then(data => {
+                            insightsData = data.insights || {};
+                            insightsLoading = false;
+                            if (currentHabitId) {
+                                const habit = habitsData.find(h => h.id === currentHabitId);
+                                if (habit) showHabitDetail(habit.id);
+                            }
+                        })
+                        .catch(() => {
+                            insightsLoading = false;
+                            if (currentHabitId) {
+                                const habit = habitsData.find(h => h.id === currentHabitId);
+                                if (habit) showHabitDetail(habit.id);
+                            }
+                        });
                 }
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
@@ -536,7 +647,8 @@
             };
 
             // Helper to generate check history
-            const generateCheckHistory = (startDate, days, completionRate = 0.8) => {
+            // notesForFirst: optional { skipped?: string, dropped?: string } to add to first occurrence of each type
+            const generateCheckHistory = (startDate, days, completionRate = 0.8, notesForFirst = null) => {
                 const history = [];
                 const start = new Date(startDate);
                 let currentStreak = 0;
@@ -577,13 +689,21 @@
                         });
                     }
                 }
-                
+                if (notesForFirst) {
+                    const firstSkipped = history.find(h => h.type === 'skipped');
+                    if (firstSkipped && notesForFirst.skipped) firstSkipped.note = notesForFirst.skipped;
+                    const firstDropped = history.find(h => h.type === 'dropped');
+                    if (firstDropped && notesForFirst.dropped) firstDropped.note = notesForFirst.dropped;
+                }
                 return history;
             };
 
             // 1. Daily schedule - 1 week old
             const weekAgo = daysAgo(7);
-            const weekHistory = generateCheckHistory(weekAgo, 7, 0.9);
+            const weekHistory = generateCheckHistory(weekAgo, 7, 0.9, {
+                skipped: 'Away for the day',
+                dropped: 'Slept in, missed the window'
+            });
             habits.push({
                 id: 'mock-1',
                 userId: 0,
@@ -612,7 +732,10 @@
 
             // 2. Daily schedule - 1 month old
             const monthAgo = daysAgo(30);
-            const monthHistory = generateCheckHistory(monthAgo, 30, 0.85);
+            const monthHistory = generateCheckHistory(monthAgo, 30, 0.85, {
+                skipped: 'On vacation',
+                dropped: 'Was too tired after work'
+            });
             const monthStreak = monthHistory.length > 0 ? monthHistory[monthHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-2',
@@ -646,7 +769,10 @@
 
             // 3. Weekly schedule - 2 months old
             const twoMonthsAgo = daysAgo(60);
-            const weeklyHistory = generateCheckHistory(twoMonthsAgo, 60, 0.7);
+            const weeklyHistory = generateCheckHistory(twoMonthsAgo, 60, 0.7, {
+                skipped: 'Book club was cancelled',
+                dropped: 'Forgot to bring my book'
+            });
             const weeklyStreak = weeklyHistory.length > 0 ? weeklyHistory[weeklyHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-3',
@@ -681,7 +807,10 @@
 
             // 4. Weekly schedule - 3 months old
             const threeMonthsAgo = daysAgo(90);
-            const weekly2History = generateCheckHistory(threeMonthsAgo, 90, 0.75);
+            const weekly2History = generateCheckHistory(threeMonthsAgo, 90, 0.75, {
+                skipped: 'Weather was bad',
+                dropped: 'Had a cold'
+            });
             const weekly2Streak = weekly2History.length > 0 ? weekly2History[weekly2History.length - 1].streak : 0;
             habits.push({
                 id: 'mock-4',
@@ -717,7 +846,10 @@
 
             // 5. Monthly schedule - 4 months old
             const fourMonthsAgo = daysAgo(120);
-            const monthlyHistory = generateCheckHistory(fourMonthsAgo, 120, 0.6);
+            const monthlyHistory = generateCheckHistory(fourMonthsAgo, 120, 0.6, {
+                skipped: 'Traveling, no time to sit down',
+                dropped: 'Got distracted by urgent tasks'
+            });
             const monthlyStreak = monthlyHistory.length > 0 ? monthlyHistory[monthlyHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-5',
@@ -787,7 +919,10 @@
             });
 
             // 7. Interval schedule (every 2 days) - 1 month old
-            const intervalHistory = generateCheckHistory(monthAgo, 30, 0.8);
+            const intervalHistory = generateCheckHistory(monthAgo, 30, 0.8, {
+                skipped: 'Plants were at the office',
+                dropped: 'Weekend away'
+            });
             const intervalStreak = intervalHistory.length > 0 ? intervalHistory[intervalHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-7',
@@ -903,11 +1038,12 @@
                 reminderEnabled: true,
                 badges: []
             });
-
+            console.log('habits', habits);
             return habits;
         }
 
         function renderHabitsList() {
+            console.log('renderHabitsList', habitsData);
             const container = document.getElementById('habits-list');
             container.innerHTML = '';
             container.style.display = 'grid';
@@ -965,12 +1101,13 @@
             if (!habit) return;
 
             currentHabitId = habitId;
+            console.log('s11212howHabitDetail', habit);
             
             // Update active card
             document.querySelectorAll('.habit-card').forEach(card => {
                 card.classList.remove('active');
             });
-            event.target.closest('.habit-card')?.classList.add('active');
+            event?.target?.closest('.habit-card')?.classList.add('active');
 
             const detailContainer = document.getElementById('habit-detail');
             detailContainer.innerHTML = '';
@@ -1049,6 +1186,8 @@
                     </div>
                 </div>
 
+                <div id="insights-block" class="insights-wrapper" style="display: none;"></div>
+
                 <div class="chart-container">
                     <canvas id="streakChart"></canvas>
                 </div>
@@ -1067,6 +1206,19 @@
             timelinePage = 1; // Reset to first page when showing a new habit
             renderCharts(habit);
             renderTimeline(habit);
+
+            const insightsBlock = document.getElementById('insights-block');
+            if (insightsBlock) {
+                if (isPremium && insightsLoading) {
+                    insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><p class="insights-loading">Loading insights...</p>';
+                    insightsBlock.style.display = 'block';
+                } else if (isPremium && insightsData[habit.id]) {
+                    insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><div class="insights-content">' + insightsData[habit.id] + '</div>';
+                    insightsBlock.style.display = 'block';
+                } else {
+                    insightsBlock.style.display = 'none';
+                }
+            }
             
             // Scroll to habit detail section after content is rendered
             setTimeout(() => {
@@ -1134,7 +1286,15 @@
                                     return `${dayOfWeek}, ${fullDate}`;
                                 },
                                 label: function(context) {
-                                    return `Streak: ${context.parsed.y}`;
+                                    const entry = checkHistory[checkHistory.length - context.dataIndex - 1];
+                                    let line = `Streak: ${context.parsed.y}`;
+                                    console.log('entry', entry);
+                                    console.log('context', context);
+                                    console.log('checkHistory', checkHistory);
+                                    if (entry && entry.note && String(entry.note).trim()) {
+                                        line += `\nNote: ${entry.note}`;
+                                    }
+                                    return line;
                                 }
                             }
                         }
@@ -1163,7 +1323,7 @@
             charts.activity = new Chart(activityCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Completed', 'Skipped', 'Dropped'],
+                    labels: ['✅ Completed', '↔️ Skipped', '🚫 Dropped'],
                     datasets: [{
                         data: [completed, skipped, dropped],
                         backgroundColor: [
@@ -1210,17 +1370,22 @@
             const endIndex = startIndex + TIMELINE_ITEMS_PER_PAGE;
             const paginatedHistory = checkHistory.slice(startIndex, endIndex);
 
+            const typeEmoji = { completed: '✅', dropped: '🚫', skipped: '↔️' };
             timelineContainer.innerHTML = paginatedHistory.map(entry => {
                 const typeClass = entry.type;
-                const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
+                const typeLabel = typeEmoji[entry.type] || entry.type;
                 const streakInfo = entry.streakBefore !== undefined 
                     ? `Streak: ${entry.streakBefore} → ${entry.streak}`
                     : `Streak: ${entry.streak}`;
+                const noteHtml = entry.note
+                    ? `<div class="timeline-note" style="color: var(--hb-text-muted); font-size: 0.9em; margin-top: 4px;">Note: ${String(entry.note).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>`
+                    : '';
 
                 return `
                     <div class="timeline-item ${typeClass}">
                         <div class="timeline-date">${formatDate(entry.date)}</div>
                         <div class="timeline-type ${typeClass}">${typeLabel}</div>
+                        ${noteHtml}
                         <div class="timeline-streak">${streakInfo}</div>
                     </div>
                 `;
@@ -1340,7 +1505,7 @@
             
             return date.toLocaleDateString('en-US', { 
                 year: 'numeric', 
-                month: 'long', 
+                month: 'short', 
                 day: 'numeric' 
             });
         }

@@ -16,6 +16,27 @@ export const BADGE_EMOJIS: Record<BadgeType, string> = {
 };
 
 /**
+ * Badge type to celebration image number mapping.
+ * First check image (1) is handled separately.
+ */
+export const BADGE_IMAGE_MAP: Record<BadgeType, number> = {
+  5: 2,
+  10: 3,
+  30: 4,
+  90: 5,
+};
+
+/**
+ * Tree growth messages per badge milestone
+ */
+export const BADGE_TREE_MESSAGES: Record<BadgeType, string> = {
+  5: 'Your sprout is growing strong!',
+  10: 'Your habit is becoming a sapling!',
+  30: 'A real tree now — standing tall!',
+  90: 'Deep roots. This habit is part of who you are.',
+};
+
+/**
  * Badge names
  */
 export const BADGE_NAMES: Record<BadgeType, string> = {
@@ -83,6 +104,24 @@ export function getBadgeInfo(badgeType: BadgeType): { emoji: string; name: strin
     emoji: BADGE_EMOJIS[badgeType],
     name: BADGE_NAMES[badgeType],
   };
+}
+
+/**
+ * Get the next badge milestone after the current streak.
+ * Returns null if all badges have been earned or streak is past 90.
+ */
+export function getNextMilestone(currentStreak: number, earnedBadges: Badge[] = []): { daysLeft: number; milestone: BadgeType; emoji: string } | null {
+  const earnedTypes = new Set(earnedBadges.map(b => b.type));
+  for (const milestone of BADGE_MILESTONES) {
+    if (currentStreak < milestone && !earnedTypes.has(milestone)) {
+      return {
+        daysLeft: milestone - currentStreak,
+        milestone,
+        emoji: BADGE_EMOJIS[milestone],
+      };
+    }
+  }
+  return null;
 }
 
 /**

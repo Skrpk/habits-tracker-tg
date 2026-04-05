@@ -8,6 +8,7 @@ import { DeleteHabitUseCase } from '../src/domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../src/domain/use-cases/GetHabitsToCheckUseCase';
 import { GetHabitsDueForReminderUseCase } from '../src/domain/use-cases/GetHabitsDueForReminderUseCase';
 import { SetHabitReminderScheduleUseCase } from '../src/domain/use-cases/SetHabitReminderScheduleUseCase';
+import { SubscriptionUseCase } from '../src/domain/use-cases/SubscriptionUseCase';
 import { Habit } from '../src/domain/entities/Habit';
 import { Logger } from '../src/infrastructure/logger/Logger';
 
@@ -79,6 +80,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const habitRepository = new VercelKVHabitRepository();
     const botService = getBotService();
+
+    // Check and revoke expired premium subscriptions
+    const subscriptionUseCase = new SubscriptionUseCase(habitRepository);
+    const allUserIds = await habitRepository.getAllActiveUserIds();
+    const expired = await subscriptionUseCase.checkAndRevokeExpired(allUserIds);
+    const starsPrice = parseInt(process.env.PREMIUM_STARS_PRICE || '1', 10);
+    const starsAnnual = process.env.PREMIUM_STARS_ANNUAL ? parseInt(process.env.PREMIUM_STARS_ANNUAL, 10) : starsPrice * 12;
+    const maxFree = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+    const bot = botService.getBot();
+
+    for (const { userId, premiumType } of expired) {
+      try {
+        if (premiumType === 'annual') {
+          const annualLink = await bot.createInvoiceLink(
+            'Premium Subscription (Annual)',
+            'Unlimited habits for 1 year. One payment; no auto-renewal.',
+            `sub_annual_${userId}`,
+            '',
+            'XTR',
+            [{ label: 'Annual Premium', amount: starsAnnual }],
+            {}
+          );
+          await bot.sendMessage(userId,
+            `⚠️ Your annual Premium subscription has expired. Habits beyond the free limit of ${maxFree} have been paused.\n\nPay below to renew for another year.`,
+            {
+              reply_markup: {
+                inline_keyboard: [[{ text: `Renew — ${starsAnnual} ⭐/year`, url: annualLink }]],
+              },
+            }
+          );
+        } else {
+          await bot.sendMessage(userId,
+            `⚠️ Your Premium subscription has expired. Habits beyond the free limit of ${maxFree} have been paused.\n\nUse /subscribe to renew and re-enable them.`
+          );
+        }
+      } catch { /* user may have blocked bot */ }
+    }
     
     // Get current time (UTC)
     const now = new Date();

@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { VercelKVHabitRepository } from '../src/infrastructure/repositories/VercelKVHabitRepository';
-import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCase';
 import { Logger } from '../src/infrastructure/logger/Logger';
-import { computeCheckHistory } from '../src/domain/utils/HabitAnalytics';
 import { ChannelNotifications } from '../src/infrastructure/notifications/ChannelNotifications';
 import { validateTelegramInitData, parseTelegramInitData, isAuthDateValid } from '../src/infrastructure/auth/validateTelegramInitData';
+import { getAnalyticsData } from '../src/api/analytics-shared';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('ANALYTICS API CALLED');
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -44,24 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userIdNum = user.id;
 
     const habitRepository = new VercelKVHabitRepository();
-    const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
-
-    const habits = await getUserHabitsUseCase.execute(userIdNum);
-
-    const analyticsData = habits.map(habit => ({
-      id: habit.id,
-      name: habit.name,
-      streak: habit.streak,
-      createdAt: habit.createdAt,
-      lastCheckedDate: habit.lastCheckedDate,
-      skipped: habit.skipped || [],
-      dropped: habit.dropped || [],
-      badges: habit.badges || [],
-      checkHistory: computeCheckHistory(habit),
-      disabled: habit.disabled || false,
-      reminderSchedule: habit.reminderSchedule,
-      reminderEnabled: habit.reminderEnabled,
-    }));
+    const { habits: analyticsData, premium } = await getAnalyticsData(habitRepository, userIdNum);
 
     Logger.info('Analytics data retrieved', {
       userId: userIdNum,
@@ -78,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.setHeader('Content-Type', 'application/json');
 
-    return res.status(200).json({ habits: analyticsData });
+    return res.status(200).json({ habits: analyticsData, premium });
   } catch (error) {
     Logger.error('Error fetching analytics data', {
       error: error instanceof Error ? error.message : 'Unknown error',

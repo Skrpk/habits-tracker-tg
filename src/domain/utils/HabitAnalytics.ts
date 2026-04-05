@@ -24,7 +24,10 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
   today.setHours(0, 0, 0, 0);
   
   // Create lookup structures
-  const skippedDates = new Set((habit.skipped || []).map(s => s.date));
+  const skippedByDate = new Map<string, SkippedDay>();
+  (habit.skipped || []).forEach(s => {
+    skippedByDate.set(s.date, s);
+  });
   const droppedDates = new Map<string, DroppedDay>();
   (habit.dropped || []).forEach(d => {
     droppedDates.set(d.date, d);
@@ -38,11 +41,11 @@ export function computeCheckHistory(habit: Habit): CheckHistoryEntry[] {
   
   // For daily habits: use inference logic
   if (isDaily) {
-    return computeDailyHabitHistory(habit, creationDate, today, skippedDates, droppedDates, remindersEnabled, notDisabled);
+    return computeDailyHabitHistory(habit, creationDate, today, skippedByDate, droppedDates, remindersEnabled, notDisabled);
   }
   
   // For non-daily habits: use checked array
-  return computeNonDailyHabitHistory(habit, creationDate, today, skippedDates, droppedDates);
+  return computeNonDailyHabitHistory(habit, creationDate, today, skippedByDate, droppedDates);
 }
 
 /**
@@ -53,7 +56,7 @@ function computeDailyHabitHistory(
   habit: Habit,
   creationDate: Date,
   today: Date,
-  skippedDates: Set<string>,
+  skippedByDate: Map<string, SkippedDay>,
   droppedDates: Map<string, DroppedDay>,
   remindersEnabled: boolean,
   notDisabled: boolean
@@ -63,7 +66,7 @@ function computeDailyHabitHistory(
   // Only infer completions if there's evidence of user interaction:
   // - streak > 0 (user has completed at least once), OR
   // - has skipped/dropped days (user has interacted with the habit)
-  const hasUserInteraction = (habit.streak || 0) > 0 || skippedDates.size > 0 || droppedDates.size > 0;
+  const hasUserInteraction = (habit.streak || 0) > 0 || skippedByDate.size > 0 || droppedDates.size > 0;
   const shouldInferCompletions = remindersEnabled && notDisabled;
   
   // If we shouldn't infer completions, only return explicit events (skips/drops)
@@ -79,12 +82,15 @@ function computeDailyHabitHistory(
           type: 'dropped',
           streak: 0,
           streakBefore: drop.streakBeforeDrop,
+          ...(drop.note && { note: drop.note }),
         });
-      } else if (skippedDates.has(dateStr)) {
+      } else if (skippedByDate.has(dateStr)) {
+        const skip = skippedByDate.get(dateStr)!;
         history.push({
           date: dateStr,
           type: 'skipped',
           streak: 0,
+          ...(skip.note && { note: skip.note }),
         });
       }
       
@@ -114,14 +120,17 @@ function computeDailyHabitHistory(
         type: 'dropped',
         streak: 0,
         streakBefore: drop.streakBeforeDrop,
+        ...(drop.note && { note: drop.note }),
       });
       currentStreak = 0;
-    } else if (skippedDates.has(dateStr)) {
+    } else if (skippedByDate.has(dateStr)) {
       // Skip: preserve streak (don't increment)
+      const skip = skippedByDate.get(dateStr)!;
       adjustedHistory.push({
         date: dateStr,
         type: 'skipped',
         streak: currentStreak,
+        ...(skip.note && { note: skip.note }),
       });
       // Streak remains the same
     } else if (isToday && !checkedToday) {
@@ -151,7 +160,7 @@ function computeNonDailyHabitHistory(
   habit: Habit,
   creationDate: Date,
   today: Date,
-  skippedDates: Set<string>,
+  skippedByDate: Map<string, SkippedDay>,
   droppedDates: Map<string, DroppedDay>
 ): CheckHistoryEntry[] {
   const history: CheckHistoryEntry[] = [];
@@ -162,7 +171,7 @@ function computeNonDailyHabitHistory(
   // Collect all event dates: checked, skipped, dropped, and creation date
   const allEventDates = new Set<string>();
   checkedDates.forEach(date => allEventDates.add(date));
-  skippedDates.forEach(date => allEventDates.add(date));
+  skippedByDate.forEach((_, date) => allEventDates.add(date));
   droppedDates.forEach((_, date) => allEventDates.add(date));
   
   // Add creation date as the start day
@@ -194,14 +203,17 @@ function computeNonDailyHabitHistory(
         type: 'dropped',
         streak: 0,
         streakBefore: drop.streakBeforeDrop,
+        ...(drop.note && { note: drop.note }),
       });
       currentStreak = 0;
-    } else if (skippedDates.has(dateStr)) {
+    } else if (skippedByDate.has(dateStr)) {
       // Skip: preserve streak (don't increment)
+      const skip = skippedByDate.get(dateStr)!;
       history.push({
         date: dateStr,
         type: 'skipped',
         streak: currentStreak,
+        ...(skip.note && { note: skip.note }),
       });
       // Streak remains the same
     } else if (checkedDates.has(dateStr)) {

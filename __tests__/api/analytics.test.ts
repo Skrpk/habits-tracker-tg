@@ -3,9 +3,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const mockExecute = vi.fn();
 
+vi.mock('../../src/infrastructure/config/kv', () => ({
+  kv: { get: vi.fn(), setWithExpiry: vi.fn() },
+}));
+
 vi.mock('../../src/infrastructure/repositories/VercelKVHabitRepository', () => ({
   VercelKVHabitRepository: vi.fn().mockImplementation(() => ({
     getUserHabits: vi.fn().mockImplementation(() => ({ habits: [] })),
+    getUserPreferences: vi.fn().mockResolvedValue({ userId: 12345, premium: false }),
   })),
 }));
 

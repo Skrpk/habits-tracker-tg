@@ -76,6 +76,9 @@ export class VercelKVHabitRepository implements IHabitRepository {
   async createHabit(userId: number, habitName: string, timezone: string = 'UTC'): Promise<Habit> {
     const userHabits = await this.getUserHabits(userId);
     const today = new Date().toISOString().split('T')[0];
+
+    const maxImgIndex = parseInt(process.env.MAX_IMG_FOLDER_INDEX || '1', 10);
+    const imgIndex = (userHabits ? userHabits.habits.length % maxImgIndex : 0) + 1;
     
     const newHabit: Habit = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -86,9 +89,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
       lastCheckedDate: '',
       skipped: [],
       dropped: [],
-      checked: [], // Empty array for all habits (will be populated for non-daily habits)
-      // checkHistory is computed on demand, not stored
-      // Default reminder schedule: daily at 22:00 in user's timezone
+      checked: [],
       reminderSchedule: {
         type: 'daily',
         hour: 22,
@@ -96,6 +97,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
         timezone: timezone,
       },
       reminderEnabled: true,
+      imgIndex,
     };
 
     const updatedUserHabits: UserHabits = userHabits || {

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <link rel="icon" type="image/png" href="/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -84,7 +87,9 @@
             transition: color 0.2s;
         }
 
-        .site-nav a:hover { color: var(--hb-accent-dark); }
+        .site-nav a:hover {
+            color: var(--hb-accent-dark);
+        }
 
         .container {
             max-width: 1200px;
@@ -332,6 +337,17 @@
             color: #742a2a;
         }
 
+        @media (max-width: 764px) {
+            .timeline-type {
+                padding: 4px 8px;
+                margin-left: 12px;
+                font-size: 1.1rem;
+                text-transform: none;
+                min-width: 2em;
+                text-align: center;
+            }
+        }
+
         .timeline-streak {
             margin-left: auto;
             font-weight: 600;
@@ -393,35 +409,107 @@
             padding: 0 0.5rem;
         }
 
+        .insights-wrapper {
+            margin-top: 30px;
+            background: var(--hb-surface);
+            padding: 1.5rem;
+            border-radius: 14px;
+            border: 1px solid var(--hb-border);
+        }
+
+        .insights-wrapper .insights-title {
+            font-family: var(--hb-font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--hb-text);
+            margin-bottom: 1rem;
+        }
+
+        .insights-section {
+            margin-bottom: 1rem;
+        }
+
+        .insights-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .insights-paragraph {
+            font-size: 0.95rem;
+            color: var(--hb-text-secondary);
+            line-height: 1.6;
+            margin-bottom: 0.75rem;
+        }
+
+        .insights-highlight {
+            color: var(--hb-accent-dark);
+            font-weight: 600;
+        }
+
+        .insights-list {
+            margin: 0.5rem 0 0.75rem 1.25rem;
+            padding: 0;
+        }
+
+        .insights-item {
+            font-size: 0.95rem;
+            color: var(--hb-text-secondary);
+            line-height: 1.5;
+            margin-bottom: 0.35rem;
+        }
+
+        .insights-tip {
+            font-size: 0.9rem;
+            color: var(--hb-text-muted);
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+
+        .insights-loading {
+            color: var(--hb-text-muted);
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 768px) {
             .site-header {
                 padding: 1.25rem 1.25rem;
             }
+
             .site-nav {
                 gap: 1rem;
             }
+
             .site-nav a {
                 font-size: 0.82rem;
             }
+
             .container {
                 padding: 1.25rem 1.25rem 3rem;
             }
+
             h1 {
                 font-size: 1.75rem;
             }
+
             .habits-list {
                 grid-template-columns: 1fr;
             }
+
             .chart-container {
                 height: 300px;
                 padding: 1rem;
             }
+
             .stats-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </head>
+
 <body>
     <header class="site-header">
         <a href="/" class="site-logo">
@@ -432,12 +520,12 @@
 
     <div class="container">
         <h1>📊 Habits Analytics</h1>
-        
+
         <div id="loading" class="loading">Loading your habits...</div>
         <div id="error" class="error" style="display: none;"></div>
-        
+
         <div id="habits-list" class="habits-list" style="display: none;"></div>
-        
+
         <div id="habit-detail" class="habit-detail"></div>
     </div>
 
@@ -448,6 +536,9 @@
         let charts = {};
         let timelinePage = 1;
         const TIMELINE_ITEMS_PER_PAGE = 10;
+        let insightsData = {};
+        let isPremium = false;
+        let insightsLoading = false;
 
         // Check for mock mode via URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -490,19 +581,47 @@
                 }
 
                 if (!response.ok) {
-                    throw new Error(`Failed to load analytics: ${response.statusText}`);
+                    const data = await response.json();
+                    console.log('DATA', data);
+                    throw new Error(`Failed to load analytics: ${JSON.stringify(data)}!`);
                 }
 
                 const data = await response.json();
                 habitsData = data.habits || [];
-                
+                isPremium = data.premium === true;
+
                 document.getElementById('loading').style.display = 'none';
-                
+
                 if (habitsData.length === 0) {
                     document.getElementById('error').style.display = 'block';
                     document.getElementById('error').textContent = 'No habits found. Create some habits in the bot first!';
                 } else {
                     renderHabitsList();
+                }
+
+                if (isPremium && habitsData.length > 0) {
+                    insightsLoading = true;
+                    fetch('/api/analytics-insights', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ initData: tg.initData }),
+                    })
+                        .then(r => r.ok ? r.json() : { insights: {} })
+                        .then(data => {
+                            insightsData = data.insights || {};
+                            insightsLoading = false;
+                            if (currentHabitId) {
+                                const habit = habitsData.find(h => h.id === currentHabitId);
+                                if (habit) showHabitDetail(habit.id);
+                            }
+                        })
+                        .catch(() => {
+                            insightsLoading = false;
+                            if (currentHabitId) {
+                                const habit = habitsData.find(h => h.id === currentHabitId);
+                                if (habit) showHabitDetail(habit.id);
+                            }
+                        });
                 }
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
@@ -514,7 +633,7 @@
         function loadMockAnalytics() {
             // Generate mock habits with various time periods and schedules
             habitsData = generateMockHabits();
-            
+
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'none';
             renderHabitsList();
@@ -532,21 +651,22 @@
             };
 
             // Helper to generate check history
-            const generateCheckHistory = (startDate, days, completionRate = 0.8) => {
+            // notesForFirst: optional { skipped?: string, dropped?: string } to add to first occurrence of each type
+            const generateCheckHistory = (startDate, days, completionRate = 0.8, notesForFirst = null) => {
                 const history = [];
                 const start = new Date(startDate);
                 let currentStreak = 0;
-                
+
                 for (let i = 0; i < days; i++) {
                     const date = new Date(start);
                     date.setDate(date.getDate() + i);
                     const dateStr = date.toISOString().split('T')[0];
-                    
+
                     // Skip if future date
                     if (date > now) break;
-                    
+
                     const shouldComplete = Math.random() < completionRate;
-                    
+
                     if (shouldComplete) {
                         currentStreak++;
                         history.push({
@@ -573,13 +693,21 @@
                         });
                     }
                 }
-                
+                if (notesForFirst) {
+                    const firstSkipped = history.find(h => h.type === 'skipped');
+                    if (firstSkipped && notesForFirst.skipped) firstSkipped.note = notesForFirst.skipped;
+                    const firstDropped = history.find(h => h.type === 'dropped');
+                    if (firstDropped && notesForFirst.dropped) firstDropped.note = notesForFirst.dropped;
+                }
                 return history;
             };
 
             // 1. Daily schedule - 1 week old
             const weekAgo = daysAgo(7);
-            const weekHistory = generateCheckHistory(weekAgo, 7, 0.9);
+            const weekHistory = generateCheckHistory(weekAgo, 7, 0.9, {
+                skipped: 'Away for the day',
+                dropped: 'Slept in, missed the window'
+            });
             habits.push({
                 id: 'mock-1',
                 userId: 0,
@@ -608,7 +736,10 @@
 
             // 2. Daily schedule - 1 month old
             const monthAgo = daysAgo(30);
-            const monthHistory = generateCheckHistory(monthAgo, 30, 0.85);
+            const monthHistory = generateCheckHistory(monthAgo, 30, 0.85, {
+                skipped: 'On vacation',
+                dropped: 'Was too tired after work'
+            });
             const monthStreak = monthHistory.length > 0 ? monthHistory[monthHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-2',
@@ -642,7 +773,10 @@
 
             // 3. Weekly schedule - 2 months old
             const twoMonthsAgo = daysAgo(60);
-            const weeklyHistory = generateCheckHistory(twoMonthsAgo, 60, 0.7);
+            const weeklyHistory = generateCheckHistory(twoMonthsAgo, 60, 0.7, {
+                skipped: 'Book club was cancelled',
+                dropped: 'Forgot to bring my book'
+            });
             const weeklyStreak = weeklyHistory.length > 0 ? weeklyHistory[weeklyHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-3',
@@ -677,7 +811,10 @@
 
             // 4. Weekly schedule - 3 months old
             const threeMonthsAgo = daysAgo(90);
-            const weekly2History = generateCheckHistory(threeMonthsAgo, 90, 0.75);
+            const weekly2History = generateCheckHistory(threeMonthsAgo, 90, 0.75, {
+                skipped: 'Weather was bad',
+                dropped: 'Had a cold'
+            });
             const weekly2Streak = weekly2History.length > 0 ? weekly2History[weekly2History.length - 1].streak : 0;
             habits.push({
                 id: 'mock-4',
@@ -713,7 +850,10 @@
 
             // 5. Monthly schedule - 4 months old
             const fourMonthsAgo = daysAgo(120);
-            const monthlyHistory = generateCheckHistory(fourMonthsAgo, 120, 0.6);
+            const monthlyHistory = generateCheckHistory(fourMonthsAgo, 120, 0.6, {
+                skipped: 'Traveling, no time to sit down',
+                dropped: 'Got distracted by urgent tasks'
+            });
             const monthlyStreak = monthlyHistory.length > 0 ? monthlyHistory[monthlyHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-5',
@@ -783,7 +923,10 @@
             });
 
             // 7. Interval schedule (every 2 days) - 1 month old
-            const intervalHistory = generateCheckHistory(monthAgo, 30, 0.8);
+            const intervalHistory = generateCheckHistory(monthAgo, 30, 0.8, {
+                skipped: 'Plants were at the office',
+                dropped: 'Weekend away'
+            });
             const intervalStreak = intervalHistory.length > 0 ? intervalHistory[intervalHistory.length - 1].streak : 0;
             habits.push({
                 id: 'mock-7',
@@ -899,7 +1042,7 @@
                 reminderEnabled: true,
                 badges: []
             });
-
+            console.log('habits', habits);
             return habits;
         }
 
@@ -912,12 +1055,12 @@
                 const card = document.createElement('div');
                 card.className = 'habit-card';
                 card.onclick = () => showHabitDetail(habit.id);
-                
+
                 const completedCount = (habit.checkHistory || []).filter(h => h.type === 'completed').length;
                 const skippedCount = habit.skipped?.length || 0;
                 const droppedCount = habit.dropped?.length || 0;
                 const badges = habit.badges || [];
-                
+
                 // Format badges
                 const badgeEmojis = {
                     5: '🔥',
@@ -925,10 +1068,10 @@
                     30: '🏆',
                     90: '💎'
                 };
-                const badgesDisplay = badges.length > 0 
+                const badgesDisplay = badges.length > 0
                     ? badges.map(b => badgeEmojis[b.type] || '').join(' ')
                     : '';
-                
+
                 card.innerHTML = `
                     <div class="habit-name">${escapeHtml(habit.name)}</div>
                     <div class="habit-stats">
@@ -951,7 +1094,7 @@
                     </div>
                     ${badgesDisplay ? `<div style="margin-top: 0.75rem; font-size: 1.2rem; text-align: center;">${badgesDisplay}</div>` : ''}
                 `;
-                
+
                 container.appendChild(card);
             });
         }
@@ -961,12 +1104,12 @@
             if (!habit) return;
 
             currentHabitId = habitId;
-            
+
             // Update active card
             document.querySelectorAll('.habit-card').forEach(card => {
                 card.classList.remove('active');
             });
-            event.target.closest('.habit-card')?.classList.add('active');
+            event?.target?.closest('.habit-card')?.classList.add('active');
 
             const detailContainer = document.getElementById('habit-detail');
             detailContainer.innerHTML = '';
@@ -977,7 +1120,7 @@
             const droppedCount = habit.dropped?.length || 0;
             const totalChecks = (habit.checkHistory || []).length;
             const badges = habit.badges || [];
-            
+
             // Format badges
             const badgeEmojis = {
                 5: '🔥',
@@ -991,7 +1134,7 @@
                 30: '30 Days',
                 90: '90 Days'
             };
-            const badgesDisplay = badges.length > 0 
+            const badgesDisplay = badges.length > 0
                 ? badges.map(b => `${badgeEmojis[b.type]} ${badgeNames[b.type]}`).join(' • ')
                 : 'No badges earned yet';
 
@@ -1045,6 +1188,8 @@
                     </div>
                 </div>
 
+                <div id="insights-block" class="insights-wrapper" style="display: none;"></div>
+
                 <div class="chart-container">
                     <canvas id="streakChart"></canvas>
                 </div>
@@ -1063,7 +1208,20 @@
             timelinePage = 1; // Reset to first page when showing a new habit
             renderCharts(habit);
             renderTimeline(habit);
-            
+
+            const insightsBlock = document.getElementById('insights-block');
+            if (insightsBlock) {
+                if (isPremium && insightsLoading) {
+                    insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><p class="insights-loading">Loading insights...</p>';
+                    insightsBlock.style.display = 'block';
+                } else if (isPremium && insightsData[habit.id]) {
+                    insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><div class="insights-content">' + insightsData[habit.id] + '</div>';
+                    insightsBlock.style.display = 'block';
+                } else {
+                    insightsBlock.style.display = 'none';
+                }
+            }
+
             // Scroll to habit detail section after content is rendered
             setTimeout(() => {
                 detailContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1071,7 +1229,7 @@
         }
 
         function renderCharts(habit) {
-            const checkHistory = (habit.checkHistory || []).sort((a, b) => 
+            const checkHistory = (habit.checkHistory || []).sort((a, b) =>
                 new Date(a.date) - new Date(b.date)
             );
 
@@ -1080,7 +1238,7 @@
             if (charts.streak) {
                 charts.streak.destroy();
             }
-            
+
             const dates = checkHistory.map(h => formatDateShort(h.date));
             const streaks = checkHistory.map(h => h.streak);
             const originalDates = checkHistory.map(h => h.date); // Store original dates for tooltip
@@ -1115,22 +1273,27 @@
                         },
                         tooltip: {
                             callbacks: {
-                                title: function(context) {
+                                title: function (context) {
                                     const index = context[0].dataIndex;
                                     const dateStr = originalDates[index];
                                     if (!dateStr) return '';
                                     const date = new Date(dateStr);
                                     if (isNaN(date.getTime())) return '';
                                     const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
-                                    const fullDate = date.toLocaleDateString('en-US', { 
+                                    const fullDate = date.toLocaleDateString('en-US', {
                                         year: 'numeric',
-                                        month: 'long', 
-                                        day: 'numeric' 
+                                        month: 'long',
+                                        day: 'numeric'
                                     });
                                     return `${dayOfWeek}, ${fullDate}`;
                                 },
-                                label: function(context) {
-                                    return `Streak: ${context.parsed.y}`;
+                                label: function (context) {
+                                    const entry = checkHistory[context.dataIndex];
+                                    let line = `Streak: ${context.parsed.y}`;
+                                    if (entry && entry.note && String(entry.note).trim()) {
+                                        line += `\nNote: ${entry.note}`;
+                                    }
+                                    return line;
                                 }
                             }
                         }
@@ -1159,7 +1322,7 @@
             charts.activity = new Chart(activityCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Completed', 'Skipped', 'Dropped'],
+                    labels: ['✅ Completed', '↔️ Skipped', '🚫 Dropped'],
                     datasets: [{
                         data: [completed, skipped, dropped],
                         backgroundColor: [
@@ -1191,7 +1354,7 @@
         function renderTimeline(habit) {
             const timelineContainer = document.getElementById('timeline-items');
             const paginationContainer = document.getElementById('timeline-pagination');
-            const checkHistory = (habit.checkHistory || []).sort((a, b) => 
+            const checkHistory = (habit.checkHistory || []).sort((a, b) =>
                 new Date(b.date) - new Date(a.date)
             );
 
@@ -1206,17 +1369,22 @@
             const endIndex = startIndex + TIMELINE_ITEMS_PER_PAGE;
             const paginatedHistory = checkHistory.slice(startIndex, endIndex);
 
+            const typeEmoji = { completed: '✅', dropped: '🚫', skipped: '↔️' };
             timelineContainer.innerHTML = paginatedHistory.map(entry => {
                 const typeClass = entry.type;
-                const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
-                const streakInfo = entry.streakBefore !== undefined 
+                const typeLabel = typeEmoji[entry.type] || entry.type;
+                const streakInfo = entry.streakBefore !== undefined
                     ? `Streak: ${entry.streakBefore} → ${entry.streak}`
                     : `Streak: ${entry.streak}`;
+                const noteHtml = entry.note
+                    ? `<div class="timeline-note" style="color: var(--hb-text-muted); font-size: 0.9em; margin-top: 4px;">Note: ${String(entry.note).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>`
+                    : '';
 
                 return `
                     <div class="timeline-item ${typeClass}">
                         <div class="timeline-date">${formatDate(entry.date)}</div>
                         <div class="timeline-type ${typeClass}">${typeLabel}</div>
+                        ${noteHtml}
                         <div class="timeline-streak">${streakInfo}</div>
                     </div>
                 `;
@@ -1238,7 +1406,7 @@
                 const maxVisiblePages = 5;
                 let startPage = Math.max(1, timelinePage - Math.floor(maxVisiblePages / 2));
                 let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-                
+
                 // Adjust start if we're near the end
                 if (endPage - startPage < maxVisiblePages - 1) {
                     startPage = Math.max(1, endPage - maxVisiblePages + 1);
@@ -1297,8 +1465,8 @@
             if (page < 1) return;
             const habit = habitsData.find(h => h.id === currentHabitId);
             if (!habit) return;
-            
-            const checkHistory = (habit.checkHistory || []).sort((a, b) => 
+
+            const checkHistory = (habit.checkHistory || []).sort((a, b) =>
                 new Date(b.date) - new Date(a.date)
             );
             const totalPages = Math.ceil(checkHistory.length / TIMELINE_ITEMS_PER_PAGE);
@@ -1306,7 +1474,7 @@
 
             timelinePage = page;
             renderTimeline(habit);
-            
+
             // Scroll to timeline section
             document.getElementById('timeline-items').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -1316,7 +1484,7 @@
             document.getElementById('habits-list').style.display = 'grid';
             currentHabitId = null;
             timelinePage = 1; // Reset pagination
-            
+
             // Destroy charts when going back
             Object.values(charts).forEach(chart => {
                 if (chart) chart.destroy();
@@ -1327,36 +1495,36 @@
         function formatDate(dateStringOrDate) {
             if (!dateStringOrDate) return 'N/A';
             // Handle both string and Date object
-            const date = dateStringOrDate instanceof Date 
-                ? dateStringOrDate 
+            const date = dateStringOrDate instanceof Date
+                ? dateStringOrDate
                 : new Date(dateStringOrDate);
-            
+
             // Check if date is valid
             if (isNaN(date.getTime())) return 'N/A';
-            
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
             });
         }
 
         function formatDateShort(dateStringOrDate) {
             if (!dateStringOrDate) return '';
             // Handle both string and Date object
-            const date = dateStringOrDate instanceof Date 
-                ? dateStringOrDate 
+            const date = dateStringOrDate instanceof Date
+                ? dateStringOrDate
                 : new Date(dateStringOrDate);
-            
+
             // Check if date is valid
             if (isNaN(date.getTime())) return '';
-            
+
             const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
-            const monthDay = date.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric' 
+            const monthDay = date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
             });
-            
+
             return `${dayOfWeek}, ${monthDay}`;
         }
 
@@ -1392,8 +1560,8 @@
                         .sort((a, b) => a - b)
                         .map(d => {
                             const suffix = d === 1 || d === 21 || d === 31 ? 'st' :
-                                          d === 2 || d === 22 ? 'nd' :
-                                          d === 3 || d === 23 ? 'rd' : 'th';
+                                d === 2 || d === 22 ? 'nd' :
+                                    d === 3 || d === 23 ? 'rd' : 'th';
                             return `${d}${suffix}`;
                         })
                         .join(', ');
@@ -1409,4 +1577,5 @@
         }
     </script>
 </body>
+
 </html>

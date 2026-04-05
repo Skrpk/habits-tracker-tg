@@ -120,6 +120,18 @@ if (hasRedisUrl || useLocalRedis) {
         throw error;
       }
     },
+    setWithExpiry: async (key: string, value: any, ttlSeconds: number): Promise<void> => {
+      try {
+        await ensureConnected();
+        await redisClient.set(key, JSON.stringify(value), { EX: ttlSeconds });
+      } catch (error) {
+        console.error('Error setting in Redis with expiry:', {
+          key,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        throw error;
+      }
+    },
     del: async (key: string): Promise<void> => {
       try {
         await ensureConnected();

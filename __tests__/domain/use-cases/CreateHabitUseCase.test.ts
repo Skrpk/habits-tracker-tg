@@ -7,15 +7,32 @@ vi.mock('../../../src/infrastructure/logger/Logger', () => ({
   Logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+function makeHabit(overrides: Partial<Habit> = {}): Habit {
+  return {
+    id: 'h-1',
+    userId: 1,
+    name: 'Run',
+    streak: 0,
+    createdAt: new Date(),
+    lastCheckedDate: '',
+    checked: [],
+    skipped: [],
+    dropped: [],
+    ...overrides,
+  };
+}
+
 describe('CreateHabitUseCase', () => {
   let mockRepo: {
     getUserPreferences: ReturnType<typeof vi.fn>;
+    getUserHabits: ReturnType<typeof vi.fn>;
     createHabit: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     mockRepo = {
       getUserPreferences: vi.fn().mockResolvedValue({ timezone: 'UTC' }),
+      getUserHabits: vi.fn().mockResolvedValue(null),
       createHabit: vi.fn().mockResolvedValue({
         id: 'new-habit-id',
         userId: 1,
@@ -27,6 +44,7 @@ describe('CreateHabitUseCase', () => {
         dropped: [],
       } as Habit),
     };
+    vi.stubEnv('MAX_FREE_HABITS', '3');
   });
 
   it('throws when habit name is empty', async () => {
@@ -49,12 +67,12 @@ describe('CreateHabitUseCase', () => {
     expect(result.id).toBe('new-habit-id');
   });
 
-  it('uses provided timezone when passed', async () => {
+  it('uses provided timezone over preferences', async () => {
+    mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'Europe/London' });
     const useCase = new CreateHabitUseCase(mockRepo as unknown as IHabitRepository);
 
     await useCase.execute(1, 'Read', 'user', 'America/New_York');
 
-    expect(mockRepo.getUserPreferences).not.toHaveBeenCalled();
     expect(mockRepo.createHabit).toHaveBeenCalledWith(1, 'Read', 'America/New_York');
   });
 
@@ -65,5 +83,57 @@ describe('CreateHabitUseCase', () => {
     await useCase.execute(1, 'Read', 'user');
 
     expect(mockRepo.createHabit).toHaveBeenCalledWith(1, 'Read', 'UTC');
+  });
+
+  describe('habit limit enforcement', () => {
+    it('throws when free user already has MAX_FREE_HABITS habits', async () => {
+      mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'UTC' });
+      mockRepo.getUserHabits.mockResolvedValue({
+        userId: 1,
+        habits: [makeHabit({ id: 'h1' }), makeHabit({ id: 'h2' }), makeHabit({ id: 'h3' })],
+      });
+      const useCase = new CreateHabitUseCase(mockRepo as unknown as IHabitRepository);
+
+      await expect(useCase.execute(1, 'New habit', 'user')).rejects.toThrow(
+        'Free users can create up to 3 habits'
+      );
+      expect(mockRepo.createHabit).not.toHaveBeenCalled();
+    });
+
+    it('allows premium user to exceed the limit', async () => {
+      mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'UTC', premium: true });
+      mockRepo.getUserHabits.mockResolvedValue({
+        userId: 1,
+        habits: [makeHabit({ id: 'h1' }), makeHabit({ id: 'h2' }), makeHabit({ id: 'h3' })],
+      });
+      const useCase = new CreateHabitUseCase(mockRepo as unknown as IHabitRepository);
+
+      await useCase.execute(1, 'New habit', 'user');
+
+      expect(mockRepo.createHabit).toHaveBeenCalledWith(1, 'New habit', 'UTC');
+    });
+
+    it('allows free user under the limit', async () => {
+      mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'UTC' });
+      mockRepo.getUserHabits.mockResolvedValue({
+        userId: 1,
+        habits: [makeHabit({ id: 'h1' }), makeHabit({ id: 'h2' })],
+      });
+      const useCase = new CreateHabitUseCase(mockRepo as unknown as IHabitRepository);
+
+      await useCase.execute(1, 'New habit', 'user');
+
+      expect(mockRepo.createHabit).toHaveBeenCalledWith(1, 'New habit', 'UTC');
+    });
+
+    it('allows free user when they have no habits yet', async () => {
+      mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'UTC' });
+      mockRepo.getUserHabits.mockResolvedValue(null);
+      const useCase = new CreateHabitUseCase(mockRepo as unknown as IHabitRepository);
+
+      await useCase.execute(1, 'First habit', 'user');
+
+      expect(mockRepo.createHabit).toHaveBeenCalledWith(1, 'First habit', 'UTC');
+    });
   });
 });

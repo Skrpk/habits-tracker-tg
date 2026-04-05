@@ -15,6 +15,14 @@
       "destination": "/schedule.html"
     },
     {
+      "source": "/check",
+      "destination": "/check.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     },
@@ -52,11 +60,23 @@
     "api/analytics.ts": {
       "maxDuration": 10
     },
+    "api/analytics-insights.ts": {
+      "maxDuration": 60
+    },
     "api/auth.ts": {
       "maxDuration": 10
     },
     "api/schedule.ts": {
       "maxDuration": 10
+    },
+    "api/check.ts": {
+      "maxDuration": 10
+    },
+    "api/users.ts": {
+      "maxDuration": 30
+    },
+    "api/send-message.ts": {
+      "maxDuration": 300
     }
   }
 }

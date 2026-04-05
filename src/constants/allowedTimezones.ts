@@ -1,0 +1,31 @@
+/** 24 unique timezones covering all UTC offsets from -12 to +12 (onboarding + settings). */
+export const TIMEZONE_OPTIONS = [
+  { text: '🌴 Baker Island (BIT)', tz: 'Pacific/Baker_Island' },
+  { text: '🏝️ Niue (NUT)', tz: 'Pacific/Niue' },
+  { text: '🌺 Hawaii (HST)', tz: 'Pacific/Honolulu' },
+  { text: '🏔️ Alaska (AKST)', tz: 'America/Anchorage' },
+  { text: '🌴 Los Angeles (PST)', tz: 'America/Los_Angeles' },
+  { text: '⛰️ Denver (MST)', tz: 'America/Denver' },
+  { text: '🏙️ Chicago (CST)', tz: 'America/Chicago' },
+  { text: '🗽 New York (EST)', tz: 'America/New_York' },
+  { text: '🌊 Halifax (AST)', tz: 'America/Halifax' },
+  { text: '🇧🇷 São Paulo (BRT)', tz: 'America/Sao_Paulo' },
+  { text: '🏔️ South Georgia (GST)', tz: 'Atlantic/South_Georgia' },
+  { text: '🏝️ Cape Verde (CVT)', tz: 'Atlantic/Cape_Verde' },
+  { text: '🇬🇧 London (GMT)', tz: 'Europe/London' },
+  { text: '🇫🇷 Paris (CET)', tz: 'Europe/Paris' },
+  { text: '🇺🇦 Kyiv (EET)', tz: 'Europe/Kyiv' },
+  { text: '🇷🇺 Moscow (MSK)', tz: 'Europe/Moscow' },
+  { text: '🇦🇪 Dubai (GST)', tz: 'Asia/Dubai' },
+  { text: '🇵🇰 Karachi (PKT)', tz: 'Asia/Karachi' },
+  { text: '🇮🇳 Mumbai (IST)', tz: 'Asia/Kolkata' },
+  { text: '🇧🇩 Dhaka (BST)', tz: 'Asia/Dhaka' },
+  { text: '🇹🇭 Bangkok (ICT)', tz: 'Asia/Bangkok' },
+  { text: '🇨🇳 Shanghai (CST)', tz: 'Asia/Shanghai' },
+  { text: '🇯🇵 Tokyo (JST)', tz: 'Asia/Tokyo' },
+  { text: '🇦🇺 Sydney (AEST)', tz: 'Australia/Sydney' },
+  { text: '🏝️ Solomon Islands (SBT)', tz: 'Pacific/Guadalcanal' },
+  { text: '🇳🇿 Auckland (NZST)', tz: 'Pacific/Auckland' },
+] as const;
+
+export const ALLOWED_TIMEZONE_IDS: readonly string[] = TIMEZONE_OPTIONS.map(t => t.tz);

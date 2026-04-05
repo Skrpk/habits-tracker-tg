@@ -11,13 +11,19 @@ export class CreateHabitUseCase {
     }
 
     const trimmedName = habitName.trim();
-    
-    // Get user's timezone if not provided
-    let userTimezone = timezone;
-    if (!userTimezone) {
-      const preferences = await this.habitRepository.getUserPreferences(userId);
-      userTimezone = preferences?.timezone || 'UTC';
+
+    const preferences = await this.habitRepository.getUserPreferences(userId);
+    const isPremium = preferences?.premium === true;
+    const maxFreeHabits = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+
+    if (!isPremium) {
+      const userHabits = await this.habitRepository.getUserHabits(userId);
+      if (userHabits && userHabits.habits.length >= maxFreeHabits) {
+        throw new Error(`Free users can create up to ${maxFreeHabits} habits. Use /subscribe to upgrade to Premium for unlimited habits!`);
+      }
     }
+
+    let userTimezone = timezone || preferences?.timezone || 'UTC';
 
     Logger.info('Creating habit', {
       userId,

@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import TelegramBot from 'node-telegram-bot-api';
 import { CreateHabitUseCase } from '../../domain/use-cases/CreateHabitUseCase';
 import { GetUserHabitsUseCase } from '../../domain/use-cases/GetUserHabitsUseCase';
@@ -8,10 +10,13 @@ import { SetHabitReminderScheduleUseCase } from '../../domain/use-cases/SetHabit
 import { CheckHabitReminderDueUseCase } from '../../domain/use-cases/CheckHabitReminderDueUseCase';
 import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPreferencesUseCase';
 import { ToggleHabitDisabledUseCase } from '../../domain/use-cases/ToggleHabitDisabledUseCase';
+import { SubscriptionUseCase } from '../../domain/use-cases/SubscriptionUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
 import { Habit } from '../../domain/entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { kv } from '../../infrastructure/config/kv';
+import { isAdminUser } from '../../infrastructure/admin/parseAdminUsers';
+import { TIMEZONE_OPTIONS } from '../../constants/allowedTimezones';
 import { QuoteManager } from '../../infrastructure/quotes/QuoteManager';
 import OpenAI from 'openai';
 
@@ -32,6 +37,7 @@ export class TelegramBotService {
   private checkReminderDue: CheckHabitReminderDueUseCase;
   private setUserPreferencesUseCase: SetUserPreferencesUseCase;
   private toggleHabitDisabledUseCase: ToggleHabitDisabledUseCase;
+  private subscriptionUseCase: SubscriptionUseCase;
   private quoteManager: QuoteManager;
   private openai: OpenAI | null = null;
 
@@ -45,7 +51,15 @@ export class TelegramBotService {
     usePolling: boolean = false,
     setHabitReminderScheduleUseCase?: SetHabitReminderScheduleUseCase
   ) {
-    this.bot = new TelegramBot(token, { polling: usePolling });
+    this.bot = new TelegramBot(token, { polling: {
+      params: {
+      allowed_updates: [
+        "message",
+        "pre_checkout_query",  // 👈 must explicitly add this
+        "callback_query",
+      ],
+    },
+    } });
     console.log(`Bot initialized (polling: ${usePolling}) - Process: ${process.env.NODE_ENV || 'development'}`);
     // Add error handlers for debugging
     this.bot.on('error', (error: Error) => {
@@ -53,6 +67,11 @@ export class TelegramBotService {
         message: error.message,
         stack: error.stack,
       });
+    });
+
+    this.bot.on("pre_checkout_query", async (query) => {
+      console.log("pre_checkout_query received!", query); // add this to verify
+      await this.bot.answerPreCheckoutQuery(query.id, true);
     });
     
     this.bot.on('polling_error', (error: Error) => {
@@ -73,6 +92,7 @@ export class TelegramBotService {
     const habitRepository = new VercelKVHabitRepository();
     this.setUserPreferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
     this.toggleHabitDisabledUseCase = new ToggleHabitDisabledUseCase(habitRepository);
+    this.subscriptionUseCase = new SubscriptionUseCase(habitRepository);
     this.quoteManager = new QuoteManager();
     
     // Initialize OpenAI if API key is available
@@ -104,6 +124,10 @@ export class TelegramBotService {
         {
           command: 'settings',
           description: 'Manage your settings',
+        },
+        {
+          command: 'subscribe',
+          description: 'Get Premium for unlimited habits and more',
         },
       ]);
       Logger.info('Bot commands menu set successfully');
@@ -317,13 +341,33 @@ export class TelegramBotService {
     userId: number,
     chatId: number,
     habitId: string,
+    callbackQueryId: string,
     messageId?: number
   ): Promise<void> {
     try {
+      const userHabits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = userHabits.find(h => h.id === habitId);
+
+      if (habit?.disabled) {
+        const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+        const isPremium = prefs?.premium === true;
+        if (!isPremium) {
+          const maxFree = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+          const activeCount = userHabits.filter(h => !h.disabled).length;
+          if (activeCount >= maxFree) {
+            await this.bot.answerCallbackQuery(callbackQueryId, {
+              text: 'Upgrade to Premium to enable more habits and more features! Use /subscribe',
+              show_alert: true,
+            });
+            return;
+          }
+        }
+      }
+
       const isDisabled = await this.toggleHabitDisabledUseCase.execute(userId, habitId);
       const statusText = isDisabled ? 'disabled' : 'enabled';
       
-      await this.bot.answerCallbackQuery('', {
+      await this.bot.answerCallbackQuery(callbackQueryId, {
         text: `Habit ${statusText}`,
         show_alert: false,
       });
@@ -337,7 +381,7 @@ export class TelegramBotService {
         chatId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      await this.bot.answerCallbackQuery('', {
+      await this.bot.answerCallbackQuery(callbackQueryId, {
         text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         show_alert: true,
       });
@@ -361,13 +405,13 @@ export class TelegramBotService {
       await this.deleteHabitUseCase.execute(userId, habitId, username, habit.name);
       
       const message = `✅ Habit "${habit.name}" deleted successfully!`;
-      
+
       if (messageId) {
         await this.safeEditMessage(message, {
           chat_id: chatId,
           message_id: messageId,
         });
-        
+
         // Show updated list
         await this.showHabitsList(userId, chatId);
       } else {
@@ -507,7 +551,9 @@ export class TelegramBotService {
 
   private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string): Promise<void> {
     const suffix = targetDate ? `:${targetDate}` : '';
-    const keyboard = {
+    const reminderText = `⏰ Reminder: Did you "${habit.name}" today?`;
+
+    const keyboardWithoutMiniApp = {
       inline_keyboard: [
         [
           { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` },
@@ -520,13 +566,30 @@ export class TelegramBotService {
     };
 
     try {
-      await this.bot.sendMessage(
-        userId,
-        `⏰ Reminder: Did you "${habit.name}" today?`,
-        {
-          reply_markup: keyboard,
-        }
-      );
+      const sent = await this.bot.sendMessage(userId, reminderText, {
+        reply_markup: keyboardWithoutMiniApp,
+      });
+
+      const chatId = sent.chat.id;
+      const messageId = sent.message_id;
+      const checkUrl = `https://e8cd-2a02-8308-111-600-43f-8808-498-a05f.ngrok-free.app/check?habitId=${habit.id}` +
+        (targetDate ? `&targetDate=${targetDate}` : '') +
+        `&chatId=${chatId}&msgId=${messageId}`;
+
+      const keyboardWithMiniApp = {
+        inline_keyboard: [
+          ...keyboardWithoutMiniApp.inline_keyboard,
+          [
+            { text: '📱 Reply in MiniApp', web_app: { url: checkUrl } },
+          ],
+        ],
+      };
+
+      await this.safeEditMessage(reminderText, {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: keyboardWithMiniApp,
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Logger.error('Error sending habit reminder', {
@@ -558,8 +621,44 @@ export class TelegramBotService {
         messageText: update.message?.text,
       });
       
-      console.log('wwwww', update);
-      
+      // Handle successful payment (before text check — payment messages may lack .text)
+      if (update.message?.successful_payment) {
+        const payment = update.message.successful_payment as { invoice_payload?: string; is_first_recurring?: boolean; is_recurring?: boolean };
+        const userId = update.message.from?.id;
+        const chatId = update.message.chat.id;
+        if (userId) {
+          if (payment.is_first_recurring) {
+            await this.subscriptionUseCase.activateSubscription(userId, 'monthly');
+            await this.bot.sendMessage(chatId,
+              '🎉 *Welcome to Premium!*\n\nYour subscription is now active. You can now create unlimited habits! It will automatically renew every 30 days.',
+              { parse_mode: 'Markdown' }
+            );
+          } else if (payment.is_recurring) {
+            await this.subscriptionUseCase.extendSubscription(userId);
+            await this.bot.sendMessage(chatId,
+              '✅ *Subscription renewed!*\n\nYour Premium access has been extended for another 30 days.',
+              { parse_mode: 'Markdown' }
+            );
+          } else {
+            const payload = payment.invoice_payload || '';
+            const isAnnual = payload.startsWith('sub_annual_');
+            await this.subscriptionUseCase.activateSubscription(userId, isAnnual ? 'annual' : 'monthly');
+            if (isAnnual) {
+              await this.bot.sendMessage(chatId,
+                '🎉 *Welcome to Premium!*\n\nYour subscription is now active for 1 year. You can create unlimited habits!',
+                { parse_mode: 'Markdown' }
+              );
+            } else {
+              await this.bot.sendMessage(chatId,
+                '🎉 *Welcome to Premium!*\n\nYour subscription is now active. You can now create unlimited habits!',
+                { parse_mode: 'Markdown' }
+              );
+            }
+          }
+        }
+        return;
+      }
+
       // Handle text messages (commands)
       if (update.message?.text) {
         const text = update.message.text;
@@ -586,6 +685,36 @@ export class TelegramBotService {
         
         // Check for conversation state first (before processing commands)
         const conversationState = await this.getConversationState(userId);
+
+        // Handle premium drop/skip note collection
+        if (conversationState?.startsWith('habit_check_note:')) {
+          const noteMatch = conversationState.match(/^habit_check_note:(.+):(no|skip)(?::(.+))?$/);
+          if (noteMatch) {
+            const [, habitId, action, targetDate] = noteMatch;
+            if (text.match(/^\//) && text.trim().toLowerCase() !== '/skip') {
+              await this.clearConversationState(userId);
+              await this.bot.sendMessage(chatId, 'Cancelled. You can tap the habit again to drop or skip.');
+              return;
+            }
+            const note = (text.trim().toLowerCase() === '/skip' || text.trim().length === 0)
+              ? undefined
+              : text.trim().slice(0, 500);
+            await this.clearConversationState(userId);
+            try {
+              if (action === 'no') {
+                await this.recordHabitCheckUseCase.execute(userId, habitId, false, username, targetDate || undefined, note);
+                await this.bot.sendMessage(chatId, '❌ Streak reset. You can start fresh tomorrow! 💪');
+              } else {
+                const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate || undefined, note);
+                await this.bot.sendMessage(chatId, `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`);
+              }
+            } catch (err) {
+              Logger.error('Error recording habit check note', { userId, habitId, action, error: err instanceof Error ? err.message : 'Unknown error' });
+              await this.bot.sendMessage(chatId, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            }
+            return;
+          }
+        }
         
         // If user sends a command while in conversation state, clear the state
         if (conversationState && text.match(/^\//)) {
@@ -607,6 +736,13 @@ export class TelegramBotService {
         // Handle /start command
         if (text.match(/^\/start/)) {
           await this.handleStartCommand(chatId, userId, username, msg.from);
+          return;
+        }
+
+        // Guard: require consent + timezone before any other command
+        const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+        if (!preferences || !preferences.consentAccepted || !preferences.timezone) {
+          await this.bot.sendMessage(chatId, 'Please complete setup first by sending /start');
           return;
         }
         
@@ -640,6 +776,12 @@ export class TelegramBotService {
           await this.handleAnalyticsCommand(chatId, userId, username, msg.from);
           return;
         }
+
+        // Handle /subscribe command
+        if (text.match(/^\/subscribe/)) {
+          await this.handleSubscribeCommand(chatId, userId, username);
+          return;
+        }
         
         // Handle /quote command (admin only, not registered in commands menu)
         if (text.match(/^\/quote/)) {
@@ -659,8 +801,13 @@ export class TelegramBotService {
           return;
         }
         
-        // Unknown command - ignore silently
-        Logger.debug('Unknown command received', { text, userId, chatId });
+        // Unhandled text — no user-facing reply; optional channel notification
+        Logger.info('Unhandled message received', {
+          userId,
+          chatId,
+          textLength: text.length,
+        });
+        void this.sendUnhandledMessageNotification(chatId, userId, username, text, msg.from);
         return;
       }
       
@@ -679,10 +826,39 @@ export class TelegramBotService {
           });
         }
         
+        const cbData = update.callback_query.data || '';
+        const isOnboardingCallback = cbData.startsWith('consent_') ||
+                                      cbData.startsWith('timezone_') ||
+                                      cbData.startsWith('tz_page:');
+
+        if (!isOnboardingCallback && userId) {
+          const cbPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+          if (!cbPreferences || !cbPreferences.consentAccepted || !cbPreferences.timezone) {
+            await this.bot.answerCallbackQuery(update.callback_query.id, {
+              text: 'Please complete setup first by sending /start',
+              show_alert: true,
+            });
+            return;
+          }
+        }
+
         await this.handleCallbackQuery(update.callback_query);
         return;
       }
       
+      // Handle pre-checkout queries (must respond within 10 seconds)
+      if (update.pre_checkout_query) {
+        try {
+          console.log('WWWWWWWWW', update.pre_checkout_query);
+          await this.bot.answerPreCheckoutQuery(update.pre_checkout_query.id, true);
+        } catch (err) {
+          try {
+            await this.bot.answerPreCheckoutQuery(update.pre_checkout_query.id, false, { error_message: 'Something went wrong, please try again' } as any);
+          } catch { /* ignore */ }
+        }
+        return;
+      }
+
       // For other update types, use processUpdate
       await this.bot.processUpdate(update);
       
@@ -756,7 +932,8 @@ export class TelegramBotService {
         '/myhabits - View all your habits\n\n' +
         '/analytics - View detailed analytics and graphs\n\n' +
         '/settings - Manage your settings\n\n' +
-        'The bot will remind you daily to check your habits! ⏰\n\n',
+        '/subscribe - Get Premium for unlimited habits\n\n' +
+        'The bot will remind you to check your habits! ⏰\n\n',
         { parse_mode: 'Markdown' }
       );
       Logger.info('Welcome message sent successfully', {
@@ -826,6 +1003,61 @@ export class TelegramBotService {
       Logger.error('Error sending new user notification', {
         userId,
         username,
+        channelId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  }
+
+  private static readonly UNHANDLED_MESSAGE_MAX_LEN = 3000;
+
+  /**
+   * Forwards unhandled chat text to NOTIFICATION_CHANNEL_ID (plain text, truncated).
+   * Never throws; failures are logged only.
+   */
+  private async sendUnhandledMessageNotification(
+    chatId: number,
+    userId: number,
+    username: string,
+    text: string,
+    user?: TelegramBot.User
+  ): Promise<void> {
+    const channelId = process.env.NOTIFICATION_CHANNEL_ID;
+
+    if (!channelId) {
+      Logger.debug('NOTIFICATION_CHANNEL_ID not set, skipping unhandled message notification', { userId });
+      return;
+    }
+
+    const maxLen = TelegramBotService.UNHANDLED_MESSAGE_MAX_LEN;
+    const snippet =
+      text.length > maxLen ? `${text.slice(0, maxLen)}\n…(truncated)` : text;
+
+    const firstName = user?.first_name || '';
+    const lastName = user?.last_name || '';
+    const fullName = `${firstName}${lastName ? ` ${lastName}` : ''}`.trim() || '—';
+    const uname = user?.username ? `@${user.username}` : username || '—';
+
+    const notificationMessage =
+      'Unhandled message\n\n' +
+      `User ID: ${userId}\n` +
+      `Chat ID: ${chatId}\n` +
+      `Username: ${uname}\n` +
+      `Name: ${fullName}\n` +
+      `Time: ${new Date().toISOString()} UTC\n\n` +
+      'Message:\n' +
+      snippet;
+
+    try {
+      await this.bot.sendMessage(channelId, notificationMessage, {
+        disable_notification: false,
+      });
+      Logger.info('Unhandled message notification sent', { userId, chatId });
+    } catch (error) {
+      Logger.error('Error sending unhandled message notification', {
+        userId,
+        chatId,
         channelId,
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
@@ -1121,37 +1353,7 @@ export class TelegramBotService {
   }
 
   private async showTimezoneSelection(chatId: number, userId: number): Promise<void> {
-    // 24 unique timezones covering all UTC offsets from -12 to +12
-    const timezones = [
-      // UTC-12:00 to UTC-01:00
-      { text: '🌴 Baker Island (BIT)', tz: 'Pacific/Baker_Island' }, // UTC-12:00
-      { text: '🏝️ Niue (NUT)', tz: 'Pacific/Niue' }, // UTC-11:00
-      { text: '🌺 Hawaii (HST)', tz: 'Pacific/Honolulu' }, // UTC-10:00
-      { text: '🏔️ Alaska (AKST)', tz: 'America/Anchorage' }, // UTC-09:00
-      { text: '🌴 Los Angeles (PST)', tz: 'America/Los_Angeles' }, // UTC-08:00
-      { text: '⛰️ Denver (MST)', tz: 'America/Denver' }, // UTC-07:00
-      { text: '🏙️ Chicago (CST)', tz: 'America/Chicago' }, // UTC-06:00
-      { text: '🗽 New York (EST)', tz: 'America/New_York' }, // UTC-05:00
-      { text: '🌊 Halifax (AST)', tz: 'America/Halifax' }, // UTC-04:00
-      { text: '🇧🇷 São Paulo (BRT)', tz: 'America/Sao_Paulo' }, // UTC-03:00
-      { text: '🏔️ South Georgia (GST)', tz: 'Atlantic/South_Georgia' }, // UTC-02:00
-      { text: '🏝️ Cape Verde (CVT)', tz: 'Atlantic/Cape_Verde' }, // UTC-01:00
-      // UTC±00:00 to UTC+12:00
-      { text: '🇬🇧 London (GMT)', tz: 'Europe/London' }, // UTC±00:00
-      { text: '🇫🇷 Paris (CET)', tz: 'Europe/Paris' }, // UTC+01:00
-      { text: '🇺🇦 Kyiv (EET)', tz: 'Europe/Kyiv' }, // UTC+02:00
-      { text: '🇷🇺 Moscow (MSK)', tz: 'Europe/Moscow' }, // UTC+03:00
-      { text: '🇦🇪 Dubai (GST)', tz: 'Asia/Dubai' }, // UTC+04:00
-      { text: '🇵🇰 Karachi (PKT)', tz: 'Asia/Karachi' }, // UTC+05:00
-      { text: '🇮🇳 Mumbai (IST)', tz: 'Asia/Kolkata' }, // UTC+05:30
-      { text: '🇧🇩 Dhaka (BST)', tz: 'Asia/Dhaka' }, // UTC+06:00
-      { text: '🇹🇭 Bangkok (ICT)', tz: 'Asia/Bangkok' }, // UTC+07:00
-      { text: '🇨🇳 Shanghai (CST)', tz: 'Asia/Shanghai' }, // UTC+08:00
-      { text: '🇯🇵 Tokyo (JST)', tz: 'Asia/Tokyo' }, // UTC+09:00
-      { text: '🇦🇺 Sydney (AEST)', tz: 'Australia/Sydney' }, // UTC+10:00
-      { text: '🏝️ Solomon Islands (SBT)', tz: 'Pacific/Guadalcanal' }, // UTC+11:00
-      { text: '🇳🇿 Auckland (NZST)', tz: 'Pacific/Auckland' }, // UTC+12:00
-    ];
+    const timezones = TIMEZONE_OPTIONS;
 
     // Create keyboard with timezone buttons (2 columns)
     const keyboard = {
@@ -1277,7 +1479,7 @@ export class TelegramBotService {
       const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
 
       const completionMessage = isNewHabit
-        ? `✅ Habit "${updatedHabit.name}" is ready!\n\n` +
+        ? `🌱 Habit "${updatedHabit.name}" is ready! Your seed is in the ground.\n\n` +
           `Schedule: ${scheduleDesc}\n\n` +
           `View all your habits with /myhabits`
         : `✅ Reminder schedule updated!\n\n` +
@@ -1394,17 +1596,17 @@ export class TelegramBotService {
         ? currentTimezone.split('/').pop()?.replace(/_/g, ' ') || currentTimezone
         : 'Not set';
 
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: '🌍 Change Timezone', callback_data: 'settings_timezone' },
-          ],
-          // Add more settings options here in the future
-          // Example:
-          // [{ text: '🔔 Notification Settings', callback_data: 'settings_notifications' }],
-          // [{ text: '🌐 Language', callback_data: 'settings_language' }],
+      const keyboardRows: TelegramBot.InlineKeyboardButton[][] = [
+        [
+          { text: '🌍 Change Timezone', callback_data: 'settings_timezone' },
         ],
-      };
+      ];
+      if (userId && isAdminUser(userId)) {
+        keyboardRows.push([
+          { text: 'Admin Panel', web_app: { url: 'https://e8cd-2a02-8308-111-600-43f-8808-498-a05f.ngrok-free.app/admin' } },
+        ]);
+      }
+      const keyboard = { inline_keyboard: keyboardRows };
 
       const message = `⚙️ *Settings*\n\n` +
         `*Current Settings:*\n` +
@@ -1441,37 +1643,7 @@ export class TelegramBotService {
     chatId: number,
     messageId?: number
   ): Promise<void> {
-    // 24 unique timezones covering all UTC offsets from -12 to +12
-    const timezones = [
-      // UTC-12:00 to UTC-01:00
-      { text: '🌴 Baker Island (BIT)', tz: 'Pacific/Baker_Island' }, // UTC-12:00
-      { text: '🏝️ Niue (NUT)', tz: 'Pacific/Niue' }, // UTC-11:00
-      { text: '🌺 Hawaii (HST)', tz: 'Pacific/Honolulu' }, // UTC-10:00
-      { text: '🏔️ Alaska (AKST)', tz: 'America/Anchorage' }, // UTC-09:00
-      { text: '🌴 Los Angeles (PST)', tz: 'America/Los_Angeles' }, // UTC-08:00
-      { text: '⛰️ Denver (MST)', tz: 'America/Denver' }, // UTC-07:00
-      { text: '🏙️ Chicago (CST)', tz: 'America/Chicago' }, // UTC-06:00
-      { text: '🗽 New York (EST)', tz: 'America/New_York' }, // UTC-05:00
-      { text: '🌊 Halifax (AST)', tz: 'America/Halifax' }, // UTC-04:00
-      { text: '🇧🇷 São Paulo (BRT)', tz: 'America/Sao_Paulo' }, // UTC-03:00
-      { text: '🏔️ South Georgia (GST)', tz: 'Atlantic/South_Georgia' }, // UTC-02:00
-      { text: '🏝️ Cape Verde (CVT)', tz: 'Atlantic/Cape_Verde' }, // UTC-01:00
-      // UTC±00:00 to UTC+12:00
-      { text: '🇬🇧 London (GMT)', tz: 'Europe/London' }, // UTC±00:00
-      { text: '🇫🇷 Paris (CET)', tz: 'Europe/Paris' }, // UTC+01:00
-      { text: '🇺🇦 Kyiv (EET)', tz: 'Europe/Kyiv' }, // UTC+02:00
-      { text: '🇷🇺 Moscow (MSK)', tz: 'Europe/Moscow' }, // UTC+03:00
-      { text: '🇦🇪 Dubai (GST)', tz: 'Asia/Dubai' }, // UTC+04:00
-      { text: '🇵🇰 Karachi (PKT)', tz: 'Asia/Karachi' }, // UTC+05:00
-      { text: '🇮🇳 Mumbai (IST)', tz: 'Asia/Kolkata' }, // UTC+05:30
-      { text: '🇧🇩 Dhaka (BST)', tz: 'Asia/Dhaka' }, // UTC+06:00
-      { text: '🇹🇭 Bangkok (ICT)', tz: 'Asia/Bangkok' }, // UTC+07:00
-      { text: '🇨🇳 Shanghai (CST)', tz: 'Asia/Shanghai' }, // UTC+08:00
-      { text: '🇯🇵 Tokyo (JST)', tz: 'Asia/Tokyo' }, // UTC+09:00
-      { text: '🇦🇺 Sydney (AEST)', tz: 'Australia/Sydney' }, // UTC+10:00
-      { text: '🏝️ Solomon Islands (SBT)', tz: 'Pacific/Guadalcanal' }, // UTC+11:00
-      { text: '🇳🇿 Auckland (NZST)', tz: 'Pacific/Auckland' }, // UTC+12:00
-    ];
+    const timezones = TIMEZONE_OPTIONS;
 
     // Create keyboard with timezone buttons (2 columns)
     const keyboard = {
@@ -1555,7 +1727,8 @@ export class TelegramBotService {
           '/myhabits - View all your habits\n\n' +
           '/analytics - View detailed analytics and graphs\n\n' +
           '/settings - Manage your settings\n\n' +
-          'The bot will remind you daily to check your habits! ⏰\n\n',
+          '/subscribe - Get Premium for unlimited habits\n\n' +
+          'The bot will remind you to check your habits! ⏰\n\n',
           {
             chat_id: chatId,
             message_id: messageId,
@@ -1601,7 +1774,7 @@ export class TelegramBotService {
       );
 
       await this.safeEditMessage(
-        `✅ Habit "${habit.name}" is ready!\n\n` +
+        `🌱 Habit "${habit.name}" is ready! Your seed is in the ground.\n\n` +
         `Schedule: ${scheduleDesc} (default)\n\n` +
         `View all your habits with /myhabits`,
         {
@@ -1738,15 +1911,23 @@ export class TelegramBotService {
       ],
     };
 
-    await this.bot.sendMessage(
-      chatId,
-      `✅ Habit "${habitName}" created!\n\n` +
+    const userHabits = await this.getUserHabitsUseCase.execute(userId);
+    const isFirstHabit = userHabits.length === 1;
+
+    let text = `🌱 Habit "${habitName}" created! Your seed is planted.\n\n` +
       `⏰ Now set up your reminder schedule:\n\n` +
-      `Choose a schedule type or skip to use the default (daily at 22:00 ${timezoneName}).`,
-      {
-        reply_markup: keyboard,
-      }
-    );
+      `Choose a schedule type or skip to use the default (daily at 22:00 ${timezoneName}).`;
+
+    if (isFirstHabit) {
+      text += `\n\n💡 *Tip:* Starting with just one habit is the best way to build consistency. ` +
+        `Give yourself a few days to get into the rhythm before adding more — ` +
+        `you'll be surprised how much easier it is to stick with it!`;
+    }
+
+    await this.bot.sendMessage(chatId, text, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
   }
 
   private async handleNewHabitCommandWithName(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
@@ -1763,7 +1944,7 @@ export class TelegramBotService {
       const habit = await this.createHabitUseCase.execute(userId, trimmedName, username);
       await this.bot.sendMessage(
         chatId,
-        `✅ Habit "${habit.name}" created!\n\n` +
+        `🌱 Habit "${habit.name}" created! Your seed is planted.\n\n` +
         `View all your habits with /myhabits`
       );
     } catch (error) {
@@ -1830,6 +2011,74 @@ export class TelegramBotService {
     await this.showHabitsList(userId, chatId);
   }
 
+  private async handleSubscribeCommand(chatId: number, userId: number, username: string): Promise<void> {
+    try {
+      const alreadySubscribed = await this.subscriptionUseCase.isSubscribed(userId);
+      if (alreadySubscribed) {
+        const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+        const periodDays = prefs?.premiumType === 'annual' ? 365 : 30;
+        const expiryDate = prefs?.premiumDate
+          ? new Date(new Date(prefs.premiumDate).getTime() + periodDays * 24 * 60 * 60 * 1000).toLocaleDateString()
+          : 'unknown';
+        const typeLabel = prefs?.premiumType === 'annual' ? ' (Annual)' : '';
+        await this.bot.sendMessage(chatId,
+          `✅ You already have an active Premium subscription${typeLabel}!\n\nRenews: ${expiryDate}`,
+        );
+        return;
+      }
+
+      const starsPrice = parseInt(process.env.PREMIUM_STARS_PRICE || '1', 10);
+      const starsAnnual = process.env.PREMIUM_STARS_ANNUAL
+        ? parseInt(process.env.PREMIUM_STARS_ANNUAL, 10)
+        : starsPrice * 10;
+
+      const monthlyLink = await this.bot.createInvoiceLink(
+        'Premium Subscription (Monthly)',
+        'Unlimited habits, notes on habits, and AI data insights. Renewed every 30 days. Cancel anytime in Telegram settings.',
+        `sub_${userId}`,
+        '',
+        'XTR',
+        [{ label: 'Monthly Premium', amount: starsPrice }],
+        { subscription_period: 2592000 }
+      );
+
+      const annualLink = await this.bot.createInvoiceLink(
+        'Premium Subscription (Annual)',
+        'Unlimited habits, notes, and data insights for 1 year. One payment; no auto-renewal.',
+        `sub_annual_${userId}`,
+        '',
+        'XTR',
+        [{ label: 'Annual Premium', amount: starsAnnual }],
+        {}
+      );
+
+      const maxFree = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+      await this.bot.sendMessage(chatId,
+        `💎 *Premium Subscription*\n\n` +
+        `Free plan: up to ${maxFree} habits\n` +
+        `Premium: unlimited habits, notes on habits, and AI data insights\n\n` +
+        `• *Monthly:* renews automatically every 30 days\n` +
+        `• *Annual:* one payment per year; no auto-renewal`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `Monthly — ${starsPrice} ⭐/month`, url: monthlyLink }],
+              [{ text: `Annual — ${starsAnnual} ⭐/year`, url: annualLink }],
+            ],
+          },
+        }
+      );
+    } catch (error) {
+      Logger.error('Error handling subscribe command', {
+        userId,
+        username,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, 'Error processing subscription. Please try again later.');
+    }
+  }
+
   private async handleAnalyticsCommand(chatId: number, userId: number | undefined, username: string, user?: TelegramBot.User): Promise<void> {
     if (!userId) {
       Logger.warn('Unable to identify user for analytics', { chatId });
@@ -1850,7 +2099,7 @@ export class TelegramBotService {
     baseUrl = baseUrl.replace(/\/$/, '');
     
     // const analyticsUrl = `${baseUrl}/analytics/${userId}`;
-    const analyticsUrl = `https://habits-builder.com/analytics/${userId}`;
+    const analyticsUrl = `https://e8cd-2a02-8308-111-600-43f-8808-498-a05f.ngrok-free.app/analytics/${userId}`;
     
     const message = `📊 *Your Habits Analytics*\n\n` +
       `View detailed analytics and graphs for all your habits.\n\n` +
@@ -1934,6 +2183,18 @@ export class TelegramBotService {
         }
         return;
       }
+      if (action === 'no') {
+        const isPremium = await this.subscriptionUseCase.isSubscribed(userId);
+        if (isPremium) {
+          const state = targetDate ? `habit_check_note:${habitId}:no:${targetDate}` : `habit_check_note:${habitId}:no`;
+          await this.setConversationState(userId, state);
+          await this.safeEditMessage(
+            'Send a note for this drop (optional). Reply with your note or /skip to leave empty.',
+            { chat_id: chatId, message_id: query.message?.message_id }
+          );
+          return;
+        }
+      }
       await this.handleHabitCheckCallback(userId, chatId, username, habitId, action === 'yes', query, targetDate);
       return;
     }
@@ -1956,7 +2217,7 @@ export class TelegramBotService {
     // Handle habit set schedule (show schedule options)
     const setScheduleMatch = data.match(/^habit_set_schedule:(.+)$/);
     if (setScheduleMatch) {
-      await this.handleSetScheduleCallback(userId, chatId, setScheduleMatch[1], query.message?.message_id);
+      await this.handleSetScheduleCallback(userId, chatId, setScheduleMatch[1], query.id, query.message?.message_id);
       return;
     }
 
@@ -2012,7 +2273,7 @@ export class TelegramBotService {
     // Handle habit toggle disabled
     const toggleDisabledMatch = data.match(/^habit_toggle_disabled:(.+)$/);
     if (toggleDisabledMatch) {
-      await this.handleHabitToggleDisabled(userId, chatId, toggleDisabledMatch[1], query.message?.message_id);
+      await this.handleHabitToggleDisabled(userId, chatId, toggleDisabledMatch[1], query.id, query.message?.message_id);
       return;
     }
 
@@ -2105,37 +2366,98 @@ export class TelegramBotService {
       const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username, targetDate);
       
       const emoji = completed ? '✅' : '❌';
-      let message = completed
-        ? `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`
-        : `Streak reset. You can start fresh tomorrow! 💪`;
+      const { getBadgeInfo, BADGE_TREE_MESSAGES, getNextMilestone } = await import('../../domain/utils/HabitBadges');
+
+      let message: string;
+      if (!completed) {
+        message = `Streak reset. You can start fresh tomorrow! 💪`;
+      } else if (updatedHabit.streak === 1) {
+        const next = getNextMilestone(1, updatedHabit.badges || []);
+        message = `🌱 Your seed has sprouted! Streak for "${updatedHabit.name}" is now 1 day!`;
+        if (next) {
+          message += `\n\n${next.daysLeft} more days until your first badge ${next.emoji}`;
+        }
+      } else {
+        message = `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`;
+      }
 
       // Check if new badges were earned
       const badgesAfter = updatedHabit.badges || [];
-      if (badgesAfter.length > badgesBefore.length) {
-        const newBadges = badgesAfter.filter(b => !badgesBefore.some(before => before.type === b.type));
+      const newBadges = badgesAfter.filter(b => !badgesBefore.some(before => before.type === b.type));
+      if (newBadges.length > 0) {
+        const highestNewBadge = newBadges[newBadges.length - 1];
+        const next = getNextMilestone(updatedHabit.streak, updatedHabit.badges || []);
+
+        if (newBadges.length === 1) {
+          const badgeInfo = getBadgeInfo(newBadges[0].type);
+          const treeMsg = BADGE_TREE_MESSAGES[newBadges[0].type as keyof typeof BADGE_TREE_MESSAGES];
+          message += `\n\n🎉 ${badgeInfo.emoji} Badge earned: ${badgeInfo.name}! ${treeMsg}`;
+        } else {
+          const badgeEmojis = newBadges.map(b => getBadgeInfo(b.type).emoji).join(' ');
+          const badgeNames = newBadges.map(b => getBadgeInfo(b.type).name).join(', ');
+          const treeMsg = BADGE_TREE_MESSAGES[highestNewBadge.type as keyof typeof BADGE_TREE_MESSAGES];
+          message += `\n\n🎉 Badges earned: ${badgeEmojis} (${badgeNames})! ${treeMsg}`;
+        }
+
+        if (next) {
+          message += `\n${next.daysLeft} more days until your next badge ${next.emoji}`;
+        }
+
+        message += `\n\n[@habits_checking_bot](t.me/habits_checking_bot)`;
+      }
+
+      const fullMessage = `${emoji} ${message}`;
+
+      let celebrationImageNumbers: number[] = [];
+      if (completed) {
+        const imgIndex = updatedHabit.imgIndex || 1;
+
+        if (!habitBefore?.lastCheckedDate) {
+          celebrationImageNumbers.push(1);
+        }
+
         if (newBadges.length > 0) {
-          const { getBadgeInfo } = await import('../../domain/utils/HabitBadges');
-          if (newBadges.length === 1) {
-            // Single badge
-            const badgeInfo = getBadgeInfo(newBadges[0].type);
-            message += `\n\n🎉 ${badgeInfo.emoji} Badge earned: ${badgeInfo.name}! Keep it up!`;
-          } else {
-            // Multiple badges (e.g., streak jumped from 4 to 10 days)
-            const badgeEmojis = newBadges.map(b => getBadgeInfo(b.type).emoji).join(' ');
-            const badgeNames = newBadges.map(b => getBadgeInfo(b.type).name).join(', ');
-            message += `\n\n🎉 Badges earned: ${badgeEmojis} (${badgeNames})! Amazing progress!\n\n[@habits_checking_bot](t.me/habits_checking_bot)`;
+          const { BADGE_IMAGE_MAP } = await import('../../domain/utils/HabitBadges');
+          for (const badge of newBadges) {
+            celebrationImageNumbers.push(BADGE_IMAGE_MAP[badge.type]);
+          }
+        }
+
+        if (celebrationImageNumbers.length > 0) {
+          await this.safeEditMessage(`${emoji} Checked!`, {
+            chat_id: chatId,
+            message_id: query.message?.message_id,
+          });
+
+          for (let i = 0; i < celebrationImageNumbers.length; i++) {
+            try {
+              const imagePath = path.join(process.cwd(), 'public', 'images', 'habits', String(imgIndex), `${celebrationImageNumbers[i]}.png`);
+              await this.bot.sendPhoto(chatId, fs.createReadStream(imagePath), {
+                ...(i === 0 ? { caption: fullMessage, parse_mode: 'Markdown' as const } : {}),
+              });
+            } catch (imgError) {
+              Logger.error('Error sending celebration image', {
+                userId,
+                habitId,
+                imgIndex,
+                imageNum: celebrationImageNumbers[i],
+                error: imgError instanceof Error ? imgError.message : 'Unknown error',
+              });
+              if (i === 0) {
+                await this.bot.sendMessage(chatId, fullMessage, { parse_mode: 'Markdown' });
+              }
+            }
           }
         }
       }
 
-      await this.safeEditMessage(
-        `${emoji} ${message}`,
-        {
+      if (celebrationImageNumbers.length === 0) {
+        await this.safeEditMessage(fullMessage, {
           chat_id: chatId,
           message_id: query.message?.message_id,
           parse_mode: 'Markdown',
-        }
-      );
+        });
+      }
 
       // Send notification to channel (async, don't block)
       this.sendHabitReactionNotification(
@@ -2151,9 +2473,6 @@ export class TelegramBotService {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       });
-
-      // Note: We don't ask about other habits here because each habit has its own reminder schedule
-      // Users will receive separate reminders for each habit at their scheduled times
     } catch (error) {
       Logger.error('Error recording habit check', {
         userId,
@@ -2226,6 +2545,17 @@ export class TelegramBotService {
     targetDate?: string
   ): Promise<void> {
     try {
+      const isPremium = await this.subscriptionUseCase.isSubscribed(userId);
+      if (isPremium) {
+        const state = targetDate ? `habit_check_note:${habitId}:skip:${targetDate}` : `habit_check_note:${habitId}:skip`;
+        await this.setConversationState(userId, state);
+        await this.safeEditMessage(
+          'Send a note for this skip (optional). Reply with your note or /skip to leave empty.',
+          { chat_id: chatId, message_id: messageId }
+        );
+        return;
+      }
+
       const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
       
       const message = `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`;
@@ -2352,6 +2682,7 @@ export class TelegramBotService {
     userId: number,
     chatId: number,
     habitId: string,
+    callbackQueryId: string,
     messageId?: number
   ): Promise<void> {
     try {
@@ -2359,11 +2690,25 @@ export class TelegramBotService {
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
+        await this.bot.answerCallbackQuery(callbackQueryId);
         await this.bot.sendMessage(chatId, 'Habit not found.');
         return;
       }
 
+      if (habit.disabled) {
+        const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+        const isPremium = prefs?.premium === true;
+        if (!isPremium) {
+          await this.bot.answerCallbackQuery(callbackQueryId, {
+            text: 'This habit is paused (free limit reached). Use /subscribe for Premium or disable an active habit to enable this one.',
+            show_alert: true,
+          });
+          return;
+        }
+      }
+
       if (!this.setHabitReminderScheduleUseCase) {
+        await this.bot.answerCallbackQuery(callbackQueryId);
         await this.bot.sendMessage(chatId, 'Schedule management is not available. Please contact support.');
         return;
       }
@@ -3084,4 +3429,3 @@ export class TelegramBotService {
     }
   }
 }
-

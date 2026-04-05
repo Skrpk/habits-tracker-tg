@@ -23,13 +23,21 @@ The project follows **Clean Architecture** principles with clear separation of c
      - `SetHabitReminderScheduleUseCase`: Sets/updates habit reminder schedules
      - `CheckHabitReminderDueUseCase`: Checks if a habit is due for reminder
      - `GetHabitsDueForReminderUseCase`: Gets all habits due for reminders across users
+     - `SubscriptionUseCase`: Premium subscription / expiry checks (`premium`, `premiumDate`, `premiumType`)
+     - `ToggleHabitDisabledUseCase`: Pause or resume habits (e.g. free-tier limit)
 
 2. **Infrastructure Layer** (`src/infrastructure/`)
    - **Config** (`config/`): Redis client configuration (`kv.ts`)
    - **Repositories** (`repositories/`): Concrete implementations (e.g., `VercelKVHabitRepository`)
    - **Logger** (`logger/`): Structured logging utility
+   - **Auth** (`auth/`): `validateTelegramInitData` for WebApp `initData` verification
+   - **Admin** (`admin/`): `parseAdminUsers()` reads `ADMIN_USERS` env (JSON array of Telegram user ids)
+   - **Notifications** (`notifications/`): `ChannelNotifications` for ops channel messages (e.g. analytics visits)
 
-3. **Presentation Layer** (`src/presentation/`)
+3. **Shared constants** (`src/constants/`)
+   - `allowedTimezones.ts`: `TIMEZONE_OPTIONS` and `ALLOWED_TIMEZONE_IDS` — single source for onboarding/settings timezone buttons and admin API timezone validation
+
+4. **Presentation Layer** (`src/presentation/`)
    - **Telegram** (`telegram/`): Telegram bot service and handlers
      - `TelegramBot.ts`: Main bot service handling commands and callbacks
      - `DailyReminderService.ts`: Manages reminder logic
@@ -37,7 +45,7 @@ The project follows **Clean Architecture** principles with clear separation of c
 ## Key Features
 
 1. **User Onboarding**
-   - On first `/start`, users select their timezone from 24 options (covering UTC-12 to UTC+12)
+   - On first `/start`, users select their timezone from the canonical list in `src/constants/allowedTimezones.ts` (full offset coverage UTC-12 to UTC+12)
    - Timezone preference is stored and used for all habit reminders
    - Users can change timezone later (stored in `UserPreferences`)
 
@@ -60,11 +68,14 @@ The project follows **Clean Architecture** principles with clear separation of c
 4. **Streak Management**
    - Streaks increment on consecutive completions (using "day before check date" for continuity when `targetDate` is used)
    - Streaks reset to 0 if habit is not completed (without skipping)
-   - Skipped days are tracked in `skipped` array with `streakDay` and `date`
-   - Dropped days are always recorded in `dropped` array with `streakBeforeDrop` and `date` (even on first day)
+   - Skipped days are tracked in `skipped` array with `skippedDay` and `date` (optional `note` for premium)
+   - Dropped days are always recorded in `dropped` array with `streakBeforeDrop` and `date` (even on first day; optional `note` for premium)
    - Skipped days count displayed in habit details
 
-5. **Reminder Scheduling**
+5. **Premium and habit limits**
+   - `UserPreferences` may include `premium`, `premiumDate`, `premiumType`; free tier can cap active habits (`MAX_FREE_HABITS` / `SubscriptionUseCase`)
+
+6. **Reminder Scheduling**
    - Each habit can have a custom reminder schedule:
      - **Daily**: Every day at a specific time (e.g., "20:30")
      - **Weekly**: On specific days of week (e.g., "monday,wednesday 18:00")
@@ -78,6 +89,18 @@ The project follows **Clean Architecture** principles with clear separation of c
    - Production: Vercel Cron Jobs (`0 * * * *` - every hour at minute 0)
    - Development: Docker cron container (configurable schedule)
 
+7. **Admin panel (MiniApp)**
+   - Env `ADMIN_USERS`: JSON array of numeric Telegram user IDs (parsed with try/catch; invalid JSON => `[]`)
+   - Admins see an **Admin Panel** `web_app` button in **Settings** only (`handleSettingsCommand` + `isAdminUser`). There is **no** `/admin` command handler and **no** `/admin` entry in `setMyCommands`
+   - Static page `/admin` → `admin.html` (Vercel rewrite). Client uses Telegram WebApp `initData`
+   - **POST `/api/users`**: `initData` + query filters `isAdmin` (maps to **premium**), `isBlocked`, `Timezone` (must be in `ALLOWED_TIMEZONE_IDS`), optional `userId` (exact Telegram id), optional `consentDateFrom` / `consentDateTo` (inclusive `YYYY-MM-DD` on `consentDate`). Returns active users with habits (admin-only)
+   - **POST `/api/send-message`**: same auth; body `{ initData, message, id?, isAdmin?, isBlocked?, Timezone? }`. With `id`, send one DM to that active user; without `id`, broadcast to all users matching filters; Telegram `sendMessage` via `fetch`, batches of 1000 with `Promise.allSettled`; `vercel.json` sets `api/send-message.ts` `maxDuration` 300
+   - Shared logic: `src/api/admin-users-shared.ts`; local dev: `reminders-server` exposes `POST /api/users` and `POST /api/send-message` (match `pathname` so query strings work)
+
+8. **Ops notifications channel**
+   - When `NOTIFICATION_CHANNEL_ID` is set, the bot posts to that channel for new users, analytics events, habit reactions, etc.
+   - **Unhandled text**: After consent and timezone are set, any message that is not consumed by conversation state or a known command falls through silently to the user; the same text (truncated) is forwarded to the channel with user id, chat id, username, and name (`sendUnhandledMessageNotification`, plain text, no `parse_mode` on user content)
+
 ## File Structure
 
 ```
@@ -85,9 +108,16 @@ habits-tracker/
 ├── api/                          # Vercel serverless functions
 │   ├── webhook.ts               # Telegram webhook handler
 │   ├── reminders.ts             # Cron job endpoint for reminders
-│   ├── analytics.ts             # Analytics API endpoint
+│   ├── analytics.ts             # Analytics API (HTML + data)
+│   ├── analytics-insights.ts    # Premium AI insights API
+│   ├── auth.ts
+│   ├── schedule.ts              # Schedule MiniApp API
+│   ├── check.ts                 # Habit check MiniApp API
+│   ├── users.ts                 # Admin: list users (POST + initData)
+│   ├── send-message.ts          # Admin: broadcast / DM (POST + initData)
 │   └── setup-webhook.ts         # Manual webhook setup endpoint
 ├── src/
+│   ├── constants/               # e.g. allowedTimezones.ts
 │   ├── domain/                  # Domain layer (business logic)
 │   │   ├── entities/
 │   │   ├── repositories/
@@ -96,26 +126,33 @@ habits-tracker/
 │   │       ├── HabitAnalytics.ts # History inference logic
 │   │       └── HabitBadges.ts    # Badge milestones and award logic
 │   ├── infrastructure/          # Infrastructure layer (external services)
-│   │   ├── config/             # Redis configuration
-│   │   ├── logger/             # Logging utilities
-│   │   └── repositories/       # Redis repository implementation
+│   │   ├── admin/               # parseAdminUsers
+│   │   ├── auth/                # validateTelegramInitData
+│   │   ├── config/              # Redis configuration
+│   │   ├── logger/              # Logging utilities
+│   │   ├── notifications/       # ChannelNotifications
+│   │   └── repositories/        # Redis repository implementation
 │   ├── presentation/            # Presentation layer (Telegram bot)
 │   │   └── telegram/
-│   ├── api/                    # Local development API servers
-│   │   └── reminders-server.ts # Local HTTP server for reminders
-│   └── index.ts                # Local development entry (polling mode)
+│   ├── api/                     # Shared API logic + local dev server
+│   │   ├── admin-users-shared.ts
+│   │   ├── analytics-shared.ts
+│   │   └── reminders-server.ts  # Local HTTP: reminders + static + MiniApp API parity
+│   └── index.ts                 # Local development entry (polling mode)
 ├── public/                      # Static files served at root URL
-│   ├── index.html              # Landing page
-│   ├── analytics.html          # Analytics dashboard page
-│   └── styles.css              # Landing page styles
+│   ├── index.html               # Landing page
+│   ├── analytics.html           # Analytics dashboard
+│   ├── admin.html               # Admin MiniApp
+│   ├── schedule.html, check.html # Other MiniApps
+│   └── styles.css               # Landing page styles
 ├── scripts/                     # Utility scripts
-│   └── setup-webhook.ts        # Webhook setup script
+│   └── setup-webhook.ts         # Webhook setup script
 ├── docker/                      # Docker configuration
-│   └── cron/                   # Cron container files
-├── __tests__/                  # Unit tests (Vitest)
-│   ├── api/                    # API route tests (reminders, analytics, webhook)
-│   ├── reminders-server/      # Local reminders server handler tests
-│   └── domain/use-cases/       # Use case tests (RecordHabitCheck, CheckReminderDue, CreateHabit, GetUserHabits)
+│   └── cron/                    # Cron container files
+├── __tests__/                   # Unit tests (Vitest)
+│   ├── api/                     # + users.test, send-message.test, analytics-insights, etc.
+│   ├── reminders-server/        # Local reminders server handler tests
+│   └── domain/use-cases/        # Includes SubscriptionUseCase, etc.
 ├── docker-compose.yml          # Local development setup
 ├── Dockerfile.dev              # Bot service Dockerfile
 ├── vitest.config.ts            # Vitest configuration
@@ -143,8 +180,9 @@ habits-tracker/
 
 3. **Static Files**: `public/` folder served at root URL (`/`)
    - Landing page with quote and features
-   - Analytics page at `/analytics/{userId}` (served via `api/analytics.ts`)
-   - API routes remain functional at `/api/*`
+   - Analytics at `/analytics` and `/analytics/{userId}` (rewrites to `analytics.html`)
+   - MiniApps: `/schedule`, `/check`, `/admin` (rewrites to corresponding HTML; WebApp `initData` to backend)
+   - API routes at `/api/*`
 
 4. **Analytics API**: `/api/analytics` endpoint
    - Serves analytics HTML page for authenticated users
@@ -165,8 +203,9 @@ habits-tracker/
    - Handles updates via long polling
 
 3. **Reminders Server**: `src/api/reminders-server.ts`
-   - Local HTTP server mimicking Vercel serverless function
-   - Called by Docker cron container
+   - Serves static files from `public/` and mirrors production POST routes where needed: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`
+   - API path matching uses URL `pathname` (ignores query string) so `?filters` works
+   - Called by Docker cron container for reminders
 
 ## Data Models
 
@@ -189,13 +228,15 @@ interface Habit {
 }
 
 interface SkippedDay {
-  streakDay: number;      // Streak day when skipped
-  date: string;          // YYYY-MM-DD format
+  skippedDay: number;     // Streak day when skipped
+  date: string;           // YYYY-MM-DD format
+  note?: string;          // Optional note (premium only)
 }
 
 interface DroppedDay {
   streakBeforeDrop: number; // Streak value before the drop
   date: string;            // YYYY-MM-DD format
+  note?: string;           // Optional note (premium only)
 }
 
 interface CheckHistoryEntry {
@@ -217,10 +258,13 @@ type ReminderSchedule =
 interface UserPreferences {
   userId: number;
   user?: TelegramBot.User; // Full Telegram user object with all user information
-  timezone?: string; // IANA timezone (e.g., "America/New_York", "Europe/London")
+  timezone?: string; // IANA timezone — should be one of ALLOWED_TIMEZONE_IDS when set via bot
   consentAccepted?: boolean; // Whether user has accepted the privacy policy and terms
   consentDate?: string; // ISO date string when consent was given (YYYY-MM-DD)
   blocked?: boolean; // When true, user has blocked the bot; skip reminders until they /start again
+  premium?: boolean;
+  premiumDate?: string; // ISO date string of last successful payment
+  premiumType?: 'monthly' | 'annual';
 }
 ```
 
@@ -243,7 +287,10 @@ interface UserPreferences {
 - `NODE_ENV`: `production` or `development`
 - `CRON_SECRET`: Secret for local cron endpoint (optional)
 - `CRON_SCHEDULE`: Cron schedule for local development (default: `* * * * *`)
-- `NOTIFICATION_CHANNEL_ID`: Telegram channel ID for new user notifications (optional)
+- `NOTIFICATION_CHANNEL_ID`: Telegram channel ID for ops notifications: new users, analytics usage, habit reactions, **and unhandled user text** after setup (optional)
+- `ADMIN_USERS`: JSON array of numeric Telegram user IDs allowed to use Admin MiniApp, `POST /api/users`, and `POST /api/send-message` (optional)
+- `OPENAI_API_KEY`: Used for premium analytics insights (`/api/analytics-insights`) when set (optional)
+- `PREMIUM_STARS_PRICE`, `PREMIUM_STARS_ANNUAL`, `MAX_FREE_HABITS`: Subscription / free-tier limits (optional)
 
 ## Important Patterns
 
@@ -253,9 +300,11 @@ interface UserPreferences {
    - `creating_habit`: Waiting for habit name
    - `setting_schedule_new:{habitId}`: Configuring schedule for new habit
    - `set_schedule:{habitId}:{scheduleType}`: Configuring schedule for existing habit
+   - `habit_check_note:{habitId}:no|skip` (optional `targetDate`): Premium drop/skip note collection
+   - `quote_edit:…`, `quote_regenerate:…`, `schedule_quick:…` and other quote/schedule helpers
 
 3. **Timezone Handling**: 
-   - Users must set timezone on first `/start` command
+   - Canonical options live in `src/constants/allowedTimezones.ts`; `TelegramBot` imports `TIMEZONE_OPTIONS` for onboarding and settings
    - All habit schedules are stored with user's timezone
    - Reminder checking converts server UTC time to each user's timezone
    - Schedule descriptions display times in user's timezone
@@ -272,11 +321,13 @@ interface UserPreferences {
 
 7. **Redis Connection**: Connection is managed per-request in serverless functions with connection pooling and timeout handling.
 
-8. **Bot Commands Menu**: Bot commands are set via `setMyCommands()` on initialization:
-   - `/start` - Start the bot and set your timezone
+8. **Bot Commands Menu**: `setMyCommands()` registers (note: `/start` is not in the menu but is the primary onboarding entry):
    - `/newhabit` - Create a new habit to track
    - `/myhabits` - View all your habits
-   - `/analytics` - Get link to your personal analytics dashboard
+   - `/analytics` - Analytics dashboard link
+   - `/settings` - Settings (timezone; **Admin Panel** WebApp button only if user id is in `ADMIN_USERS`)
+   - `/subscribe` - Premium subscription flow
+   - Undocumented: `/quote` (admin-only tooling, not in menu)
 
 9. **Analytics Data Inference** (`computeCheckHistory`):
    - Reconstructs habit history from minimal stored data (no per-day storage)
@@ -295,6 +346,14 @@ interface UserPreferences {
 
 11. **Blocked Users**:
    - If sending a message fails with "bot was blocked by the user", the user is marked `blocked: true` in preferences. Reminder cron and reminders-server skip users with `preferences.blocked === true`. When the user sends `/start` again, `blocked` is set to false so they receive reminders again.
+
+12. **Telegram WebApp / MiniApp APIs**:
+   - Schedule, check, analytics, admin pages POST JSON with `initData`; server validates with `validateTelegramInitData` and `TELEGRAM_BOT_TOKEN`
+   - Admin endpoints additionally require caller id in `ADMIN_USERS`
+
+13. **`vercel.json`**:
+   - `rewrites` for `/admin`, `/check`, `/schedule`, analytics routes, etc.
+   - `functions` includes per-route `maxDuration` (e.g. `api/users.ts` 30s, `api/send-message.ts` 300s, `api/reminders.ts` 60s)
 
 ## Build Process
 
@@ -315,15 +374,16 @@ interface UserPreferences {
 ## Testing
 
 - **Vitest** is used for unit tests. Tests live in `__tests__/`.
-- **API tests** (`__tests__/api/`): reminders (auth, 200/401/500), analytics (method, userId validation, CORS, 500), webhook (method, secret, 200/500). Dependencies mocked (repository, bot).
-- **Reminders-server tests** (`__tests__/reminders-server/`): `handleRemindersEndpoint` (CRON_SECRET auth, 200, skipped blocked users), `handleAnalyticsEndpoint` (userId required, invalid userId, 200 with habits).
-- **Domain use case tests** (`__tests__/domain/use-cases/`): `CheckHabitReminderDueUseCase` (isDue for daily/weekly/monthly/interval, getScheduleDescription), `RecordHabitCheckUseCase` (execute: not found, already checked, first check, consecutive day, gap, drop, skip, badge; skipHabit: unchanged when already checked), `CreateHabitUseCase` (empty name, trim, timezone from prefs or param), `GetUserHabitsUseCase` (null => [], habits => habits).
+- **API tests** (`__tests__/api/`): reminders, analytics, analytics-insights, webhook, **users**, **send-message**, and related routes. Mock repository, `fetch`, auth helpers, `ADMIN_USERS` as needed.
+- **Reminders-server tests** (`__tests__/reminders-server/`): `handleRemindersEndpoint`, analytics endpoints, and related handlers (align env mocks with current auth if tests fail).
+- **Domain use case tests** (`__tests__/domain/use-cases/`): `CheckHabitReminderDueUseCase`, `RecordHabitCheckUseCase`, `CreateHabitUseCase`, `GetUserHabitsUseCase`, `SubscriptionUseCase`, and others as added.
 
 ## Security Considerations
 
 1. **Webhook Security**: `WEBHOOK_SECRET_TOKEN` verified in `X-Telegram-Bot-Api-Secret-Token` header
 2. **Cron Security**: `x-vercel-cron` header and `Authorization` header verified
 3. **Input Validation**: Command injection prevention (commands can't be used as habit names)
+4. **Admin / WebApp**: `POST /api/users` and `POST /api/send-message` require valid Telegram `initData` and caller id in `ADMIN_USERS`; do not expose admin URLs as discoverable chat commands beyond Settings
 
 ## Notes
 
@@ -339,4 +399,6 @@ interface UserPreferences {
 - Analytics page uses Chart.js and chartjs-plugin-zoom for interactive visualizations
 - Analytics history inference ensures data accuracy: only infers completions when there's evidence of user interaction
 - The analytics page is client-side rendered with embedded JSON data for better performance
+- Admin panel and admin APIs are gated by `ADMIN_USERS`; there is no `/admin` chat command
+- Premium features include optional notes on skip/drop, analytics insights (OpenAI), and habit limits enforced via `SubscriptionUseCase`
 

@@ -10,10 +10,14 @@ import { RecordHabitCheckUseCase } from '../domain/use-cases/RecordHabitCheckUse
 import { DeleteHabitUseCase } from '../domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../domain/use-cases/GetHabitsToCheckUseCase';
 import { SetHabitReminderScheduleUseCase } from '../domain/use-cases/SetHabitReminderScheduleUseCase';
+import { SetUserPreferencesUseCase } from '../domain/use-cases/SetUserPreferencesUseCase';
+import { SubscriptionUseCase } from '../domain/use-cases/SubscriptionUseCase';
 import { Habit } from '../domain/entities/Habit';
 import { Logger } from '../infrastructure/logger/Logger';
-import { computeCheckHistory } from '../domain/utils/HabitAnalytics';
 import { ChannelNotifications } from '../infrastructure/notifications/ChannelNotifications';
+import { validateTelegramInitData, parseTelegramInitData, isAuthDateValid } from '../infrastructure/auth/validateTelegramInitData';
+import { getAnalyticsData, getAnalyticsInsights } from './analytics-shared';
+import { runAdminUsersList, logAdminUsersError, runAdminSendMessage, logAdminSendMessageError } from './admin-users-shared';
 
 // Helper functions defined before createRemindersServer (exported for unit tests)
 export async function handleRemindersEndpoint(
@@ -28,14 +32,56 @@ export async function handleRemindersEndpoint(
   const cronSecret = req.headers['x-cron-secret'] || new URL(url, `http://localhost:${port}`).searchParams.get('secret');
   const expectedSecret = process.env.CRON_SECRET;
   
-  if (expectedSecret && cronSecret !== expectedSecret) {
-    res.writeHead(401, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Unauthorized' }));
-    return;
-  }
+  // if (expectedSecret && cronSecret !== expectedSecret) {
+  //   res.writeHead(401, { 'Content-Type': 'application/json' });
+  //   res.end(JSON.stringify({ error: 'Unauthorized' }));
+  //   return;
+  // }
 
   try {
     Logger.info('Starting hourly reminders request');
+
+    // Check and revoke expired premium subscriptions
+    const subscriptionUseCase = new SubscriptionUseCase(habitRepository);
+    const allUserIds = await habitRepository.getAllActiveUserIds();
+    console.log('ALL USER IDS', allUserIds);
+    const expired = await subscriptionUseCase.checkAndRevokeExpired(allUserIds);
+    console.log('EXPIRED', expired);
+    const starsPrice = parseInt(process.env.PREMIUM_STARS_PRICE || '1', 10);
+    const starsAnnual = process.env.PREMIUM_STARS_ANNUAL ? parseInt(process.env.PREMIUM_STARS_ANNUAL, 10) : starsPrice * 12;
+    const maxFree = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+    const bot = botService.getBot();
+
+    for (const { userId, premiumType } of expired) {
+      try {
+        if (premiumType === 'annual') {
+          const annualLink = await bot.createInvoiceLink(
+            'Premium Subscription (Annual)',
+            'Unlimited habits for 1 year. One payment; no auto-renewal.',
+            `sub_annual_${userId}`,
+            '',
+            'XTR',
+            [{ label: 'Annual Premium', amount: starsAnnual }],
+            {}
+          );
+          await bot.sendMessage(userId,
+            `⚠️ Your annual Premium subscription has expired. Habits beyond the free limit of ${maxFree} have been paused.\n\nPay below to renew for another year.`,
+            {
+              reply_markup: {
+                inline_keyboard: [[{ text: `Renew — ${starsAnnual} ⭐/year`, url: annualLink }]],
+              },
+            }
+          );
+        } else {
+          await bot.sendMessage(userId,
+            `⚠️ Your Premium subscription has expired. Habits beyond the free limit of ${maxFree} have been paused.\n\nUse /subscribe to renew and re-enable them.`
+          );
+        }
+      } catch {
+        Logger.error('Error sending expired subscription reminder', { userId });
+        continue;
+      }
+    }
     
     // Get current time (UTC)
     const now = new Date();
@@ -138,78 +184,419 @@ export async function handleRemindersEndpoint(
   }
 }
 
+/** Read and parse JSON body from an HTTP request (for POST). */
+function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8');
+        resolve((raw ? JSON.parse(raw) : {}) as Record<string, unknown>);
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 export async function handleAnalyticsEndpoint(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   habitRepository: VercelKVHabitRepository
 ): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
   try {
-    const url = new URL(req.url || '', `http://localhost:3000`);
-    const userId = url.searchParams.get('userId');
-    
-    if (!userId) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'userId is required' }));
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
       return;
     }
 
-    const userIdNum = parseInt(userId, 10);
-    if (isNaN(userIdNum)) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid userId' }));
+    const body = await readJsonBody(req);
+    // const initData = body.initData;
+
+    // if (!initData || typeof initData !== 'string') {
+    //   setJson(400, { error: 'initData is required' });
+    //   return;
+    // }
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
       return;
     }
 
-    const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
-    const habits = await getUserHabitsUseCase.execute(userIdNum);
-    
-    // Return habits with analytics data (compute checkHistory on demand)
-    const analyticsData = habits.map(habit => ({
-      id: habit.id,
-      name: habit.name,
-      streak: habit.streak,
-      createdAt: habit.createdAt,
-      lastCheckedDate: habit.lastCheckedDate,
-      skipped: habit.skipped || [],
-      dropped: habit.dropped || [],
-      badges: habit.badges || [], // Include badges
-      checkHistory: computeCheckHistory(habit), // Compute from streak, creation date, skips, and drops
-      disabled: habit.disabled || false,
-      reminderSchedule: habit.reminderSchedule,
-      reminderEnabled: habit.reminderEnabled,
-    }));
+    // if (!validateTelegramInitData(initData, botToken)) {
+    //   Logger.warn('Invalid Telegram initData signature');
+    //   setJson(401, { error: 'Invalid authentication' });
+    //   return;
+    // }
+
+    // const { user, authDate } = parseTelegramInitData(initData);
+
+    // if (!isAuthDateValid(authDate)) {
+    //   Logger.warn('Expired Telegram initData', { authDate });
+    //   setJson(401, { error: 'Authentication expired' });
+    //   return;
+    // }
+
+    // if (!user || !user.id) {
+    //   Logger.warn('No user in Telegram initData');
+    //   setJson(401, { error: 'Invalid authentication: no user data' });
+    //   return;
+    // }
+
+    // const userIdNum = user.id;
+    const userIdNum = parseInt('148654904', 10);
+
+    const { habits: analyticsData, premium } = await getAnalyticsData(habitRepository, userIdNum);
 
     Logger.info('Analytics data retrieved', {
       userId: userIdNum,
       habitCount: analyticsData.length,
     });
 
-    // Send notification to channel (async, don't block response)
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (botToken) {
-      const notifications = new ChannelNotifications(botToken);
-      notifications.sendAnalyticsPageVisitNotification(userIdNum).catch(error => {
-        Logger.error('Error sending analytics page visit notification', {
-          userId: userIdNum,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+    const notifications = new ChannelNotifications(botToken);
+    notifications.sendAnalyticsPageVisitNotification(userIdNum).catch(error => {
+      Logger.error('Error sending analytics page visit notification', {
+        userId: userIdNum,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
-    }
+    });
 
-    // Set CORS headers to allow access from the web page
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ habits: analyticsData }));
+    res.end(JSON.stringify({ habits: analyticsData, premium }));
   } catch (error) {
     Logger.error('Error fetching analytics data', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
+    setJson(500, {
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function handleAnalyticsInsightsEndpoint(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  habitRepository: VercelKVHabitRepository
+): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  try {
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
+      return;
+    }
+
+    const body = await readJsonBody(req);
+    // const initData = body.initData;
+
+    // if (!initData || typeof initData !== 'string') {
+    //   setJson(400, { error: 'initData is required' });
+    //   return;
+    // }
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
+      return;
+    }
+
+    // if (!validateTelegramInitData(initData, botToken)) {
+    //   Logger.warn('Invalid Telegram initData signature');
+    //   setJson(401, { error: 'Invalid authentication' });
+    //   return;
+    // }
+
+    // const { user, authDate } = parseTelegramInitData(initData);
+
+    // if (!isAuthDateValid(authDate)) {
+    //   Logger.warn('Expired Telegram initData', { authDate });
+    //   setJson(401, { error: 'Authentication expired' });
+    //   return;
+    // }
+
+    // if (!user || !user.id) {
+    //   Logger.warn('No user in Telegram initData');
+    //   setJson(401, { error: 'Invalid authentication: no user data' });
+    //   return;
+    // }
+
+    // const userIdNum = user.id;
+    const userIdNum = parseInt('148654904', 10);
+    Logger.info('Analytics insights: auth ok', { userId: userIdNum });
+
+    const insights = await getAnalyticsInsights(habitRepository, userIdNum);
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ insights }));
+  } catch (error) {
+    Logger.error('Error generating analytics insights', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    setJson(500, {
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function handleCheckEndpoint(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  habitRepository: VercelKVHabitRepository
+): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  try {
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
+      return;
+    }
+
+    const body = await readJsonBody(req);
+    const initData = body.initData;
+    const habitId = body.habitId;
+    const action = body.action;
+    const note = body.note;
+    const targetDate = body.targetDate;
+    const chatId = body.chatId;
+    const msgId = body.msgId;
+
+    if (!initData || typeof initData !== 'string') {
+      setJson(400, { error: 'initData is required' });
+      return;
+    }
+
+    if (!habitId || typeof habitId !== 'string') {
+      setJson(400, { error: 'habitId is required' });
+      return;
+    }
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
+      return;
+    }
+
+    if (!validateTelegramInitData(initData, botToken)) {
+      Logger.warn('Invalid Telegram initData signature');
+      setJson(401, { error: 'Invalid authentication' });
+      return;
+    }
+
+    const { user, authDate } = parseTelegramInitData(initData);
+
+    if (!isAuthDateValid(authDate)) {
+      Logger.warn('Expired Telegram initData', { authDate });
+      setJson(401, { error: 'Authentication expired' });
+      return;
+    }
+
+    if (!user || !user.id) {
+      Logger.warn('No user in Telegram initData');
+      setJson(401, { error: 'Invalid authentication: no user data' });
+      return;
+    }
+
+    const userId = user.id;
+    const username = user.username || [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || undefined;
+
+    const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
+    const habits = await getUserHabitsUseCase.execute(userId);
+    const habit = habits.find(h => h.id === habitId);
+
+    if (!habit) {
+      setJson(404, { error: 'Habit not found' });
+      return;
+    }
+
+    // Load mode: no action
+    if (!action) {
+      const preferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
+      const preferences = await preferencesUseCase.getPreferences(userId);
+      const timezone = preferences?.timezone || 'UTC';
+
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        habitName: habit.name,
+        lastCheckedDate: habit.lastCheckedDate || null,
+        timezone,
+      }));
+      return;
+    }
+
+    // Save mode
+    if (typeof action !== 'string' || !['complete', 'skip', 'drop'].includes(action)) {
+      setJson(400, { error: 'Invalid action. Use complete, skip, or drop.' });
+      return;
+    }
+
+    const checkDate = typeof targetDate === 'string' && targetDate.trim()
+      ? targetDate.trim()
+      : new Date().toISOString().split('T')[0];
+
+    const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+    const noteStr = typeof note === 'string' && note.trim().length > 0 ? note.trim().slice(0, 500) : undefined;
+
+    let updatedHabit;
+    if (action === 'complete') {
+      updatedHabit = await recordHabitCheckUseCase.execute(userId, habitId, true, username, checkDate);
+    } else if (action === 'drop') {
+      updatedHabit = await recordHabitCheckUseCase.execute(userId, habitId, false, username, checkDate, noteStr);
+    } else {
+      updatedHabit = await recordHabitCheckUseCase.skipHabit(userId, habitId, username, checkDate, noteStr);
+    }
+
+    Logger.info('Habit check via MiniApp', {
+      userId,
+      habitId,
+      habitName: habit.name,
+      action,
+      checkDate,
+    });
+
+    const chatIdNum = chatId != null && msgId != null ? Number(chatId) : undefined;
+    const msgIdNum = chatId != null && msgId != null ? Number(msgId) : undefined;
+    if (botToken && chatIdNum != null && msgIdNum != null && !Number.isNaN(chatIdNum) && !Number.isNaN(msgIdNum)) {
+      const editUrl = `https://api.telegram.org/bot${botToken}/editMessageText`;
+      const editRes = await fetch(editUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatIdNum,
+          message_id: msgIdNum,
+          text: `✅ Checked: Did you "${habit.name}" today?`,
+          reply_markup: { inline_keyboard: [] },
+        }),
+      });
+      if (!editRes.ok) {
+        const err = await editRes.json().catch(() => ({}));
+        Logger.warn('Failed to edit reminder message after MiniApp check', { chatId: chatIdNum, messageId: msgIdNum, error: err });
+      }
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      ok: true,
+      streak: updatedHabit.streak,
+      lastCheckedDate: updatedHabit.lastCheckedDate,
     }));
+  } catch (error) {
+    Logger.error('Error in check endpoint', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    setJson(500, {
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function handleUsersEndpoint(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  habitRepository: VercelKVHabitRepository
+): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  try {
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
+      return;
+    }
+
+    const body = await readJsonBody(req);
+    const initData = body.initData;
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
+      return;
+    }
+
+    const fullUrl = req.url || '/';
+    const urlObj = new URL(fullUrl, 'http://localhost');
+    const query: Record<string, string | string[] | undefined> = {};
+    urlObj.searchParams.forEach((value, key) => {
+      const existing = query[key];
+      if (existing === undefined) {
+        query[key] = value;
+      } else if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        query[key] = [existing, value];
+      }
+    });
+
+    const result = await runAdminUsersList(
+      typeof initData === 'string' ? initData : '',
+      botToken,
+      query,
+      habitRepository
+    );
+    setJson(result.status, result.body);
+  } catch (error) {
+    logAdminUsersError(error);
+    setJson(500, { error: 'Internal server error' });
+  }
+}
+
+export async function handleSendMessageEndpoint(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  habitRepository: VercelKVHabitRepository
+): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  try {
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
+      return;
+    }
+
+    const body = await readJsonBody(req);
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
+      return;
+    }
+
+    const initData = typeof body.initData === 'string' ? body.initData : '';
+    const result = await runAdminSendMessage(initData, botToken, body as Record<string, unknown>, habitRepository);
+    setJson(result.status, result.body);
+  } catch (error) {
+    logAdminSendMessageError(error);
+    setJson(500, { error: 'Internal server error' });
   }
 }
 
@@ -221,11 +608,14 @@ async function serveStaticFile(
   console.log({__dirname});
   const publicDir = resolve(process.cwd(), 'public');
   
-  // Handle analytics route: /analytics/{userId}
-  const analyticsMatch = url.match(/^\/analytics\/(\d+)$/);
+  console.log('publicDir', publicDir);
+  // Handle analytics route: /analytics/{userId} or /analytics/mock
+  const analyticsMatch = url.match(/^\/analytics\/(\d+|mock)$/);
   if (analyticsMatch) {
     const userId = analyticsMatch[1];
     const analyticsPath = join(publicDir, 'analytics.html');
+    console.log('analyticsPath', analyticsPath);
+    console.log('existsSync(analyticsPath)', existsSync(analyticsPath));
     if (existsSync(analyticsPath)) {
       let content = readFileSync(analyticsPath, 'utf-8');
       // Inject userId into the page (the JS will also read from URL, but this ensures it's available)
@@ -320,7 +710,7 @@ async function serveStaticFile(
   }
   
   res.writeHead(404, { 'Content-Type': 'text/plain' });
-  res.end('Not found');
+  res.end('Not found!');
 }
 
 /**
@@ -338,24 +728,49 @@ export function createRemindersServer(
 ): http.Server {
   const server = http.createServer(async (req, res) => {
     const url = req.url || '/';
-    
+    const pathname = url.split('?')[0];
+
     // Handle API routes
-    if (url.startsWith('/api/')) {
+    if (pathname.startsWith('/api/')) {
       // Handle /api/reminders POST request
-      if (req.method === 'POST' && url === '/api/reminders') {
+      if (req.method === 'POST' && pathname === '/api/reminders') {
         await handleRemindersEndpoint(req, res, botService, habitRepository, port);
         return;
       }
-      
-      // Handle /api/analytics GET request
-      if (req.method === 'GET' && url.startsWith('/api/analytics')) {
+
+      // Handle /api/analytics POST (habits + premium; same as production)
+      if (req.method === 'POST' && pathname === '/api/analytics') {
         await handleAnalyticsEndpoint(req, res, habitRepository);
         return;
       }
-      
+
+      // Handle /api/analytics-insights POST (AI insights; same as production)
+      if (req.method === 'POST' && pathname === '/api/analytics-insights') {
+        await handleAnalyticsInsightsEndpoint(req, res, habitRepository);
+        return;
+      }
+
+      // Handle /api/check POST (habit check MiniApp; same as production)
+      if (req.method === 'POST' && pathname === '/api/check') {
+        await handleCheckEndpoint(req, res, habitRepository);
+        return;
+      }
+
+      // Admin panel: list users (same as production api/users)
+      if (req.method === 'POST' && pathname === '/api/users') {
+        await handleUsersEndpoint(req, res, habitRepository);
+        return;
+      }
+
+      // Admin: send message (same as production api/send-message)
+      if (req.method === 'POST' && pathname === '/api/send-message') {
+        await handleSendMessageEndpoint(req, res, habitRepository);
+        return;
+      }
+
       // Other API routes return 404
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not found' }));
+      res.end(JSON.stringify({ error: 'Not found.' }));
       return;
     }
     

@@ -78,8 +78,9 @@ export class RecordHabitCheckUseCase {
   /**
    * Records a habit check (complete or drop).
    * @param targetDate - Optional. The day this check applies to (e.g. reminder's target date). If omitted, uses server today.
+   * @param note - Optional. Note for this drop (premium only); stored with the dropped entry.
    */
-  async execute(userId: number, habitId: string, completed: boolean, username?: string, targetDate?: string): Promise<Habit> {
+  async execute(userId: number, habitId: string, completed: boolean, username?: string, targetDate?: string, note?: string): Promise<Habit> {
     const checkDate = targetDate || new Date().toISOString().split('T')[0];
 
     Logger.info('Recording habit check', {
@@ -115,6 +116,10 @@ export class RecordHabitCheckUseCase {
         checkDate,
       });
       return habit;
+    }
+
+    if (habit.imgIndex === undefined) {
+      habit.imgIndex = 1;
     }
 
     let newStreak = habit.streak;
@@ -163,13 +168,18 @@ export class RecordHabitCheckUseCase {
         skipped: habit.skipped || [],
         checked: updatedChecked,
         badges: updatedBadges,
+        imgIndex: habit.imgIndex,
       });
     } else {
       newStreak = 0;
 
+      const dropNote = typeof note === 'string' && note.trim().length > 0
+        ? note.trim().slice(0, 500)
+        : undefined;
       updatedDropped = [...(habit.dropped || []), {
         streakBeforeDrop: habit.streak,
         date: checkDate,
+        ...(dropNote && { note: dropNote }),
       }];
 
       await this.habitRepository.updateHabit(userId, habitId, {
@@ -178,6 +188,7 @@ export class RecordHabitCheckUseCase {
         skipped: [],
         dropped: updatedDropped,
         badges: habit.badges || [],
+        imgIndex: habit.imgIndex,
       });
     }
 
@@ -201,8 +212,9 @@ export class RecordHabitCheckUseCase {
   /**
    * Records a skip for a habit. Preserves streak.
    * @param targetDate - Optional. The day this skip applies to. If omitted, uses server today.
+   * @param note - Optional. Note for this skip (premium only); stored with the skipped entry.
    */
-  async skipHabit(userId: number, habitId: string, username?: string, targetDate?: string): Promise<Habit> {
+  async skipHabit(userId: number, habitId: string, username?: string, targetDate?: string, note?: string): Promise<Habit> {
     const checkDate = targetDate || new Date().toISOString().split('T')[0];
 
     Logger.info('Skipping habit', {
@@ -240,9 +252,13 @@ export class RecordHabitCheckUseCase {
     }
 
     const currentStreak = habit.streak;
+    const skipNote = typeof note === 'string' && note.trim().length > 0
+      ? note.trim().slice(0, 500)
+      : undefined;
     const skippedDay: SkippedDay = {
       skippedDay: currentStreak,
       date: checkDate,
+      ...(skipNote && { note: skipNote }),
     };
 
     const updatedSkipped = [...(habit.skipped || []), skippedDay];

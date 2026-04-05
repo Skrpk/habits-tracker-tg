@@ -8,4 +8,7 @@ export interface UserPreferences {
   consentDate?: string; // ISO date string when consent was given (YYYY-MM-DD)
   /** When true, user has blocked the bot; skip reminders until they send /start again */
   blocked?: boolean;
+  premium?: boolean;
+  premiumDate?: string; // ISO date string of last successful payment
+  premiumType?: 'monthly' | 'annual';
 }

@@ -178,6 +178,87 @@ describe('RecordHabitCheckUseCase', () => {
     expect(mockRepo.updateHabit).not.toHaveBeenCalled();
   });
 
+  it('drop: when note is provided, the new dropped entry includes the note', async () => {
+    const habit = createHabit({ streak: 2, lastCheckedDate: '2025-02-14', dropped: [] });
+    const updatedHabit = {
+      ...habit,
+      streak: 0,
+      lastCheckedDate: '2025-02-15',
+      dropped: [{ streakBeforeDrop: 2, date: '2025-02-15', note: 'Was too tired' }],
+      skipped: [],
+    };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.execute(100, 'habit-1', false, 'user', '2025-02-15', 'Was too tired');
+
+    expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({
+      dropped: [{ streakBeforeDrop: 2, date: '2025-02-15', note: 'Was too tired' }],
+    }));
+  });
+
+  it('drop: when note is omitted or empty, the new dropped entry has no note', async () => {
+    const habit = createHabit({ streak: 2, lastCheckedDate: '2025-02-14', dropped: [] });
+    const updatedHabit = {
+      ...habit,
+      streak: 0,
+      lastCheckedDate: '2025-02-15',
+      dropped: [{ streakBeforeDrop: 2, date: '2025-02-15' }],
+      skipped: [],
+    };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.execute(100, 'habit-1', false, 'user', '2025-02-15');
+
+    const call = mockRepo.updateHabit.mock.calls[0][2];
+    expect(call.dropped).toEqual([{ streakBeforeDrop: 2, date: '2025-02-15' }]);
+    expect(call.dropped[0]).not.toHaveProperty('note');
+  });
+
+  it('skip: when note is provided, the new skipped entry includes the note', async () => {
+    const habit = createHabit({ streak: 4, lastCheckedDate: '2025-02-14', skipped: [] });
+    const updatedHabit = {
+      ...habit,
+      lastCheckedDate: '2025-02-15',
+      skipped: [{ skippedDay: 4, date: '2025-02-15', note: 'On vacation' }],
+    };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.skipHabit(100, 'habit-1', 'user', '2025-02-15', 'On vacation');
+
+    expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', {
+      skipped: [{ skippedDay: 4, date: '2025-02-15', note: 'On vacation' }],
+      lastCheckedDate: '2025-02-15',
+    });
+  });
+
+  it('skip: when note is omitted or empty, the new skipped entry has no note', async () => {
+    const habit = createHabit({ streak: 4, lastCheckedDate: '2025-02-14', skipped: [] });
+    const updatedHabit = {
+      ...habit,
+      lastCheckedDate: '2025-02-15',
+      skipped: [{ skippedDay: 4, date: '2025-02-15' }],
+    };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.skipHabit(100, 'habit-1', 'user', '2025-02-15');
+
+    const call = mockRepo.updateHabit.mock.calls[0][2];
+    expect(call.skipped).toEqual([{ skippedDay: 4, date: '2025-02-15' }]);
+    expect(call.skipped[0]).not.toHaveProperty('note');
+  });
+
   // --- Weekly schedule: Tue (2) + Fri (5) ---
 
   it('weekly: increments streak on consecutive scheduled days (Tue → Fri)', async () => {
@@ -362,6 +443,51 @@ describe('RecordHabitCheckUseCase', () => {
     expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({
       streak: 1,
       lastCheckedDate: '2025-02-15',
+    }));
+  });
+
+  it('complete: sets imgIndex to 1 when habit has no imgIndex', async () => {
+    const habit = createHabit({ streak: 0, lastCheckedDate: '' });
+    const updatedHabit = { ...habit, streak: 1, lastCheckedDate: '2025-02-15', badges: [], imgIndex: 1 };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.execute(100, 'habit-1', true, 'user', '2025-02-15');
+
+    expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({
+      imgIndex: 1,
+    }));
+  });
+
+  it('complete: preserves existing imgIndex', async () => {
+    const habit = createHabit({ streak: 0, lastCheckedDate: '', imgIndex: 3 });
+    const updatedHabit = { ...habit, streak: 1, lastCheckedDate: '2025-02-15', badges: [], imgIndex: 3 };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.execute(100, 'habit-1', true, 'user', '2025-02-15');
+
+    expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({
+      imgIndex: 3,
+    }));
+  });
+
+  it('drop: sets imgIndex to 1 when habit has no imgIndex', async () => {
+    const habit = createHabit({ streak: 2, lastCheckedDate: '2025-02-14', dropped: [] });
+    const updatedHabit = { ...habit, streak: 0, lastCheckedDate: '2025-02-15', dropped: [{ streakBeforeDrop: 2, date: '2025-02-15' }], skipped: [], imgIndex: 1 };
+    mockRepo.getUserHabits
+      .mockResolvedValueOnce({ habits: [habit] })
+      .mockResolvedValueOnce({ habits: [updatedHabit] });
+    const useCase = new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+
+    await useCase.execute(100, 'habit-1', false, 'user', '2025-02-15');
+
+    expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({
+      imgIndex: 1,
     }));
   });
 
