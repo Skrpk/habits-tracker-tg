@@ -768,7 +768,7 @@ export function createRemindersServer(
         return;
       }
 
-      // Other API routes return 404
+      // Other API routes return 404 
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found.' }));
       return;
