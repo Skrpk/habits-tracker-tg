@@ -1,16 +1,31 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
+import type { UserPreferences } from '../entities/UserPreferences';
 import { Logger } from '../../infrastructure/logger/Logger';
 
 const MONTHLY_PERIOD_DAYS = 31;
 const ANNUAL_PERIOD_DAYS = 365;
+
+function isExpiredPremium(premiumDate: string, premiumType?: 'monthly' | 'annual'): boolean {
+  const periodDays = premiumType === 'annual' ? ANNUAL_PERIOD_DAYS : MONTHLY_PERIOD_DAYS;
+  const expiry = new Date(premiumDate);
+  expiry.setDate(expiry.getDate() + periodDays);
+  return expiry < new Date();
+}
+
+/** Lifetime or active paid subscription (not expired). */
+export function userHasPremiumAccess(prefs: UserPreferences | null): boolean {
+  if (!prefs) return false;
+  if (prefs.isLifetimePremium === true) return true;
+  if (!prefs.premium || !prefs.premiumDate) return false;
+  return !isExpiredPremium(prefs.premiumDate, prefs.premiumType);
+}
 
 export class SubscriptionUseCase {
   constructor(private habitRepository: IHabitRepository) {}
 
   async isSubscribed(userId: number): Promise<boolean> {
     const prefs = await this.habitRepository.getUserPreferences(userId);
-    if (!prefs?.premium || !prefs.premiumDate) return false;
-    return !this.isExpired(prefs.premiumDate, prefs.premiumType);
+    return userHasPremiumAccess(prefs);
   }
 
   async activateSubscription(userId: number, premiumType: 'monthly' | 'annual' = 'monthly'): Promise<void> {
@@ -73,13 +88,12 @@ export class SubscriptionUseCase {
   async checkAndRevokeExpired(allUserIds: number[]): Promise<Array<{ userId: number; disabledHabits: string[]; premiumType?: 'monthly' | 'annual' }>> {
     const results: Array<{ userId: number; disabledHabits: string[]; premiumType?: 'monthly' | 'annual' }> = [];
 
-    console.log('ALL USER IDS', allUserIds);
     for (const userId of allUserIds) {
       const prefs = await this.habitRepository.getUserPreferences(userId);
-      console.log('PREFS', prefs);
+      if (prefs?.isLifetimePremium === true) continue;
       if (!prefs?.premium || !prefs.premiumDate) continue;
 
-      if (this.isExpired(prefs.premiumDate, prefs.premiumType)) {
+      if (isExpiredPremium(prefs.premiumDate, prefs.premiumType)) {
         const premiumType = prefs.premiumType;
         const disabledHabits = await this.revokeSubscription(userId);
         results.push({ userId, disabledHabits, premiumType });
@@ -88,19 +102,5 @@ export class SubscriptionUseCase {
     }
 
     return results;
-  }
-
-  private isExpired(premiumDate: string, premiumType?: 'monthly' | 'annual'): boolean {
-    const periodDays = premiumType === 'annual' ? ANNUAL_PERIOD_DAYS : MONTHLY_PERIOD_DAYS;
-    const expiry = new Date(premiumDate);
-    expiry.setDate(expiry.getDate() + periodDays);
-    console.log('EXPIRY', {
-      premiumDate,
-      premiumType,
-      periodDays,
-      expiry,
-      isExpired: expiry < new Date(),
-    });
-    return expiry < new Date();
   }
 }

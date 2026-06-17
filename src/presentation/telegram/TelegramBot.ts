@@ -10,7 +10,7 @@ import { SetHabitReminderScheduleUseCase } from '../../domain/use-cases/SetHabit
 import { CheckHabitReminderDueUseCase } from '../../domain/use-cases/CheckHabitReminderDueUseCase';
 import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPreferencesUseCase';
 import { ToggleHabitDisabledUseCase } from '../../domain/use-cases/ToggleHabitDisabledUseCase';
-import { SubscriptionUseCase } from '../../domain/use-cases/SubscriptionUseCase';
+import { SubscriptionUseCase, userHasPremiumAccess } from '../../domain/use-cases/SubscriptionUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
 import { Habit } from '../../domain/entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
@@ -348,25 +348,29 @@ export class TelegramBotService {
       const userHabits = await this.getUserHabitsUseCase.execute(userId);
       const habit = userHabits.find(h => h.id === habitId);
 
-      if (habit?.disabled) {
-        const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
-        const isPremium = prefs?.premium === true;
-        if (!isPremium) {
-          const maxFree = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
-          const activeCount = userHabits.filter(h => !h.disabled).length;
-          if (activeCount >= maxFree) {
-            await this.bot.answerCallbackQuery(callbackQueryId, {
-              text: 'Upgrade to Premium to enable more habits and more features! Use /subscribe',
-              show_alert: true,
-            });
-            return;
-          }
-        }
-      }
+      // Premium disabled: enabling habits is free for everyone (no active-habit cap)
+      // if (habit?.disabled) {
+      //   const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+      //   if (!userHasPremiumAccess(prefs)) {
+      //     const maxFree = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+      //     const activeCount = userHabits.filter(h => !h.disabled).length;
+      //     if (activeCount >= maxFree) {
+      //       await this.bot.sendMessage(
+      //         chatId,
+      //         'Upgrade to Premium to enable more habits and more features. Tap below for the same flow as /subscribe.',
+      //         {
+      //           reply_markup: {
+      //             inline_keyboard: [[{ text: 'Upgrade to Premium', callback_data: 'open_subscribe' }]],
+      //           },
+      //         }
+      //       );
+      //       return;
+      //     }
+      //   }
+      // }
 
       const isDisabled = await this.toggleHabitDisabledUseCase.execute(userId, habitId);
       const statusText = isDisabled ? 'disabled' : 'enabled';
-      
       await this.bot.answerCallbackQuery(callbackQueryId, {
         text: `Habit ${statusText}`,
         show_alert: false,
@@ -2016,6 +2020,13 @@ export class TelegramBotService {
       const alreadySubscribed = await this.subscriptionUseCase.isSubscribed(userId);
       if (alreadySubscribed) {
         const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+        if (prefs?.isLifetimePremium === true) {
+          await this.bot.sendMessage(
+            chatId,
+            '✅ You have lifetime Premium — unlimited habits, notes, and AI insights. No renewal needed.',
+          );
+          return;
+        }
         const periodDays = prefs?.premiumType === 'annual' ? 365 : 30;
         const expiryDate = prefs?.premiumDate
           ? new Date(new Date(prefs.premiumDate).getTime() + periodDays * 24 * 60 * 60 * 1000).toLocaleDateString()
@@ -2146,6 +2157,11 @@ export class TelegramBotService {
     // Answer callback query immediately to remove loading state
     await this.bot.answerCallbackQuery(query.id);
 
+    if (data === 'open_subscribe') {
+      await this.handleSubscribeCommand(chatId, userId, username);
+      return;
+    }
+
     // Handle habit check (Yes/No/Skip/Cancel); optional 4th segment = targetDate (reminder's day)
     const checkMatch = data.match(/^habit_check:(.+):(yes|no|skip|cancel)(?::(.+))?$/);
     if (checkMatch) {
@@ -2184,16 +2200,14 @@ export class TelegramBotService {
         return;
       }
       if (action === 'no') {
-        const isPremium = await this.subscriptionUseCase.isSubscribed(userId);
-        if (isPremium) {
-          const state = targetDate ? `habit_check_note:${habitId}:no:${targetDate}` : `habit_check_note:${habitId}:no`;
-          await this.setConversationState(userId, state);
-          await this.safeEditMessage(
-            'Send a note for this drop (optional). Reply with your note or /skip to leave empty.',
-            { chat_id: chatId, message_id: query.message?.message_id }
-          );
-          return;
-        }
+        // Premium disabled: drop notes are free for everyone
+        const state = targetDate ? `habit_check_note:${habitId}:no:${targetDate}` : `habit_check_note:${habitId}:no`;
+        await this.setConversationState(userId, state);
+        await this.safeEditMessage(
+          'Send a note for this drop (optional). Reply with your note or /skip to leave empty.',
+          { chat_id: chatId, message_id: query.message?.message_id }
+        );
+        return;
       }
       await this.handleHabitCheckCallback(userId, chatId, username, habitId, action === 'yes', query, targetDate);
       return;
@@ -2545,46 +2559,45 @@ export class TelegramBotService {
     targetDate?: string
   ): Promise<void> {
     try {
-      const isPremium = await this.subscriptionUseCase.isSubscribed(userId);
-      if (isPremium) {
-        const state = targetDate ? `habit_check_note:${habitId}:skip:${targetDate}` : `habit_check_note:${habitId}:skip`;
-        await this.setConversationState(userId, state);
-        await this.safeEditMessage(
-          'Send a note for this skip (optional). Reply with your note or /skip to leave empty.',
-          { chat_id: chatId, message_id: messageId }
-        );
-        return;
-      }
-
-      const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
-      
-      const message = `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`;
-
+      // Premium disabled: skip notes are free for everyone (always prompt for an optional note)
+      const state = targetDate ? `habit_check_note:${habitId}:skip:${targetDate}` : `habit_check_note:${habitId}:skip`;
+      await this.setConversationState(userId, state);
       await this.safeEditMessage(
-        message,
-        {
-          chat_id: chatId,
-          message_id: messageId,
-        }
+        'Send a note for this skip (optional). Reply with your note or /skip to leave empty.',
+        { chat_id: chatId, message_id: messageId }
       );
+      return;
 
-      // Send notification to channel (async, don't block)
-      this.sendHabitReactionNotification(
-        userId,
-        username,
-        updatedHabit.name,
-        'skipped',
-        updatedHabit.streak,
-        user
-      ).catch(error => {
-        Logger.error('Error sending habit skip notification', {
-          userId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      });
-
-      // Note: We don't ask about other habits here because each habit has its own reminder schedule
-      // Users will receive separate reminders for each habit at their scheduled times
+      // Non-note fallback (no longer reached; note prompt above handles skip for all users):
+      // const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
+      //
+      // const message = `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`;
+      //
+      // await this.safeEditMessage(
+      //   message,
+      //   {
+      //     chat_id: chatId,
+      //     message_id: messageId,
+      //   }
+      // );
+      //
+      // // Send notification to channel (async, don't block)
+      // this.sendHabitReactionNotification(
+      //   userId,
+      //   username,
+      //   updatedHabit.name,
+      //   'skipped',
+      //   updatedHabit.streak,
+      //   user
+      // ).catch(error => {
+      //   Logger.error('Error sending habit skip notification', {
+      //     userId,
+      //     error: error instanceof Error ? error.message : 'Unknown error',
+      //   });
+      // });
+      //
+      // // Note: We don't ask about other habits here because each habit has its own reminder schedule
+      // // Users will receive separate reminders for each habit at their scheduled times
     } catch (error) {
       Logger.error('Error skipping habit', {
         userId,
@@ -2695,17 +2708,17 @@ export class TelegramBotService {
         return;
       }
 
-      if (habit.disabled) {
-        const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
-        const isPremium = prefs?.premium === true;
-        if (!isPremium) {
-          await this.bot.answerCallbackQuery(callbackQueryId, {
-            text: 'This habit is paused (free limit reached). Use /subscribe for Premium or disable an active habit to enable this one.',
-            show_alert: true,
-          });
-          return;
-        }
-      }
+      // Premium disabled: scheduling paused habits is free for everyone
+      // if (habit.disabled) {
+      //   const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+      //   if (!userHasPremiumAccess(prefs)) {
+      //     await this.bot.answerCallbackQuery(callbackQueryId, {
+      //       text: 'This habit is paused (free limit reached). Use /subscribe for Premium or disable an active habit to enable this one.',
+      //       show_alert: true,
+      //     });
+      //     return;
+      //   }
+      // }
 
       if (!this.setHabitReminderScheduleUseCase) {
         await this.bot.answerCallbackQuery(callbackQueryId);

@@ -101,7 +101,27 @@ describe('CreateHabitUseCase', () => {
     });
 
     it('allows premium user to exceed the limit', async () => {
-      mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'UTC', premium: true });
+      const recent = new Date();
+      recent.setDate(recent.getDate() - 5);
+      mockRepo.getUserPreferences.mockResolvedValue({
+        userId: 1,
+        timezone: 'UTC',
+        premium: true,
+        premiumDate: recent.toISOString(),
+      });
+      mockRepo.getUserHabits.mockResolvedValue({
+        userId: 1,
+        habits: [makeHabit({ id: 'h1' }), makeHabit({ id: 'h2' }), makeHabit({ id: 'h3' })],
+      });
+      const useCase = new CreateHabitUseCase(mockRepo as unknown as IHabitRepository);
+
+      await useCase.execute(1, 'New habit', 'user');
+
+      expect(mockRepo.createHabit).toHaveBeenCalledWith(1, 'New habit', 'UTC');
+    });
+
+    it('allows lifetime premium user to exceed the limit without premium flag', async () => {
+      mockRepo.getUserPreferences.mockResolvedValue({ userId: 1, timezone: 'UTC', isLifetimePremium: true });
       mockRepo.getUserHabits.mockResolvedValue({
         userId: 1,
         habits: [makeHabit({ id: 'h1' }), makeHabit({ id: 'h2' }), makeHabit({ id: 'h3' })],

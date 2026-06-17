@@ -594,31 +594,32 @@
                     renderHabitsList();
                 }
 
-                if (isPremium && habitsData.length > 0) {
-                    insightsLoading = true;
-                    fetch('/api/analytics-insights', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ initData: {} }),
-                        // body: JSON.stringify({ initData: tg.initData }),
-                    })
-                        .then(r => r.ok ? r.json() : { insights: {} })
-                        .then(data => {
-                            insightsData = data.insights || {};
-                            insightsLoading = false;
-                            if (currentHabitId) {
-                                const habit = habitsData.find(h => h.id === currentHabitId);
-                                if (habit) showHabitDetail(habit.id);
-                            }
-                        })
-                        .catch(() => {
-                            insightsLoading = false;
-                            if (currentHabitId) {
-                                const habit = habitsData.find(h => h.id === currentHabitId);
-                                if (habit) showHabitDetail(habit.id);
-                            }
-                        });
-                }
+                // AI insights temporarily disabled: do not fetch /api/analytics-insights
+                // if (isPremium && habitsData.length > 0) {
+                //     insightsLoading = true;
+                //     fetch('/api/analytics-insights', {
+                //         method: 'POST',
+                //         headers: { 'Content-Type': 'application/json' },
+                //         body: JSON.stringify({ initData: {} }),
+                //         // body: JSON.stringify({ initData: tg.initData }),
+                //     })
+                //         .then(r => r.ok ? r.json() : { insights: {} })
+                //         .then(data => {
+                //             insightsData = data.insights || {};
+                //             insightsLoading = false;
+                //             if (currentHabitId) {
+                //                 const habit = habitsData.find(h => h.id === currentHabitId);
+                //                 if (habit) showHabitDetail(habit.id);
+                //             }
+                //         })
+                //         .catch(() => {
+                //             insightsLoading = false;
+                //             if (currentHabitId) {
+                //                 const habit = habitsData.find(h => h.id === currentHabitId);
+                //                 if (habit) showHabitDetail(habit.id);
+                //             }
+                //         });
+                // }
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
@@ -1207,17 +1208,19 @@
             renderCharts(habit);
             renderTimeline(habit);
 
+            // AI insights temporarily disabled: never show the insights panel
             const insightsBlock = document.getElementById('insights-block');
             if (insightsBlock) {
-                if (isPremium && insightsLoading) {
-                    insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><p class="insights-loading">Loading insights...</p>';
-                    insightsBlock.style.display = 'block';
-                } else if (isPremium && insightsData[habit.id]) {
-                    insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><div class="insights-content">' + insightsData[habit.id] + '</div>';
-                    insightsBlock.style.display = 'block';
-                } else {
-                    insightsBlock.style.display = 'none';
-                }
+                insightsBlock.style.display = 'none';
+                // if (isPremium && insightsLoading) {
+                //     insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><p class="insights-loading">Loading insights...</p>';
+                //     insightsBlock.style.display = 'block';
+                // } else if (isPremium && insightsData[habit.id]) {
+                //     insightsBlock.innerHTML = '<h3 class="insights-title">Data insights</h3><div class="insights-content">' + insightsData[habit.id] + '</div>';
+                //     insightsBlock.style.display = 'block';
+                // } else {
+                //     insightsBlock.style.display = 'none';
+                // }
             }
             
             // Scroll to habit detail section after content is rendered

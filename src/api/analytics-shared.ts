@@ -110,6 +110,12 @@ export async function getAnalyticsInsights(
   userId: number,
   options: { openaiApiKey?: string } = {}
 ): Promise<Record<string, string>> {
+  // AI insights temporarily disabled: do not call OpenAI. Always return no insights.
+  Logger.info('Analytics insights: disabled, returning empty', { userId });
+  return {};
+
+  /* eslint-disable no-unreachable */
+  /*
   const subscriptionUseCase = new SubscriptionUseCase(habitRepository);
   const isPremium = await subscriptionUseCase.isSubscribed(userId);
 
@@ -210,4 +216,6 @@ export async function getAnalyticsInsights(
     habitCount: Object.keys(insights).length,
   });
   return insights;
+  */
+  /* eslint-enable no-unreachable */
 }

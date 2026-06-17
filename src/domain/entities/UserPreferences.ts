@@ -11,4 +11,6 @@ export interface UserPreferences {
   premium?: boolean;
   premiumDate?: string; // ISO date string of last successful payment
   premiumType?: 'monthly' | 'annual';
+  /** Admin-granted; never expires via subscription cron */
+  isLifetimePremium?: boolean;
 }

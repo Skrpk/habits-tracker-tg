@@ -1,6 +1,7 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
 import { Habit } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
+import { userHasPremiumAccess } from './SubscriptionUseCase';
 
 export class CreateHabitUseCase {
   constructor(private habitRepository: IHabitRepository) {}
@@ -13,15 +14,16 @@ export class CreateHabitUseCase {
     const trimmedName = habitName.trim();
 
     const preferences = await this.habitRepository.getUserPreferences(userId);
-    const isPremium = preferences?.premium === true;
-    const maxFreeHabits = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
-
-    if (!isPremium) {
-      const userHabits = await this.habitRepository.getUserHabits(userId);
-      if (userHabits && userHabits.habits.length >= maxFreeHabits) {
-        throw new Error(`Free users can create up to ${maxFreeHabits} habits. Use /subscribe to upgrade to Premium for unlimited habits!`);
-      }
-    }
+    // Premium disabled: all users get unlimited habits
+    // const isPremium = userHasPremiumAccess(preferences);
+    // const maxFreeHabits = parseInt(process.env.MAX_FREE_HABITS || '3', 10);
+    //
+    // if (!isPremium) {
+    //   const userHabits = await this.habitRepository.getUserHabits(userId);
+    //   if (userHabits && userHabits.habits.length >= maxFreeHabits) {
+    //     throw new Error(`Free users can create up to ${maxFreeHabits} habits. Use /subscribe to upgrade to Premium for unlimited habits!`);
+    //   }
+    // }
 
     let userTimezone = timezone || preferences?.timezone || 'UTC';
 

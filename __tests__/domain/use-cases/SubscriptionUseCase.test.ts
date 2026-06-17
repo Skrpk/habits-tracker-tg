@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SubscriptionUseCase } from '../../../src/domain/use-cases/SubscriptionUseCase';
+import { SubscriptionUseCase, userHasPremiumAccess } from '../../../src/domain/use-cases/SubscriptionUseCase';
 import type { IHabitRepository } from '../../../src/domain/repositories/IHabitRepository';
 import type { Habit } from '../../../src/domain/entities/Habit';
 
@@ -68,9 +68,9 @@ describe('SubscriptionUseCase', () => {
       expect(await uc.isSubscribed(100)).toBe(true);
     });
 
-    it('returns false when premium but past 30 days', async () => {
+    it('returns false when premium but past monthly period (31 days)', async () => {
       const oldDate = new Date();
-      oldDate.setDate(oldDate.getDate() - 31);
+      oldDate.setDate(oldDate.getDate() - 32);
       mockRepo.getUserPreferences.mockResolvedValue({
         userId: 100,
         premium: true,
@@ -93,6 +93,41 @@ describe('SubscriptionUseCase', () => {
       const uc = new SubscriptionUseCase(mockRepo as unknown as IHabitRepository);
 
       expect(await uc.isSubscribed(100)).toBe(true);
+    });
+
+    it('returns true when isLifetimePremium even without premiumDate', async () => {
+      mockRepo.getUserPreferences.mockResolvedValue({
+        userId: 100,
+        isLifetimePremium: true,
+        premium: true,
+      });
+      const uc = new SubscriptionUseCase(mockRepo as unknown as IHabitRepository);
+
+      expect(await uc.isSubscribed(100)).toBe(true);
+    });
+
+    it('returns true when isLifetimePremium even when paid subscription date is expired', async () => {
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 100);
+      mockRepo.getUserPreferences.mockResolvedValue({
+        userId: 100,
+        isLifetimePremium: true,
+        premium: true,
+        premiumDate: oldDate.toISOString(),
+      });
+      const uc = new SubscriptionUseCase(mockRepo as unknown as IHabitRepository);
+
+      expect(await uc.isSubscribed(100)).toBe(true);
+    });
+  });
+
+  describe('userHasPremiumAccess', () => {
+    it('returns false for null', () => {
+      expect(userHasPremiumAccess(null)).toBe(false);
+    });
+
+    it('returns true for lifetime', () => {
+      expect(userHasPremiumAccess({ userId: 1, isLifetimePremium: true })).toBe(true);
     });
   });
 
@@ -204,7 +239,7 @@ describe('SubscriptionUseCase', () => {
   describe('checkAndRevokeExpired', () => {
     it('revokes only expired premium users', async () => {
       const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() - 31);
+      expiredDate.setDate(expiredDate.getDate() - 32);
       const activeDate = new Date();
       activeDate.setDate(activeDate.getDate() - 5);
 
@@ -264,6 +299,23 @@ describe('SubscriptionUseCase', () => {
       const results = await uc.checkAndRevokeExpired([1]);
 
       expect(results).toHaveLength(0);
+    });
+
+    it('does not revoke lifetime users even when premiumDate is expired', async () => {
+      const expiredDate = new Date();
+      expiredDate.setDate(expiredDate.getDate() - 100);
+      mockRepo.getUserPreferences.mockResolvedValue({
+        userId: 1,
+        premium: true,
+        premiumDate: expiredDate.toISOString(),
+        isLifetimePremium: true,
+      });
+
+      const uc = new SubscriptionUseCase(mockRepo as unknown as IHabitRepository);
+      const results = await uc.checkAndRevokeExpired([1]);
+
+      expect(results).toHaveLength(0);
+      expect(mockRepo.saveUserPreferences).not.toHaveBeenCalled();
     });
   });
 });

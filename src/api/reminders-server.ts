@@ -17,7 +17,14 @@ import { Logger } from '../infrastructure/logger/Logger';
 import { ChannelNotifications } from '../infrastructure/notifications/ChannelNotifications';
 import { validateTelegramInitData, parseTelegramInitData, isAuthDateValid } from '../infrastructure/auth/validateTelegramInitData';
 import { getAnalyticsData, getAnalyticsInsights } from './analytics-shared';
-import { runAdminUsersList, logAdminUsersError, runAdminSendMessage, logAdminSendMessageError } from './admin-users-shared';
+import {
+  runAdminUsersList,
+  logAdminUsersError,
+  runAdminSendMessage,
+  logAdminSendMessageError,
+  runGrantLifetimePremium,
+  logGrantLifetimePremiumError,
+} from './admin-users-shared';
 
 // Helper functions defined before createRemindersServer (exported for unit tests)
 export async function handleRemindersEndpoint(
@@ -600,6 +607,39 @@ export async function handleSendMessageEndpoint(
   }
 }
 
+export async function handleGrantLifetimePremiumEndpoint(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  habitRepository: VercelKVHabitRepository
+): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  try {
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
+      return;
+    }
+
+    const body = await readJsonBody(req);
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
+      return;
+    }
+
+    const initData = typeof body.initData === 'string' ? body.initData : '';
+    const result = await runGrantLifetimePremium(initData, botToken, body as Record<string, unknown>, habitRepository);
+    setJson(result.status, result.body);
+  } catch (error) {
+    logGrantLifetimePremiumError(error);
+    setJson(500, { error: 'Internal server error' });
+  }
+}
+
 async function serveStaticFile(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -765,6 +805,12 @@ export function createRemindersServer(
       // Admin: send message (same as production api/send-message)
       if (req.method === 'POST' && pathname === '/api/send-message') {
         await handleSendMessageEndpoint(req, res, habitRepository);
+        return;
+      }
+
+      // Admin: grant/revoke lifetime premium
+      if (req.method === 'POST' && pathname === '/api/grant-lifetime-premium') {
+        await handleGrantLifetimePremiumEndpoint(req, res, habitRepository);
         return;
       }
 

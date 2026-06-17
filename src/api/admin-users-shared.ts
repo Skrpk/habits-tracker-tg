@@ -5,6 +5,7 @@ import { parseAdminUsers } from '../infrastructure/admin/parseAdminUsers';
 import { ALLOWED_TIMEZONE_IDS } from '../constants/allowedTimezones';
 import type { Habit } from '../domain/entities/Habit';
 import type { UserPreferences } from '../domain/entities/UserPreferences';
+import { SubscriptionUseCase, userHasPremiumAccess } from '../domain/use-cases/SubscriptionUseCase';
 
 const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
 const SEND_MESSAGE_BATCH_SIZE = 1000;
@@ -183,6 +184,10 @@ export function parseAdminFiltersFromBody(body: Record<string, unknown>): { erro
   };
 }
 
+function userHasPremiumForAdminFilter(prefs: UserPreferences | null): boolean {
+  return prefs?.premium === true || prefs?.isLifetimePremium === true;
+}
+
 /**
  * Active users whose preferences match the same filters as the admin users list.
  */
@@ -193,13 +198,14 @@ export async function getFilteredUserIdsForAdmin(
   const allIds = await habitRepository.getAllActiveUserIds();
   const result: number[] = [];
 
+  console.log('allIds', allIds);
   for (const uid of allIds) {
     const prefs = await habitRepository.getUserPreferences(uid);
 
     if (filters.filterUserId !== undefined && uid !== filters.filterUserId) continue;
 
-    if (filters.isAdminFilter === true && !prefs?.premium) continue;
-    if (filters.isAdminFilter === false && prefs?.premium === true) continue;
+    if (filters.isAdminFilter === true && !userHasPremiumForAdminFilter(prefs)) continue;
+    if (filters.isAdminFilter === false && userHasPremiumForAdminFilter(prefs)) continue;
 
     if (filters.isBlockedFilter === true && prefs?.blocked !== true) continue;
     if (filters.isBlockedFilter === false && prefs?.blocked === true) continue;
@@ -235,13 +241,20 @@ function serializeHabit(h: Habit) {
 
 function serializePreferences(p: UserPreferences | null, userId: number) {
   if (!p) {
-    return { userId, timezone: undefined as string | undefined, blocked: undefined, premium: undefined };
+    return {
+      userId,
+      timezone: undefined as string | undefined,
+      blocked: undefined,
+      premium: undefined,
+      isLifetimePremium: false,
+    };
   }
   return {
     userId: p.userId,
     timezone: p.timezone,
     blocked: p.blocked === true,
     premium: p.premium === true,
+    isLifetimePremium: p.isLifetimePremium === true,
     premiumDate: p.premiumDate,
     premiumType: p.premiumType,
     consentAccepted: p.consentAccepted,
@@ -296,6 +309,7 @@ export async function runAdminUsersList(
     habits: ReturnType<typeof serializeHabit>[];
   }> = [];
 
+  console.log('filteredIds', filteredIds);
   for (const uid of filteredIds) {
     const prefs = await habitRepository.getUserPreferences(uid);
     const userHabits = await habitRepository.getUserHabits(uid);
@@ -417,6 +431,89 @@ export async function runAdminSendMessage(
   return { status: 200, body: responseBody };
 }
 
+function parseTargetUserId(body: Record<string, unknown>): { error?: string; id?: number } {
+  const tid = body.targetUserId;
+  if (tid === undefined || tid === null) return { error: 'targetUserId is required' };
+  if (typeof tid === 'number' && Number.isFinite(tid)) {
+    if (!Number.isInteger(tid) || tid <= 0 || !Number.isSafeInteger(tid)) return { error: 'Invalid targetUserId' };
+    return { id: tid };
+  }
+  if (typeof tid === 'string') {
+    const t = tid.trim();
+    if (!/^\d+$/.test(t)) return { error: 'Invalid targetUserId' };
+    const n = Number(t);
+    if (!Number.isSafeInteger(n) || n <= 0) return { error: 'Invalid targetUserId' };
+    return { id: n };
+  }
+  return { error: 'Invalid targetUserId' };
+}
+
+/**
+ * Admin: grant or revoke lifetime premium for a Telegram user id.
+ */
+export async function runGrantLifetimePremium(
+  initData: string,
+  botToken: string,
+  body: Record<string, unknown>,
+  habitRepository: VercelKVHabitRepository
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  if (!initData || typeof initData !== 'string') {
+    return { status: 400, body: { error: 'initData is required' } };
+  }
+
+  let adminUserId: number;
+  try {
+    ({ userId: adminUserId } = authenticateRequest(initData, botToken));
+  } catch (authError: unknown) {
+    const err = authError as { status?: number; message?: string };
+    return { status: err.status || 401, body: { error: err.message } };
+  }
+
+  const adminIds = parseAdminUsers();
+  if (!adminIds.includes(adminUserId)) {
+    return { status: 403, body: { error: 'Forbidden' } };
+  }
+
+  const parsedId = parseTargetUserId(body);
+  if (parsedId.error || parsedId.id === undefined) {
+    return { status: 400, body: { error: parsedId.error || 'Invalid targetUserId' } };
+  }
+
+  const grant = body.grant;
+  if (grant !== true && grant !== false) {
+    return { status: 400, body: { error: 'grant must be true or false' } };
+  }
+
+  if (grant) {
+    await habitRepository.saveUserPreferences({
+      userId: parsedId.id,
+      isLifetimePremium: true,
+      premium: true,
+    });
+    Logger.info('Lifetime premium granted', { targetUserId: parsedId.id, adminUserId });
+  } else {
+    const existing = await habitRepository.getUserPreferences(parsedId.id);
+    const prefsIfLifetimeRevoked: UserPreferences = {
+      ...(existing ?? {}),
+      userId: parsedId.id,
+      isLifetimePremium: false,
+    };
+    const stillHasPaidPremium = userHasPremiumAccess(prefsIfLifetimeRevoked);
+    await habitRepository.saveUserPreferences({
+      userId: parsedId.id,
+      isLifetimePremium: false,
+      ...(!stillHasPaidPremium ? { premium: false } : {}),
+    });
+    Logger.info('Lifetime premium revoked', { targetUserId: parsedId.id, adminUserId });
+    if (!stillHasPaidPremium) {
+      const subscriptionUseCase = new SubscriptionUseCase(habitRepository);
+      await subscriptionUseCase.revokeSubscription(parsedId.id);
+    }
+  }
+
+  return { status: 200, body: { ok: true, targetUserId: parsedId.id, grant } };
+}
+
 export function logAdminUsersError(error: unknown): void {
   Logger.error('Error in users endpoint', {
     error: error instanceof Error ? error.message : 'Unknown error',
@@ -425,6 +522,12 @@ export function logAdminUsersError(error: unknown): void {
 
 export function logAdminSendMessageError(error: unknown): void {
   Logger.error('Error in send-message endpoint', {
+    error: error instanceof Error ? error.message : 'Unknown error',
+  });
+}
+
+export function logGrantLifetimePremiumError(error: unknown): void {
+  Logger.error('Error in grant-lifetime-premium endpoint', {
     error: error instanceof Error ? error.message : 'Unknown error',
   });
 }

@@ -148,6 +148,20 @@
             cursor: pointer;
         }
 
+        .btn-lifetime {
+            margin-top: 0.5rem;
+            margin-right: 0.5rem;
+            padding: 0.5rem 0.85rem;
+            border: 1px solid var(--hb-accent);
+            border-radius: 10px;
+            background: var(--hb-accent-light);
+            font-family: var(--hb-font-body);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--hb-accent-dark);
+            cursor: pointer;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -272,6 +286,14 @@
 
         .habits-list li {
             margin-bottom: 0.25rem;
+        }
+
+        .user-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.35rem;
         }
 
         .empty {
@@ -481,6 +503,34 @@
                 document.getElementById('results').innerHTML = '';
             }
 
+            async function grantLifetimePremium(userId, grant) {
+                var initData = getInitData();
+                if (!initData) {
+                    renderError('Open this page from Telegram (initData missing).');
+                    return;
+                }
+                document.getElementById('status').innerHTML = '<p class="loading">Updating…</p>';
+                try {
+                    var res = await fetch('/api/grant-lifetime-premium', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ initData: initData, targetUserId: userId, grant: grant })
+                    });
+                    var body = await res.json().catch(function () { return {}; });
+                    if (res.status === 403) {
+                        renderError('Access denied.');
+                        return;
+                    }
+                    if (!res.ok) {
+                        renderError(body.error || ('Error ' + res.status));
+                        return;
+                    }
+                    await load();
+                } catch (e) {
+                    renderError('Network error.');
+                }
+            }
+
             function renderUsers(data) {
                 document.getElementById('status').innerHTML = '';
                 var users = data.users || [];
@@ -496,6 +546,7 @@
                     var bits = ['ID ' + u.userId];
                     if (p.timezone) bits.push(p.timezone);
                     if (p.premium) bits.push('premium');
+                    if (p.isLifetimePremium) bits.push('lifetime');
                     if (p.blocked) bits.push('blocked');
                     if (p.consentDate) bits.push('consent ' + p.consentDate);
                     html += '<article class="user-card">';
@@ -510,7 +561,11 @@
                     } else {
                         html += '<p class="meta">No habits</p>';
                     }
+                    html += '<div class="user-card-actions">';
+                    html += '<button type="button" class="btn-lifetime" data-user-id="' + u.userId + '" data-grant="' + (p.isLifetimePremium ? 'false' : 'true') + '">' +
+                        (p.isLifetimePremium ? 'Revoke lifetime' : 'Grant lifetime') + '</button>';
                     html += '<button type="button" class="btn-card-send" data-user-id="' + u.userId + '">Send message</button>';
+                    html += '</div>';
                     html += '</article>';
                 });
                 document.getElementById('results').innerHTML = html;
@@ -560,6 +615,12 @@
             document.getElementById('modalConfirm').addEventListener('click', submitSendMessage);
             document.querySelector('.container').addEventListener('click', function (e) {
                 var t = e.target;
+                if (t.classList && t.classList.contains('btn-lifetime')) {
+                    var uidL = parseInt(t.getAttribute('data-user-id'), 10);
+                    var grant = t.getAttribute('data-grant') === 'true';
+                    if (!isNaN(uidL)) grantLifetimePremium(uidL, grant);
+                    return;
+                }
                 if (t.classList && t.classList.contains('btn-card-send')) {
                     var uid = parseInt(t.getAttribute('data-user-id'), 10);
                     if (!isNaN(uid)) openSendModal(uid);
