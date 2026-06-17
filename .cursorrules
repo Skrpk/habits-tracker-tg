@@ -23,7 +23,7 @@ The project follows **Clean Architecture** principles with clear separation of c
      - `SetHabitReminderScheduleUseCase`: Sets/updates habit reminder schedules
      - `CheckHabitReminderDueUseCase`: Checks if a habit is due for reminder
      - `GetHabitsDueForReminderUseCase`: Gets all habits due for reminders across users
-     - `SubscriptionUseCase`: Premium subscription / expiry checks (`premium`, `premiumDate`, `premiumType`)
+     - `SubscriptionUseCase`: Premium subscription / expiry checks (`premium`, `premiumDate`, `premiumType`, `isLifetimePremium`); exported `userHasPremiumAccess(prefs)`
      - `ToggleHabitDisabledUseCase`: Pause or resume habits (e.g. free-tier limit)
 
 2. **Infrastructure Layer** (`src/infrastructure/`)
@@ -68,12 +68,14 @@ The project follows **Clean Architecture** principles with clear separation of c
 4. **Streak Management**
    - Streaks increment on consecutive completions (using "day before check date" for continuity when `targetDate` is used)
    - Streaks reset to 0 if habit is not completed (without skipping)
-   - Skipped days are tracked in `skipped` array with `skippedDay` and `date` (optional `note` for premium)
-   - Dropped days are always recorded in `dropped` array with `streakBeforeDrop` and `date` (even on first day; optional `note` for premium)
+   - Skipped days are tracked in `skipped` array with `skippedDay` and `date` (optional `note`, now free for all users)
+   - Dropped days are always recorded in `dropped` array with `streakBeforeDrop` and `date` (even on first day; optional `note`, now free for all users)
    - Skipped days count displayed in habit details
 
 5. **Premium and habit limits**
-   - `UserPreferences` may include `premium`, `premiumDate`, `premiumType`; free tier can cap active habits (`MAX_FREE_HABITS` / `SubscriptionUseCase`)
+   - `UserPreferences` may include `premium`, `premiumDate`, `premiumType`, `isLifetimePremium` (admin-granted, never expired by cron)
+   - **Premium gating is currently DISABLED — the app is free for everyone.** All previously premium features (unlimited habits, enabling/scheduling paused habits, skip/drop notes) are available to all users; the habit-cap and premium checks in `CreateHabitUseCase`, `TelegramBot` (`handleHabitToggleDisabled`, schedule-for-disabled), and skip/drop note prompts are commented out. `SubscriptionUseCase` / `userHasPremiumAccess` / `/subscribe` / admin lifetime-premium grant remain in code but are not enforced.
+   - **AI analytics insights are DISABLED**: `getAnalyticsInsights` (`src/api/analytics-shared.ts`) early-returns `{}` (OpenAI call commented out), and the analytics page no longer fetches `/api/analytics-insights` or renders the insights panel.
 
 6. **Reminder Scheduling**
    - Each habit can have a custom reminder schedule:
@@ -95,7 +97,8 @@ The project follows **Clean Architecture** principles with clear separation of c
    - Static page `/admin` → `admin.html` (Vercel rewrite). Client uses Telegram WebApp `initData`
    - **POST `/api/users`**: `initData` + query filters `isAdmin` (maps to **premium**), `isBlocked`, `Timezone` (must be in `ALLOWED_TIMEZONE_IDS`), optional `userId` (exact Telegram id), optional `consentDateFrom` / `consentDateTo` (inclusive `YYYY-MM-DD` on `consentDate`). Returns active users with habits (admin-only)
    - **POST `/api/send-message`**: same auth; body `{ initData, message, id?, isAdmin?, isBlocked?, Timezone? }`. With `id`, send one DM to that active user; without `id`, broadcast to all users matching filters; Telegram `sendMessage` via `fetch`, batches of 1000 with `Promise.allSettled`; `vercel.json` sets `api/send-message.ts` `maxDuration` 300
-   - Shared logic: `src/api/admin-users-shared.ts`; local dev: `reminders-server` exposes `POST /api/users` and `POST /api/send-message` (match `pathname` so query strings work)
+   - **POST `/api/grant-lifetime-premium`**: same auth; body `{ initData, targetUserId, grant: boolean }` — set or clear `isLifetimePremium` (grant `true` also sets `premium: true`)
+   - Shared logic: `src/api/admin-users-shared.ts`; local dev: `reminders-server` exposes `POST /api/users`, `POST /api/send-message`, and `POST /api/grant-lifetime-premium` (match `pathname` so query strings work)
 
 8. **Ops notifications channel**
    - When `NOTIFICATION_CHANNEL_ID` is set, the bot posts to that channel for new users, analytics events, habit reactions, etc.
@@ -109,12 +112,13 @@ habits-tracker/
 │   ├── webhook.ts               # Telegram webhook handler
 │   ├── reminders.ts             # Cron job endpoint for reminders
 │   ├── analytics.ts             # Analytics API (HTML + data)
-│   ├── analytics-insights.ts    # Premium AI insights API
+│   ├── analytics-insights.ts    # AI insights API (currently DISABLED — returns {} )
 │   ├── auth.ts
 │   ├── schedule.ts              # Schedule MiniApp API
 │   ├── check.ts                 # Habit check MiniApp API
 │   ├── users.ts                 # Admin: list users (POST + initData)
 │   ├── send-message.ts          # Admin: broadcast / DM (POST + initData)
+│   ├── grant-lifetime-premium.ts # Admin: grant/revoke lifetime premium (POST + initData)
 │   └── setup-webhook.ts         # Manual webhook setup endpoint
 ├── src/
 │   ├── constants/               # e.g. allowedTimezones.ts
@@ -203,7 +207,7 @@ habits-tracker/
    - Handles updates via long polling
 
 3. **Reminders Server**: `src/api/reminders-server.ts`
-   - Serves static files from `public/` and mirrors production POST routes where needed: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`
+   - Serves static files from `public/` and mirrors production POST routes where needed: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`, `/api/grant-lifetime-premium`
    - API path matching uses URL `pathname` (ignores query string) so `?filters` works
    - Called by Docker cron container for reminders
 
@@ -230,13 +234,13 @@ interface Habit {
 interface SkippedDay {
   skippedDay: number;     // Streak day when skipped
   date: string;           // YYYY-MM-DD format
-  note?: string;          // Optional note (premium only)
+  note?: string;          // Optional note (free for all users; premium gating disabled)
 }
 
 interface DroppedDay {
   streakBeforeDrop: number; // Streak value before the drop
   date: string;            // YYYY-MM-DD format
-  note?: string;           // Optional note (premium only)
+  note?: string;           // Optional note (free for all users; premium gating disabled)
 }
 
 interface CheckHistoryEntry {
@@ -265,6 +269,7 @@ interface UserPreferences {
   premium?: boolean;
   premiumDate?: string; // ISO date string of last successful payment
   premiumType?: 'monthly' | 'annual';
+  isLifetimePremium?: boolean; // Admin-granted; not revoked by subscription expiry cron
 }
 ```
 
@@ -288,8 +293,8 @@ interface UserPreferences {
 - `CRON_SECRET`: Secret for local cron endpoint (optional)
 - `CRON_SCHEDULE`: Cron schedule for local development (default: `* * * * *`)
 - `NOTIFICATION_CHANNEL_ID`: Telegram channel ID for ops notifications: new users, analytics usage, habit reactions, **and unhandled user text** after setup (optional)
-- `ADMIN_USERS`: JSON array of numeric Telegram user IDs allowed to use Admin MiniApp, `POST /api/users`, and `POST /api/send-message` (optional)
-- `OPENAI_API_KEY`: Used for premium analytics insights (`/api/analytics-insights`) when set (optional)
+- `ADMIN_USERS`: JSON array of numeric Telegram user IDs allowed to use Admin MiniApp, `POST /api/users`, `POST /api/send-message`, and `POST /api/grant-lifetime-premium` (optional)
+- `OPENAI_API_KEY`: Was used for AI analytics insights (`/api/analytics-insights`); currently unused because AI insights are disabled (optional)
 - `PREMIUM_STARS_PRICE`, `PREMIUM_STARS_ANNUAL`, `MAX_FREE_HABITS`: Subscription / free-tier limits (optional)
 
 ## Important Patterns
@@ -300,7 +305,7 @@ interface UserPreferences {
    - `creating_habit`: Waiting for habit name
    - `setting_schedule_new:{habitId}`: Configuring schedule for new habit
    - `set_schedule:{habitId}:{scheduleType}`: Configuring schedule for existing habit
-   - `habit_check_note:{habitId}:no|skip` (optional `targetDate`): Premium drop/skip note collection
+   - `habit_check_note:{habitId}:no|skip` (optional `targetDate`): drop/skip note collection (free for all users; premium gating disabled)
    - `quote_edit:…`, `quote_regenerate:…`, `schedule_quick:…` and other quote/schedule helpers
 
 3. **Timezone Handling**: 
@@ -383,7 +388,7 @@ interface UserPreferences {
 1. **Webhook Security**: `WEBHOOK_SECRET_TOKEN` verified in `X-Telegram-Bot-Api-Secret-Token` header
 2. **Cron Security**: `x-vercel-cron` header and `Authorization` header verified
 3. **Input Validation**: Command injection prevention (commands can't be used as habit names)
-4. **Admin / WebApp**: `POST /api/users` and `POST /api/send-message` require valid Telegram `initData` and caller id in `ADMIN_USERS`; do not expose admin URLs as discoverable chat commands beyond Settings
+4. **Admin / WebApp**: `POST /api/users`, `POST /api/send-message`, and `POST /api/grant-lifetime-premium` require valid Telegram `initData` and caller id in `ADMIN_USERS`; do not expose admin URLs as discoverable chat commands beyond Settings
 
 ## Notes
 
@@ -400,5 +405,5 @@ interface UserPreferences {
 - Analytics history inference ensures data accuracy: only infers completions when there's evidence of user interaction
 - The analytics page is client-side rendered with embedded JSON data for better performance
 - Admin panel and admin APIs are gated by `ADMIN_USERS`; there is no `/admin` chat command
-- Premium features include optional notes on skip/drop, analytics insights (OpenAI), and habit limits enforced via `SubscriptionUseCase`
+- Premium gating is currently disabled (app is free for everyone): optional notes on skip/drop and unlimited habits are available to all users; `SubscriptionUseCase` no longer enforces limits. AI analytics insights (OpenAI) are disabled (server returns `{}`, insights UI hidden).
 
