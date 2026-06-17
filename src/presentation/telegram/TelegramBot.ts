@@ -576,7 +576,7 @@ export class TelegramBotService {
 
       const chatId = sent.chat.id;
       const messageId = sent.message_id;
-      const checkUrl = `https://e8cd-2a02-8308-111-600-43f-8808-498-a05f.ngrok-free.app/check?habitId=${habit.id}` +
+      const checkUrl = `https://habits-builder.com/check?habitId=${habit.id}` +
         (targetDate ? `&targetDate=${targetDate}` : '') +
         `&chatId=${chatId}&msgId=${messageId}`;
 
@@ -1607,7 +1607,7 @@ export class TelegramBotService {
       ];
       if (userId && isAdminUser(userId)) {
         keyboardRows.push([
-          { text: 'Admin Panel', web_app: { url: 'https://e8cd-2a02-8308-111-600-43f-8808-498-a05f.ngrok-free.app/admin' } },
+          { text: 'Admin Panel', web_app: { url: 'https://habits-builder.com/admin' } },
         ]);
       }
       const keyboard = { inline_keyboard: keyboardRows };
@@ -2110,7 +2110,7 @@ export class TelegramBotService {
     baseUrl = baseUrl.replace(/\/$/, '');
     
     // const analyticsUrl = `${baseUrl}/analytics/${userId}`;
-    const analyticsUrl = `https://e8cd-2a02-8308-111-600-43f-8808-498-a05f.ngrok-free.app/analytics/${userId}`;
+    const analyticsUrl = `https://habits-builder.com/analytics/${userId}`;
     
     const message = `📊 *Your Habits Analytics*\n\n` +
       `View detailed analytics and graphs for all your habits.\n\n` +
