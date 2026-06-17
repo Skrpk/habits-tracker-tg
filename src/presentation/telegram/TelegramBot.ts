@@ -125,10 +125,10 @@ export class TelegramBotService {
           command: 'settings',
           description: 'Manage your settings',
         },
-        {
-          command: 'subscribe',
-          description: 'Get Premium for unlimited habits and more',
-        },
+        // {
+        //   command: 'subscribe',
+        //   description: 'Get Premium for unlimited habits and more',
+        // },
       ]);
       Logger.info('Bot commands menu set successfully');
     } catch (error) {
@@ -782,10 +782,10 @@ export class TelegramBotService {
         }
 
         // Handle /subscribe command
-        if (text.match(/^\/subscribe/)) {
-          await this.handleSubscribeCommand(chatId, userId, username);
-          return;
-        }
+        // if (text.match(/^\/subscribe/)) {
+        //   await this.handleSubscribeCommand(chatId, userId, username);
+        //   return;
+        // }
         
         // Handle /quote command (admin only, not registered in commands menu)
         if (text.match(/^\/quote/)) {
