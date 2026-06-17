@@ -565,7 +565,7 @@
                 const response = await fetch('/api/analytics', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ initData: {} }),
+                    body: JSON.stringify({ initData: tg.initData }),
                 });
 
                 if (response.status === 401) {
