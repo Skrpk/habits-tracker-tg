@@ -263,7 +263,7 @@ export class TelegramBotService {
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Habit not found',
           show_alert: true,
         });
@@ -371,7 +371,7 @@ export class TelegramBotService {
 
       const isDisabled = await this.toggleHabitDisabledUseCase.execute(userId, habitId);
       const statusText = isDisabled ? 'disabled' : 'enabled';
-      await this.bot.answerCallbackQuery(callbackQueryId, {
+      await this.safeAnswerCallbackQuery(callbackQueryId, {
         text: `Habit ${statusText}`,
         show_alert: false,
       });
@@ -385,7 +385,7 @@ export class TelegramBotService {
         chatId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      await this.bot.answerCallbackQuery(callbackQueryId, {
+      await this.safeAnswerCallbackQuery(callbackQueryId, {
         text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         show_alert: true,
       });
@@ -399,7 +399,7 @@ export class TelegramBotService {
 
       if (!habit) {
         Logger.warn('Habit not found for deletion', { userId, username, habitId, chatId });
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Habit not found',
           show_alert: true,
         });
@@ -830,6 +830,10 @@ export class TelegramBotService {
           });
         }
         
+        // Acknowledge immediately (before any Redis reads) so the loading
+        // spinner clears fast and the callback query can't expire mid-handler.
+        await this.safeAnswerCallbackQuery(update.callback_query.id);
+
         const cbData = update.callback_query.data || '';
         const isOnboardingCallback = cbData.startsWith('consent_') ||
                                       cbData.startsWith('timezone_') ||
@@ -838,10 +842,11 @@ export class TelegramBotService {
         if (!isOnboardingCallback && userId) {
           const cbPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
           if (!cbPreferences || !cbPreferences.consentAccepted || !cbPreferences.timezone) {
-            await this.bot.answerCallbackQuery(update.callback_query.id, {
-              text: 'Please complete setup first by sending /start',
-              show_alert: true,
-            });
+            // Query is already answered above, so send a normal message instead of an alert.
+            const cbChatId = update.callback_query.message?.chat.id;
+            if (cbChatId) {
+              await this.bot.sendMessage(cbChatId, 'Please complete setup first by sending /start');
+            }
             return;
           }
         }
@@ -868,13 +873,15 @@ export class TelegramBotService {
       
       Logger.debug('Update processed', { updateId: update.update_id });
     } catch (error) {
+      // Swallow errors here so the webhook still returns 200. Telegram retries
+      // the same update on a non-2xx response, which causes duplicate processing
+      // and "query is too old" errors on the retried callback query.
       Logger.error('Error processing update', {
         updateId: update.update_id,
         error: error instanceof Error ? error.message : 'Unknown error',
         errorName: error instanceof Error ? error.name : undefined,
         stack: error instanceof Error ? error.stack : undefined,
       });
-      throw error;
     }
   }
 
@@ -2154,8 +2161,7 @@ export class TelegramBotService {
       return;
     }
 
-    // Answer callback query immediately to remove loading state
-    await this.bot.answerCallbackQuery(query.id);
+    // Callback query is already acknowledged in processUpdate before this runs.
 
     if (data === 'open_subscribe') {
       await this.handleSubscribeCommand(chatId, userId, username);
@@ -2495,7 +2501,7 @@ export class TelegramBotService {
         completed,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      await this.bot.answerCallbackQuery(query.id, {
+      await this.safeAnswerCallbackQuery(query.id, {
         text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         show_alert: true,
       });
@@ -2515,7 +2521,7 @@ export class TelegramBotService {
 
       if (!habit) {
         Logger.warn('Habit not found for skip confirmation', { userId, habitId, chatId });
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Habit not found',
           show_alert: true,
         });
@@ -2632,7 +2638,7 @@ export class TelegramBotService {
 
       if (!habit) {
         Logger.warn('Habit not found for deletion confirmation', { userId, username, habitId, chatId });
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Habit not found',
           show_alert: true,
         });
@@ -2703,7 +2709,7 @@ export class TelegramBotService {
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
-        await this.bot.answerCallbackQuery(callbackQueryId);
+        await this.safeAnswerCallbackQuery(callbackQueryId);
         await this.bot.sendMessage(chatId, 'Habit not found.');
         return;
       }
@@ -2712,7 +2718,7 @@ export class TelegramBotService {
       // if (habit.disabled) {
       //   const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
       //   if (!userHasPremiumAccess(prefs)) {
-      //     await this.bot.answerCallbackQuery(callbackQueryId, {
+      //     await this.safeAnswerCallbackQuery(callbackQueryId, {
       //       text: 'This habit is paused (free limit reached). Use /subscribe for Premium or disable an active habit to enable this one.',
       //       show_alert: true,
       //     });
@@ -2721,7 +2727,7 @@ export class TelegramBotService {
       // }
 
       if (!this.setHabitReminderScheduleUseCase) {
-        await this.bot.answerCallbackQuery(callbackQueryId);
+        await this.safeAnswerCallbackQuery(callbackQueryId);
         await this.bot.sendMessage(chatId, 'Schedule management is not available. Please contact support.');
         return;
       }
@@ -3060,7 +3066,7 @@ export class TelegramBotService {
     try {
       const deleted = await this.quoteManager.deleteQuote(quoteIndex);
       if (!deleted) {
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Quote not found',
           show_alert: true,
         });
@@ -3112,7 +3118,7 @@ export class TelegramBotService {
     try {
       const quote = await this.quoteManager.getQuote(quoteIndex);
       if (!quote) {
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Quote not found',
           show_alert: true,
         });
@@ -3236,7 +3242,7 @@ export class TelegramBotService {
     }
 
     if (!this.openai) {
-      await this.bot.answerCallbackQuery('', {
+      await this.safeAnswerCallbackQuery('', {
         text: 'OpenAI API not configured',
         show_alert: true,
       });
@@ -3246,7 +3252,7 @@ export class TelegramBotService {
     try {
       const quote = await this.quoteManager.getQuote(quoteIndex);
       if (!quote) {
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Quote not found',
           show_alert: true,
         });
@@ -3312,7 +3318,7 @@ export class TelegramBotService {
     try {
       const quote = await this.quoteManager.getQuote(quoteIndex);
       if (!quote) {
-        await this.bot.answerCallbackQuery('', {
+        await this.safeAnswerCallbackQuery('', {
           text: 'Quote not found',
           show_alert: true,
         });
@@ -3422,6 +3428,34 @@ export class TelegramBotService {
   }
 
   // Add this helper method to the TelegramBotService class
+  private async safeAnswerCallbackQuery(
+    callbackQueryId: string,
+    options?: Partial<TelegramBot.AnswerCallbackQueryOptions>
+  ): Promise<void> {
+    try {
+      await this.bot.answerCallbackQuery(callbackQueryId, options);
+    } catch (error: any) {
+      const description: string =
+        error?.response?.body?.description ||
+        (error instanceof Error ? error.message : '');
+      // Stale/duplicate answers are expected (already answered, or the query
+      // expired). Never let answering a callback query throw — that would turn
+      // into a webhook 500 and trigger Telegram retries.
+      if (
+        typeof description === 'string' &&
+        (description.includes('query is too old') ||
+          description.includes('query ID is invalid') ||
+          description.includes('QUERY_ID_INVALID'))
+      ) {
+        Logger.debug('Ignoring stale callback query answer', { description });
+        return;
+      }
+      Logger.warn('Failed to answer callback query', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
   private async safeEditMessage(
     text: string,
     options: TelegramBot.EditMessageTextOptions
