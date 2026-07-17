@@ -777,6 +777,7 @@ export class TelegramBotService {
         
         // Handle /analytics command
         if (text.match(/^\/analytics/)) {
+          Logger.debug('Analytics command', { userId, username, chatId, text });
           await this.handleAnalyticsCommand(chatId, userId, username, msg.from);
           return;
         }
@@ -2098,6 +2099,7 @@ export class TelegramBotService {
   }
 
   private async handleAnalyticsCommand(chatId: number, userId: number | undefined, username: string, user?: TelegramBot.User): Promise<void> {
+    Logger.debug('Analytics command', { chatId, userId, username, user });
     if (!userId) {
       Logger.warn('Unable to identify user for analytics', { chatId });
       await this.bot.sendMessage(chatId, 'Unable to identify user.');
@@ -2127,6 +2129,7 @@ export class TelegramBotService {
       `• Skipped and dropped days\n` +
       `• Timeline of all check events`;
     
+    Logger.debug('Sending analytics message', { chatId, userId, username, message });
     await this.bot.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       disable_web_page_preview: false, // Allow preview of the link
@@ -2155,6 +2158,7 @@ export class TelegramBotService {
     const userId = query.from.id;
     const username = getUsername(query.from);
     const data = query.data;
+    Logger.debug('Callback query', { userId, username, chatId, data });
 
     if (!chatId || !data) {
       Logger.warn('Invalid callback query', { userId, username, hasChatId: !!chatId, hasData: !!data });
@@ -2306,6 +2310,7 @@ export class TelegramBotService {
 
     // Handle back to list
     if (data === 'habit_list') {
+      Logger.debug('Habit list callback', { userId, username, chatId, data });
       await this.handleHabitListCallback(userId, chatId, query.message?.message_id);
       return;
     }
