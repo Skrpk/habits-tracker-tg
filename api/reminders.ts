@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    Logger.info('Starting hourly reminders cron job');
+    // Logger.info('Starting hourly reminders cron job');
     
     const habitRepository = new VercelKVHabitRepository();
     const botService = getBotService();
@@ -123,20 +123,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const currentHour = now.getUTCHours();
     const currentMinute = now.getUTCMinutes();
 
-    Logger.info('Checking for habits due for reminder', {
-      currentHour,
-      currentMinute,
-      timezone: 'UTC',
-    });
+    // Logger.info('Checking for habits due for reminder', {
+    //   currentHour,
+    //   currentMinute,
+    //   timezone: 'UTC',
+    // });
 
     // Get habits that are due for reminders right now based on their schedules
     const getHabitsDueForReminderUseCase = new GetHabitsDueForReminderUseCase(habitRepository);
     const habitsDue = await getHabitsDueForReminderUseCase.execute(now, currentHour, currentMinute, 'UTC');
 
-    Logger.info('Found habits due for reminder', {
-      count: habitsDue.length,
-      habitIds: habitsDue.map(h => h.id),
-    });
+    // Logger.info('Found habits due for reminder', {
+    //   count: habitsDue.length,
+    //   habitIds: habitsDue.map(h => h.id),
+    // });
 
     // Group habits by user
     const habitsByUser = new Map<number, Habit[]>();
@@ -190,14 +190,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    Logger.info('Minute reminders cron job completed', {
-      totalHabitsDue: habitsDue.length,
-      totalUsers: habitsByUser.size,
-      skippedBlocked: skippedBlockedCount,
-      successCount,
-      errorCount,
-      errors: errors.length > 0 ? errors : undefined,
-    });
+    // Logger.info('Minute reminders cron job completed', {
+    //   totalHabitsDue: habitsDue.length,
+    //   totalUsers: habitsByUser.size,
+    //   skippedBlocked: skippedBlockedCount,
+    //   successCount,
+    //   errorCount,
+    //   errors: errors.length > 0 ? errors : undefined,
+    // });
 
     return res.status(200).json({
       ok: true,
