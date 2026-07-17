@@ -33,7 +33,8 @@ function getBotService(): TelegramBotService {
       getUserHabitsUseCase,
       recordHabitCheckUseCase,
       deleteHabitUseCase,
-      getHabitsToCheckUseCase
+      getHabitsToCheckUseCase,
+      false,
     );
     
     botService.setupHandlers();
