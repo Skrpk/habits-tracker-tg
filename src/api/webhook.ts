@@ -49,6 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const update = req.body as TelegramBot.Update;
     const service = getBotService();
+    console.log('Processing update webhook', update);
     await service.processUpdate(update);
     
     return res.status(200).json({ ok: true });

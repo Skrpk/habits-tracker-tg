@@ -620,6 +620,7 @@ export class TelegramBotService {
 
   async processUpdate(update: TelegramBot.Update): Promise<void> {
     try {
+      console.log('Processing update', update);
       Logger.debug('Processing update', {
         updateId: update.update_id,
         messageText: update.message?.text,
