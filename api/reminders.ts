@@ -190,7 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    Logger.info('Hourly reminders cron job completed', {
+    Logger.info('Minute reminders cron job completed', {
       totalHabitsDue: habitsDue.length,
       totalUsers: habitsByUser.size,
       skippedBlocked: skippedBlockedCount,
