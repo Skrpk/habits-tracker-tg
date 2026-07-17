@@ -2144,6 +2144,7 @@ export class TelegramBotService {
     });
 
     // Send notification to channel (async, don't block)
+    Logger.debug('Sending analytics command notification', { userId, username, user });
     this.sendAnalyticsCommandNotification(userId, username, user).catch(error => {
       Logger.error('Error sending analytics command notification', {
         userId,
