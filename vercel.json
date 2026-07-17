@@ -49,7 +49,7 @@
   ],
   "functions": {
     "api/webhook.ts": {
-      "maxDuration": 10
+      "maxDuration": 300
     },
     "api/reminders.ts": {
       "maxDuration": 60
@@ -58,7 +58,7 @@
       "maxDuration": 10
     },
     "api/analytics.ts": {
-      "maxDuration": 10
+      "maxDuration": 60
     },
     "api/analytics-insights.ts": {
       "maxDuration": 60
