@@ -51,15 +51,26 @@ export class TelegramBotService {
     usePolling: boolean = false,
     setHabitReminderScheduleUseCase?: SetHabitReminderScheduleUseCase
   ) {
-    this.bot = new TelegramBot(token, { polling: {
-      params: {
-      allowed_updates: [
-        "message",
-        "pre_checkout_query",  // 👈 must explicitly add this
-        "callback_query",
-      ],
-    },
-    } });
+    // this.bot = new TelegramBot(token, { polling: {
+    //   params: {
+    //   allowed_updates: [
+    //     "message",
+    //     "pre_checkout_query",  // 👈 must explicitly add this
+    //     "callback_query",
+    //   ],
+    // },
+    // } });
+    this.bot = new TelegramBot(token, usePolling ? {
+        polling: {
+            params: {
+                allowed_updates: [
+                    "message",
+                    "pre_checkout_query",
+                    "callback_query",
+                ],
+            },
+        },
+    } : { polling: false });
     console.log(`Bot initialized (polling: ${usePolling}) - Process: ${process.env.NODE_ENV || 'development'}`);
     // Add error handlers for debugging
     this.bot.on('error', (error: Error) => {
