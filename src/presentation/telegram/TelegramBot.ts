@@ -64,8 +64,8 @@ export class TelegramBotService {
         polling: {
             params: {
                 allowed_updates: [
-                    "message",
                     "pre_checkout_query",
+                    "message",
                     "callback_query",
                 ],
             },
