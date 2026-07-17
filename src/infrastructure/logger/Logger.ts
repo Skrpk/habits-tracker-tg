@@ -18,9 +18,9 @@ export class Logger {
   }
 
   static debug(message: string, metadata?: Record<string, any>): void {
-    if (process.env.NODE_ENV === 'development') {
+    // if (process.env.NODE_ENV === 'development') {
       console.debug(this.formatMessage('DEBUG', message, metadata));
-    }
+    // }
   }
 }
 
