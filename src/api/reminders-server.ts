@@ -46,7 +46,7 @@ export async function handleRemindersEndpoint(
   // }
 
   try {
-    Logger.info('Starting hourly reminders request');
+    // Logger.info('Starting hourly reminders request');
 
     // Check and revoke expired premium subscriptions
     const subscriptionUseCase = new SubscriptionUseCase(habitRepository);
@@ -95,20 +95,20 @@ export async function handleRemindersEndpoint(
     const currentHour = now.getUTCHours();
     const currentMinute = now.getUTCMinutes();
 
-    Logger.info('Checking for habits due for reminder', {
-      currentHour,
-      currentMinute,
-      timezone: 'UTC',
-    });
+    // Logger.info('Checking for habits due for reminder', {
+    //   currentHour,
+    //   currentMinute,
+    //   timezone: 'UTC',
+    // });
 
     // Get habits that are due for reminders right now based on their schedules
     const getHabitsDueForReminderUseCase = new GetHabitsDueForReminderUseCase(habitRepository);
     const habitsDue = await getHabitsDueForReminderUseCase.execute(now, currentHour, currentMinute, 'UTC');
 
-    Logger.info('Found habits due for reminder', {
-      count: habitsDue.length,
-      habitIds: habitsDue.map(h => h.id),
-    });
+    // Logger.info('Found habits due for reminder', {
+    //   count: habitsDue.length,
+    //   habitIds: habitsDue.map(h => h.id),
+    // });
 
     // Group habits by user
     const habitsByUser = new Map<number, Habit[]>();
@@ -125,7 +125,7 @@ export async function handleRemindersEndpoint(
     for (const [userId, habits] of habitsByUser.entries()) {
       const prefs = await habitRepository.getUserPreferences(userId);
       if (prefs?.blocked) {
-        Logger.info('Skipping reminder for blocked user', { userId, habitCount: habits.length });
+        // Logger.info('Skipping reminder for blocked user', { userId, habitCount: habits.length });
         skippedBlockedCount++;
         continue;
       }
@@ -147,7 +147,7 @@ export async function handleRemindersEndpoint(
           month: '2-digit',
           day: '2-digit',
         }).format(now);
-        Logger.info('Sending reminder to user', { userId, habitCount: habits.length, targetDate });
+        // Logger.info('Sending reminder to user', { userId, habitCount: habits.length, targetDate });
         await botService.sendHabitReminders(userId, habits, targetDate);
         successCount++;
       } catch (error) {
@@ -161,14 +161,14 @@ export async function handleRemindersEndpoint(
       }
     }
 
-    Logger.info('Hourly reminders request completed', {
-      totalHabitsDue: habitsDue.length,
-      totalUsers: habitsByUser.size,
-      skippedBlocked: skippedBlockedCount,
-      successCount,
-      errorCount,
-      errors: errors.length > 0 ? errors : undefined,
-    });
+    // Logger.info('Hourly reminders request completed', {
+    //   totalHabitsDue: habitsDue.length,
+    //   totalUsers: habitsByUser.size,
+    //   skippedBlocked: skippedBlockedCount,
+    //   successCount,
+    //   errorCount,
+    //   errors: errors.length > 0 ? errors : undefined,
+    // });
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({

@@ -63,11 +63,11 @@ export class GetHabitsDueForReminderUseCase {
       }
     }
 
-    Logger.info('Found habits due for reminder', {
-      count: habitsDueForReminder.length,
-      serverHour: currentHour,
-      serverMinute: currentMinute,
-    });
+    // Logger.info('Found habits due for reminder', {
+    //   count: habitsDueForReminder.length,
+    //   serverHour: currentHour,
+    //   serverMinute: currentMinute,
+    // });
 
     return habitsDueForReminder;
   }
