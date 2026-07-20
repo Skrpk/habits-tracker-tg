@@ -16,7 +16,7 @@ import { Habit } from '../../domain/entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { kv } from '../../infrastructure/config/kv';
 import { isAdminUser } from '../../infrastructure/admin/parseAdminUsers';
-import { TIMEZONE_OPTIONS } from '../../constants/allowedTimezones';
+import { buildTimezonePickerOptions, ALLOWED_TIMEZONE_IDS, formatLocalTime, formatUtcOffset, getUtcOffsetMinutes } from '../../constants/allowedTimezones';
 import { QuoteManager } from '../../infrastructure/quotes/QuoteManager';
 import OpenAI from 'openai';
 
@@ -956,7 +956,7 @@ export class TelegramBotService {
         '/myhabits - View all your habits\n\n' +
         '/analytics - View detailed analytics and graphs\n\n' +
         '/settings - Manage your settings\n\n' +
-        '/subscribe - Get Premium for unlimited habits\n\n' +
+        // '/subscribe - Get Premium for unlimited habits\n\n' +
         'The bot will remind you to check your habits! ⏰\n\n',
         { parse_mode: 'Markdown' }
       );
@@ -1377,7 +1377,7 @@ export class TelegramBotService {
   }
 
   private async showTimezoneSelection(chatId: number, userId: number): Promise<void> {
-    const timezones = TIMEZONE_OPTIONS;
+    const timezones = buildTimezonePickerOptions();
 
     // Create keyboard with timezone buttons (2 columns)
     const keyboard = {
@@ -1400,8 +1400,8 @@ export class TelegramBotService {
     await this.bot.sendMessage(
       chatId,
       '🌍 *Welcome to Habits Tracker!*\n\n' +
-      'First, please select your timezone so we can send reminders at the right time for you.\n\n' +
-      'You can change this later in settings.',
+      'Look at the clock on your phone and pick the time that matches.\n\n' +
+      'You can change this later in Settings.',
       {
         parse_mode: 'Markdown',
         reply_markup: keyboard,
@@ -1616,9 +1616,15 @@ export class TelegramBotService {
     try {
       const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       const currentTimezone = preferences?.timezone || 'Not set';
-      const timezoneDisplay = currentTimezone !== 'Not set' 
-        ? currentTimezone.split('/').pop()?.replace(/_/g, ' ') || currentTimezone
-        : 'Not set';
+      let timezoneDisplay = 'Not set';
+      if (currentTimezone !== 'Not set') {
+        try {
+          const now = new Date();
+          timezoneDisplay = `${formatLocalTime(currentTimezone, now)} · ${formatUtcOffset(getUtcOffsetMinutes(currentTimezone, now))}`;
+        } catch {
+          timezoneDisplay = currentTimezone.split('/').pop()?.replace(/_/g, ' ') || currentTimezone;
+        }
+      }
 
       const keyboardRows: TelegramBot.InlineKeyboardButton[][] = [
         [
@@ -1667,7 +1673,7 @@ export class TelegramBotService {
     chatId: number,
     messageId?: number
   ): Promise<void> {
-    const timezones = TIMEZONE_OPTIONS;
+    const timezones = buildTimezonePickerOptions();
 
     // Create keyboard with timezone buttons (2 columns)
     const keyboard = {
@@ -1693,7 +1699,7 @@ export class TelegramBotService {
     ]);
 
     const message = '🌍 *Change Timezone*\n\n' +
-      'Select your timezone:';
+      'Look at the clock on your phone and pick the time that matches.';
 
     if (messageId) {
       await this.safeEditMessage(message, {
@@ -1719,14 +1725,21 @@ export class TelegramBotService {
     isFromSettings: boolean = false
   ): Promise<void> {
     try {
+      if (!ALLOWED_TIMEZONE_IDS.includes(timezone)) {
+        Logger.warn('Invalid timezone selected', { userId, timezone });
+        await this.bot.sendMessage(chatId, 'Invalid timezone. Please try again.');
+        return;
+      }
+
       await this.setUserPreferencesUseCase.setTimezone(userId, timezone, user);
-      
-      const timezoneName = timezone.split('/').pop()?.replace(/_/g, ' ') || timezone;
-      
+
+      const now = new Date();
+      const timezoneLabel = `${formatLocalTime(timezone, now)} · ${formatUtcOffset(getUtcOffsetMinutes(timezone, now))}`;
+
       if (isFromSettings) {
         // Return to settings menu after timezone change
         await this.safeEditMessage(
-          `✅ Timezone updated to ${timezoneName}\n\n` +
+          `✅ Timezone updated to ${timezoneLabel}\n\n` +
           'Returning to settings...',
           {
             chat_id: chatId,
@@ -1742,7 +1755,7 @@ export class TelegramBotService {
       } else {
         // Original welcome message flow
         await this.safeEditMessage(
-          `✅ Timezone set to ${timezoneName}\n\n` +
+          `✅ Timezone set to ${timezoneLabel}\n\n` +
           '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
           '— Plutarch\n\n' +
           '*Welcome to Habits Tracker! 🎯*\n\n' +
@@ -1751,7 +1764,7 @@ export class TelegramBotService {
           '/myhabits - View all your habits\n\n' +
           '/analytics - View detailed analytics and graphs\n\n' +
           '/settings - Manage your settings\n\n' +
-          '/subscribe - Get Premium for unlimited habits\n\n' +
+          // '/subscribe - Get Premium for unlimited habits\n\n' +
           'The bot will remind you to check your habits! ⏰\n\n',
           {
             chat_id: chatId,

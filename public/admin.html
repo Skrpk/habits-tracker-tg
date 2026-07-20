@@ -371,14 +371,17 @@
 
     <script>
         (function () {
-            /** Must match src/constants/allowedTimezones.ts ALLOWED_TIMEZONE_IDS */
+            /** Must match src/constants/allowedTimezones.ts ALLOWED_TIMEZONE_IDS (representatives ∪ legacy) */
             var ALLOWED_TIMEZONE_IDS = [
-                'Pacific/Baker_Island', 'Pacific/Niue', 'Pacific/Honolulu', 'America/Anchorage',
+                'Etc/GMT+12', 'Pacific/Niue', 'Pacific/Honolulu', 'America/Anchorage',
                 'America/Los_Angeles', 'America/Denver', 'America/Chicago', 'America/New_York',
-                'America/Halifax', 'America/Sao_Paulo', 'Atlantic/South_Georgia', 'Atlantic/Cape_Verde',
-                'Europe/London', 'Europe/Paris', 'Europe/Kyiv', 'Europe/Moscow', 'Asia/Dubai',
-                'Asia/Karachi', 'Asia/Kolkata', 'Asia/Dhaka', 'Asia/Bangkok', 'Asia/Shanghai',
-                'Asia/Tokyo', 'Australia/Sydney', 'Pacific/Guadalcanal', 'Pacific/Auckland'
+                'America/Halifax', 'America/St_Johns', 'America/Sao_Paulo', 'Atlantic/South_Georgia',
+                'Atlantic/Cape_Verde', 'Europe/London', 'Europe/Rome', 'Europe/Kyiv', 'Europe/Moscow',
+                'Asia/Dubai', 'Asia/Karachi', 'Asia/Kolkata', 'Asia/Dhaka', 'Asia/Bangkok',
+                'Asia/Shanghai', 'Asia/Tokyo', 'Australia/Adelaide', 'Australia/Sydney',
+                'Pacific/Guadalcanal', 'Pacific/Auckland',
+                // legacy (still stored for existing users)
+                'Pacific/Baker_Island', 'Europe/Paris'
             ];
 
             var tg = window.Telegram && window.Telegram.WebApp;
