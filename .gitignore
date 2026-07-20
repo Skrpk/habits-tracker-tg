@@ -6,3 +6,4 @@ dist/
 .DS_Store
 docker-compose.yml
 quotes.json
+.serena/
