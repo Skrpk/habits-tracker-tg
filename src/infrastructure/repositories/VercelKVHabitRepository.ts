@@ -212,11 +212,17 @@ export class VercelKVHabitRepository implements IHabitRepository {
 
   async saveUserPreferences(preferences: UserPreferences): Promise<void> {
     try {
-      // Merge with existing preferences to preserve all fields
+      // Merge with existing preferences to preserve all fields.
+      // Keys explicitly set to `undefined` are dropped rather than spread, so a
+      // caller holding a stale snapshot (e.g. the fire-and-forget updateUser)
+      // can't wipe a field another write just set (consentAccepted, timezone…).
       const existingPreferences = await this.getUserPreferences(preferences.userId);
+      const definedIncoming = Object.fromEntries(
+        Object.entries(preferences).filter(([, value]) => value !== undefined)
+      ) as Partial<UserPreferences>;
       const mergedPreferences: UserPreferences = {
         ...existingPreferences,
-        ...preferences,
+        ...definedIncoming,
         userId: preferences.userId, // Ensure userId is set
       };
 

@@ -883,12 +883,13 @@ export class TelegramBotService {
     }
 
     try {
+      // Read preferences BEFORE any write — setBlocked creates a record, which
+      // would make every user look like a returning one below.
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+
       // User came back — clear blocked flag so they receive reminders again
       await this.setUserPreferencesUseCase.setBlocked(userId, false);
 
-      // Check if user has accepted consent
-      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
-      
       // Send notification if this is a new user (no preferences exist)
       if (!preferences) {
         await this.sendNewUserNotification(userId, username, user);
@@ -1487,9 +1488,7 @@ export class TelegramBotService {
       // For new habits, don't show habit details - just confirm creation
       // For existing habits, show updated details
       if (!isNewHabit) {
-        setTimeout(() => {
-          this.showHabitDetails(userId, chatId, habitId);
-        }, 0);
+        await this.showHabitDetails(userId, chatId, habitId);
       }
     } catch (error) {
       Logger.error('Error processing schedule input', {
@@ -1526,10 +1525,8 @@ export class TelegramBotService {
         }
       );
 
-      // Proceed to timezone selection
-      setTimeout(() => {
-        this.showTimezoneSelection(chatId, userId);
-      }, 0);
+      // Proceed to timezone selection (must be awaited — see gotcha #6)
+      await this.showTimezoneSelection(chatId, userId);
 
       Logger.info('User accepted consent', { userId });
     } catch (error) {
@@ -1718,10 +1715,8 @@ export class TelegramBotService {
           }
         );
         
-        // Show settings menu again after a brief delay
-        setTimeout(async () => {
-          await this.handleSettingsCommand(chatId, userId, user?.username || 'unknown', messageId);
-        }, 1000);
+        // Show settings menu again
+        await this.handleSettingsCommand(chatId, userId, user?.username || 'unknown', messageId);
       } else {
         // Original welcome message flow
         await this.safeEditMessage(
@@ -2900,9 +2895,7 @@ export class TelegramBotService {
       await this.clearConversationState(userId);
 
       // Show updated habit details
-      setTimeout(() => {
-        this.showHabitDetails(userId, chatId, habitId);
-      }, 0);
+      await this.showHabitDetails(userId, chatId, habitId);
     } catch (error) {
       Logger.error('Error confirming quick schedule', {
         userId,
@@ -2949,9 +2942,7 @@ export class TelegramBotService {
       await this.clearConversationState(userId);
 
       // Show updated habit details
-      setTimeout(() => {
-        this.showHabitDetails(userId, chatId, habitId);
-      }, 0);
+      await this.showHabitDetails(userId, chatId, habitId);
     } catch (error) {
       Logger.error('Error confirming schedule', {
         userId,

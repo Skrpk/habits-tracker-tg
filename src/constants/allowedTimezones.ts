@@ -7,6 +7,7 @@ export const TIMEZONE_REPRESENTATIVES: readonly string[] = [
   'Etc/GMT+12',           // UTC−12
   'Pacific/Niue',         // UTC−11
   'Pacific/Honolulu',     // UTC−10
+  'Pacific/Gambier',      // UTC−9 (no DST — keeps −9 present while Anchorage is on DST)
   'America/Anchorage',    // UTC−9 / −8 DST
   'America/Los_Angeles',  // UTC−8 / −7 DST
   'America/Denver',       // UTC−7 / −6 DST
