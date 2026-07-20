@@ -74,7 +74,7 @@ The project follows **Clean Architecture** principles with clear separation of c
 
 5. **Premium and habit limits**
    - `UserPreferences` may include `premium`, `premiumDate`, `premiumType`, `isLifetimePremium` (admin-granted, never expired by cron)
-   - **Premium gating is currently DISABLED — the app is free for everyone.** All previously premium features (unlimited habits, enabling/scheduling paused habits, skip/drop notes) are available to all users; the habit-cap and premium checks in `CreateHabitUseCase`, `TelegramBot` (`handleHabitToggleDisabled`, schedule-for-disabled), and skip/drop note prompts are commented out. `SubscriptionUseCase` / `userHasPremiumAccess` / `/subscribe` / admin lifetime-premium grant remain in code but are not enforced.
+   - **Premium gating is currently DISABLED — the app is free for everyone.** All previously premium features (unlimited habits, enabling/scheduling paused habits, skip/drop notes) are available to all users; the habit-cap and premium checks in `CreateHabitUseCase` and `TelegramBot` (`handleHabitToggleDisabled`, schedule-for-disabled) are commented out. Skip/drop notes are entered only from the MiniApp — chat drop/skip records an empty note with no prompt. `SubscriptionUseCase` / `userHasPremiumAccess` / `/subscribe` / admin lifetime-premium grant remain in code but are not enforced.
    - **AI analytics insights are DISABLED**: `getAnalyticsInsights` (`src/api/analytics-shared.ts`) early-returns `{}` (OpenAI call commented out), and the analytics page no longer fetches `/api/analytics-insights` or renders the insights panel.
 
 6. **Reminder Scheduling**
@@ -305,8 +305,8 @@ interface UserPreferences {
    - `creating_habit`: Waiting for habit name
    - `setting_schedule_new:{habitId}`: Configuring schedule for new habit
    - `set_schedule:{habitId}:{scheduleType}`: Configuring schedule for existing habit
-   - `habit_check_note:{habitId}:no|skip` (optional `targetDate`): drop/skip note collection (free for all users; premium gating disabled)
    - `quote_edit:…`, `quote_regenerate:…`, `schedule_quick:…` and other quote/schedule helpers
+   - Note: drop/skip from chat records an empty note (no prompt); notes are entered only from the MiniApp
 
 3. **Timezone Handling**: 
    - Canonical zones live in `src/constants/allowedTimezones.ts`; `TelegramBot` uses `buildTimezonePickerOptions()` for onboarding and settings (live clock labels). `ALLOWED_TIMEZONE_IDS` is representatives ∪ legacy for validation/admin filters.
@@ -382,6 +382,7 @@ interface UserPreferences {
 - **API tests** (`__tests__/api/`): reminders, analytics, analytics-insights, webhook, **users**, **send-message**, and related routes. Mock repository, `fetch`, auth helpers, `ADMIN_USERS` as needed.
 - **Reminders-server tests** (`__tests__/reminders-server/`): `handleRemindersEndpoint`, analytics endpoints, and related handlers (align env mocks with current auth if tests fail).
 - **Domain use case tests** (`__tests__/domain/use-cases/`): `CheckHabitReminderDueUseCase`, `RecordHabitCheckUseCase`, `CreateHabitUseCase`, `GetUserHabitsUseCase`, `SubscriptionUseCase`, and others as added.
+- Tests for **currently-disabled features** are `it.skip` with a `// DISABLED:` comment (habit-cap enforcement, AI analytics insights, local reminders-server CRON/initData checks). Re-enable the test when the feature is re-enabled.
 
 ## Security Considerations
 
