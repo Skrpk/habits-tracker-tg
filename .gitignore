@@ -5,5 +5,5 @@ dist/
 *.log
 .DS_Store
 docker-compose.yml
-quotes.json
 .serena/
+quotes.json
