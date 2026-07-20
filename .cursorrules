@@ -35,7 +35,7 @@ The project follows **Clean Architecture** principles with clear separation of c
    - **Notifications** (`notifications/`): `ChannelNotifications` for ops channel messages (e.g. analytics visits)
 
 3. **Shared constants** (`src/constants/`)
-   - `allowedTimezones.ts`: `TIMEZONE_OPTIONS` and `ALLOWED_TIMEZONE_IDS` — single source for onboarding/settings timezone buttons and admin API timezone validation
+   - `allowedTimezones.ts`: `TIMEZONE_REPRESENTATIVES`, `LEGACY_TIMEZONE_IDS`, `ALLOWED_TIMEZONE_IDS` (union), and `buildTimezonePickerOptions()` — onboarding/settings show live `HH:MM · UTC±N` labels so users match their phone clock; storage remains IANA; admin filters accept representatives ∪ legacy ids
 
 4. **Presentation Layer** (`src/presentation/`)
    - **Telegram** (`telegram/`): Telegram bot service and handlers
@@ -45,7 +45,7 @@ The project follows **Clean Architecture** principles with clear separation of c
 ## Key Features
 
 1. **User Onboarding**
-   - On first `/start`, users select their timezone from the canonical list in `src/constants/allowedTimezones.ts` (full offset coverage UTC-12 to UTC+12)
+   - On first `/start`, users pick timezone by matching the live clock on their phone (`buildTimezonePickerOptions` in `src/constants/allowedTimezones.ts`; IANA id stored). Coverage includes UTC−12…+12 plus common half-hour offsets. Existing stored IANA values (including legacy like `Europe/Paris`) keep working without a forced re-pick.
    - Timezone preference is stored and used for all habit reminders
    - Users can change timezone later (stored in `UserPreferences`)
 
@@ -309,7 +309,7 @@ interface UserPreferences {
    - `quote_edit:…`, `quote_regenerate:…`, `schedule_quick:…` and other quote/schedule helpers
 
 3. **Timezone Handling**: 
-   - Canonical options live in `src/constants/allowedTimezones.ts`; `TelegramBot` imports `TIMEZONE_OPTIONS` for onboarding and settings
+   - Canonical zones live in `src/constants/allowedTimezones.ts`; `TelegramBot` uses `buildTimezonePickerOptions()` for onboarding and settings (live clock labels). `ALLOWED_TIMEZONE_IDS` is representatives ∪ legacy for validation/admin filters.
    - All habit schedules are stored with user's timezone
    - Reminder checking converts server UTC time to each user's timezone
    - Schedule descriptions display times in user's timezone
