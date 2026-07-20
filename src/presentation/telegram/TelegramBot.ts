@@ -538,23 +538,34 @@ export class TelegramBotService {
 
   async sendHabitReminders(userId: number, habits: Habit[], targetDate: string): Promise<void> {
     try {
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const username = getUsername(preferences?.user);
+
       Logger.info('Sending habit reminders', {
         userId,
+        username,
         habitCount: habits.length,
         habitIds: habits.map(h => h.id),
         targetDate,
       });
 
       if (habits.length === 0) {
-        Logger.info('No habits to remind', { userId });
+        Logger.info('No habits to remind', { userId, username });
         return;
       }
 
       for (const habit of habits) {
+        Logger.info(`Sending reminder "${habit.name}" to user ${username} ${userId}`, {
+          userId,
+          username,
+          habitId: habit.id,
+          habitName: habit.name,
+          targetDate,
+        });
         await this.sendSingleHabitReminder(userId, habit, targetDate);
       }
 
-      Logger.info('Habit reminders sent successfully', { userId });
+      Logger.info('Habit reminders sent successfully', { userId, username });
     } catch (error) {
       Logger.error('Error sending habit reminders', {
         userId,

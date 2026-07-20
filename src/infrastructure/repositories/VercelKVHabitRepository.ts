@@ -199,7 +199,7 @@ export class VercelKVHabitRepository implements IHabitRepository {
   async getUserPreferences(userId: number): Promise<UserPreferences | null> {
     try {
       const data = await kv.get(this.getUserPreferencesKey(userId)) as UserPreferences | null;
-      Logger.debug('Retrieved user preferences', { userId, hasTimezone: !!data?.timezone });
+      // Logger.debug('Retrieved user preferences', { userId, hasTimezone: !!data?.timezone });
       return data;
     } catch (error) {
       Logger.error('Error getting user preferences', {
