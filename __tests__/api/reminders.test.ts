@@ -15,6 +15,8 @@ vi.mock('../../src/presentation/telegram/TelegramBot', () => ({
   TelegramBotService: vi.fn().mockImplementation(() => ({
     sendHabitReminders: mockSendHabitReminders,
     setupHandlers: vi.fn(),
+    // reminders cron calls getBot() for the (currently unused) premium-expiry notices
+    getBot: vi.fn().mockReturnValue({ sendMessage: vi.fn(), createInvoiceLink: vi.fn() }),
   })),
 }));
 

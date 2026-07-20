@@ -86,7 +86,9 @@ describe('CreateHabitUseCase', () => {
   });
 
   describe('habit limit enforcement', () => {
-    it('throws when free user already has MAX_FREE_HABITS habits', async () => {
+    // DISABLED: premium gating is off — the app is free for everyone, so there is no
+    // habit cap to enforce right now. Re-enable when premium/free-tier limits return.
+    it.skip('throws when free user already has MAX_FREE_HABITS habits', async () => {
       mockRepo.getUserPreferences.mockResolvedValue({ timezone: 'UTC' });
       mockRepo.getUserHabits.mockResolvedValue({
         userId: 1,

@@ -15,8 +15,9 @@ Multi-step flows store state in Redis under `conversation_state:{userId}` (never
 - `creating_habit` — awaiting habit name
 - `setting_schedule_new:{habitId}` — schedule for a just-created habit
 - `set_schedule:{habitId}:{scheduleType}` — schedule for an existing habit
-- `habit_check_note:{habitId}:no|skip` (optional `:targetDate`) — drop/skip note (free for all users; premium gating disabled)
 - `quote_edit:…`, `quote_regenerate:…`, `schedule_quick:…` — quote/schedule helpers
+
+Drop/skip from chat records an **empty note** — there is no note prompt in chat mode. Notes are entered only from the MiniApp (`api/check.ts` / `reminders-server.ts`, which accept `note` in the POST body).
 
 Clear or advance state explicitly at the end of each step. Unhandled free text (after consent + timezone are set) falls through silently to the user and is forwarded to the ops channel via `sendUnhandledMessageNotification`.
 

@@ -65,7 +65,9 @@ Dependency rule: `domain` depends on nothing outward. `infrastructure` implement
 
 2. **Timezone: store IANA, display live clock.** `UserPreferences.timezone` is an IANA id (e.g. `Europe/Rome`) so DST keeps working. Onboarding/settings render buttons with `buildTimezonePickerOptions()` showing `HH:MM · UTC±N` ("match your phone"). Validation/admin-filter allowlist is `ALLOWED_TIMEZONE_IDS = TIMEZONE_REPRESENTATIVES ∪ LEGACY_TIMEZONE_IDS` (legacy ids like `Europe/Paris` and the invalid `Pacific/Baker_Island` remain accepted so old stored values keep filtering). Note: `LEGACY_TIMEZONE_IDS` contains ids that `Intl` cannot resolve — formatting one throws `RangeError`, so guard timezone formatting.
 
-3. **Premium gating is DISABLED — app is free for everyone.** Habit caps, paused-habit scheduling, and skip/drop notes are unrestricted; the checks are commented out in `CreateHabitUseCase`, `TelegramBot` (`handleHabitToggleDisabled`, schedule-for-disabled), and note prompts. `SubscriptionUseCase` / `userHasPremiumAccess` / `/subscribe` / admin lifetime-premium grant still exist but are **not enforced**. Don't "fix" premium behavior unless re-enabling is the explicit task.
+3. **Premium gating is DISABLED — app is free for everyone.** Habit caps and paused-habit scheduling are unrestricted; the checks are commented out in `CreateHabitUseCase` and `TelegramBot` (`handleHabitToggleDisabled`, schedule-for-disabled). `SubscriptionUseCase` / `userHasPremiumAccess` / `/subscribe` / admin lifetime-premium grant still exist but are **not enforced**. Don't "fix" premium behavior unless re-enabling is the explicit task.
+
+3a. **Skip/drop notes are MiniApp-only.** Dropping or skipping from the chat UI records an **empty note** with no prompt (users tap and leave). Notes are entered only from the MiniApp (`api/check.ts` / `reminders-server.ts` accept `note` in the POST body). Don't reintroduce a chat note prompt.
 
 4. **AI analytics insights are DISABLED.** `getAnalyticsInsights` (`src/api/analytics-shared.ts`) early-returns `{}` (OpenAI call commented out); the analytics page doesn't fetch `/api/analytics-insights` or render the panel. `OPENAI_API_KEY` is currently unused.
 
@@ -96,6 +98,8 @@ Currently inert: `OPENAI_API_KEY` (AI insights disabled), `PREMIUM_STARS_PRICE`,
 ## Testing
 
 Vitest, tests in `__tests__/` mirroring source layout. `__tests__/api/` covers reminders/analytics/webhook/users/send-message (mock repository, `fetch`, auth helpers, `ADMIN_USERS`). `__tests__/reminders-server/` covers the local server handlers. `__tests__/domain/use-cases/` covers use cases. When editing shared allowlists or timezone helpers, add tests that assert cross-file parity and DST/offset correctness rather than internal self-consistency.
+
+Tests for currently-disabled features are marked `it.skip` with a `// DISABLED:` comment saying why and when to restore — habit-cap enforcement (premium off), AI analytics insights (OpenAI off), and the local reminders-server CRON/initData checks (commented out for dev). Re-enable the test when you re-enable the feature.
 
 ## Security
 

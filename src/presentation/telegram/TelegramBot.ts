@@ -702,36 +702,6 @@ export class TelegramBotService {
         // Check for conversation state first (before processing commands)
         const conversationState = await this.getConversationState(userId);
 
-        // Handle premium drop/skip note collection
-        if (conversationState?.startsWith('habit_check_note:')) {
-          const noteMatch = conversationState.match(/^habit_check_note:(.+):(no|skip)(?::(.+))?$/);
-          if (noteMatch) {
-            const [, habitId, action, targetDate] = noteMatch;
-            if (text.match(/^\//) && text.trim().toLowerCase() !== '/skip') {
-              await this.clearConversationState(userId);
-              await this.bot.sendMessage(chatId, 'Cancelled. You can tap the habit again to drop or skip.');
-              return;
-            }
-            const note = (text.trim().toLowerCase() === '/skip' || text.trim().length === 0)
-              ? undefined
-              : text.trim().slice(0, 500);
-            await this.clearConversationState(userId);
-            try {
-              if (action === 'no') {
-                await this.recordHabitCheckUseCase.execute(userId, habitId, false, username, targetDate || undefined, note);
-                await this.bot.sendMessage(chatId, '❌ Streak reset. You can start fresh tomorrow! 💪');
-              } else {
-                const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate || undefined, note);
-                await this.bot.sendMessage(chatId, `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`);
-              }
-            } catch (err) {
-              Logger.error('Error recording habit check note', { userId, habitId, action, error: err instanceof Error ? err.message : 'Unknown error' });
-              await this.bot.sendMessage(chatId, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-            }
-            return;
-          }
-        }
-        
         // If user sends a command while in conversation state, clear the state
         if (conversationState && text.match(/^\//)) {
           await this.clearConversationState(userId);
@@ -2235,16 +2205,7 @@ export class TelegramBotService {
         }
         return;
       }
-      if (action === 'no') {
-        // Premium disabled: drop notes are free for everyone
-        const state = targetDate ? `habit_check_note:${habitId}:no:${targetDate}` : `habit_check_note:${habitId}:no`;
-        await this.setConversationState(userId, state);
-        await this.safeEditMessage(
-          'Send a note for this drop (optional). Reply with your note or /skip to leave empty.',
-          { chat_id: chatId, message_id: query.message?.message_id }
-        );
-        return;
-      }
+      // Drop/skip notes are entered from the MiniApp only; from chat the note is left empty.
       await this.handleHabitCheckCallback(userId, chatId, username, habitId, action === 'yes', query, targetDate);
       return;
     }
@@ -2596,45 +2557,34 @@ export class TelegramBotService {
     targetDate?: string
   ): Promise<void> {
     try {
-      // Premium disabled: skip notes are free for everyone (always prompt for an optional note)
-      const state = targetDate ? `habit_check_note:${habitId}:skip:${targetDate}` : `habit_check_note:${habitId}:skip`;
-      await this.setConversationState(userId, state);
-      await this.safeEditMessage(
-        'Send a note for this skip (optional). Reply with your note or /skip to leave empty.',
-        { chat_id: chatId, message_id: messageId }
-      );
-      return;
+      // Skip notes are entered from the MiniApp only; from chat the note is left empty.
+      const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
 
-      // Non-note fallback (no longer reached; note prompt above handles skip for all users):
-      // const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
-      //
-      // const message = `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`;
-      //
-      // await this.safeEditMessage(
-      //   message,
-      //   {
-      //     chat_id: chatId,
-      //     message_id: messageId,
-      //   }
-      // );
-      //
-      // // Send notification to channel (async, don't block)
-      // this.sendHabitReactionNotification(
-      //   userId,
-      //   username,
-      //   updatedHabit.name,
-      //   'skipped',
-      //   updatedHabit.streak,
-      //   user
-      // ).catch(error => {
-      //   Logger.error('Error sending habit skip notification', {
-      //     userId,
-      //     error: error instanceof Error ? error.message : 'Unknown error',
-      //   });
-      // });
-      //
-      // // Note: We don't ask about other habits here because each habit has its own reminder schedule
-      // // Users will receive separate reminders for each habit at their scheduled times
+      await this.safeEditMessage(
+        `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      // Send notification to channel (async, don't block)
+      this.sendHabitReactionNotification(
+        userId,
+        username,
+        updatedHabit.name,
+        'skipped',
+        updatedHabit.streak,
+        user
+      ).catch(error => {
+        Logger.error('Error sending habit skip notification', {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      });
+
+      // Note: We don't ask about other habits here because each habit has its own reminder schedule
+      // Users will receive separate reminders for each habit at their scheduled times
     } catch (error) {
       Logger.error('Error skipping habit', {
         userId,

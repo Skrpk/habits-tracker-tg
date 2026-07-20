@@ -135,7 +135,9 @@ describe('api/analytics-insights', () => {
     expect(mockChatCompletionsCreate).not.toHaveBeenCalled();
   });
 
-  it('returns 200 with cached insights when cache hit for premium user', async () => {
+  // DISABLED: AI analytics insights are turned off — getAnalyticsInsights early-returns {}
+  // (OpenAI call commented out). Re-enable when insights are switched back on.
+  it.skip('returns 200 with cached insights when cache hit for premium user', async () => {
     const cached = { 'habit-1': '<p>Cached insight</p>' };
     mockKvGet.mockResolvedValue(cached);
     const handler = (await import('../../api/analytics-insights')).default;
@@ -151,7 +153,9 @@ describe('api/analytics-insights', () => {
     expect(mockKvSetWithExpiry).not.toHaveBeenCalled();
   });
 
-  it('calls OpenAI and caches result when cache miss for premium user', async () => {
+  // DISABLED: AI analytics insights are turned off — getAnalyticsInsights early-returns {}
+  // (OpenAI call commented out). Re-enable when insights are switched back on.
+  it.skip('calls OpenAI and caches result when cache miss for premium user', async () => {
     const handler = (await import('../../api/analytics-insights')).default;
     const req = { method: 'POST', body: { initData: 'valid' } } as VercelRequest;
     const res = createMockRes();
