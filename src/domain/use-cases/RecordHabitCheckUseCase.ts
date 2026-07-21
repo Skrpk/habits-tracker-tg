@@ -169,6 +169,9 @@ export class RecordHabitCheckUseCase {
         checked: updatedChecked,
         badges: updatedBadges,
         imgIndex: habit.imgIndex,
+        // Any response re-engages the habit: reset auto-pause miss tracking.
+        missedReminderCount: 0,
+        remindersPausedUntil: undefined,
       });
     } else {
       newStreak = 0;
@@ -189,6 +192,9 @@ export class RecordHabitCheckUseCase {
         dropped: updatedDropped,
         badges: habit.badges || [],
         imgIndex: habit.imgIndex,
+        // Any response re-engages the habit: reset auto-pause miss tracking.
+        missedReminderCount: 0,
+        remindersPausedUntil: undefined,
       });
     }
 
@@ -266,6 +272,9 @@ export class RecordHabitCheckUseCase {
     await this.habitRepository.updateHabit(userId, habitId, {
       skipped: updatedSkipped,
       lastCheckedDate: checkDate,
+      // Any response re-engages the habit: reset auto-pause miss tracking.
+      missedReminderCount: 0,
+      remindersPausedUntil: undefined,
     });
 
     const updatedHabits = await this.habitRepository.getUserHabits(userId);

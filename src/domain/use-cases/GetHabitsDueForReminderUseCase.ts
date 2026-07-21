@@ -48,6 +48,12 @@ export class GetHabitsDueForReminderUseCase {
           continue;
         }
 
+        // Skip if auto-paused (2 ignored daily reminders). Pause wins over a
+        // pending postpone; it clears itself via the resume branch once expired.
+        if (habit.remindersPausedUntil && today < habit.remindersPausedUntil) {
+          continue;
+        }
+
         // A habit is due either on its normal schedule, or because a "Check
         // later" postpone has come due (window match on the true instant, so any
         // cron cadence catches it). reminderEnabled is honored for both paths.

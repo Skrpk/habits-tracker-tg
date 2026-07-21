@@ -95,4 +95,33 @@ describe('GetHabitsDueForReminderUseCase — postpone path', () => {
     const due = await useCase.execute(new Date('2026-07-15T09:00:00Z'), 9, 0, 'UTC');
     expect(due.map(h => h.id)).toEqual(['habit-1']);
   });
+
+  it('skips an auto-paused habit and includes it once the pause expires', async () => {
+    // Active pause (future) → skipped even though the schedule is due at 09:00
+    mockRepo.getUserHabits.mockResolvedValue({
+      userId: 100,
+      habits: [createHabit({ remindersPausedUntil: '2026-07-20' })],
+    });
+    const useCase = new GetHabitsDueForReminderUseCase(mockRepo as unknown as IHabitRepository);
+    const paused = await useCase.execute(new Date('2026-07-15T09:00:00Z'), 9, 0, 'UTC');
+    expect(paused).toHaveLength(0);
+
+    // Expired pause (past) → reappears
+    mockRepo.getUserHabits.mockResolvedValue({
+      userId: 100,
+      habits: [createHabit({ remindersPausedUntil: '2026-07-10' })],
+    });
+    const resumed = await useCase.execute(new Date('2026-07-15T09:00:00Z'), 9, 0, 'UTC');
+    expect(resumed.map(h => h.id)).toEqual(['habit-1']);
+  });
+
+  it('pause wins over a due postpone (stays skipped)', async () => {
+    mockRepo.getUserHabits.mockResolvedValue({
+      userId: 100,
+      habits: [createHabit({ remindersPausedUntil: '2026-07-20', postponedUntil: '2026-07-15T12:30:00Z' })],
+    });
+    const useCase = new GetHabitsDueForReminderUseCase(mockRepo as unknown as IHabitRepository);
+    const due = await useCase.execute(now, 13, 0, 'UTC');
+    expect(due).toHaveLength(0);
+  });
 });

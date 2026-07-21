@@ -52,6 +52,9 @@ export interface Habit {
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
   disabled?: boolean; // Whether the habit is disabled (default false)
   postponedUntil?: string; // ISO-8601 UTC instant the reminder was postponed to ("Check later"). Absent = not postponed. Cleared on (re)send or check. One-shot.
+  missedReminderCount?: number; // Consecutive unanswered daily reminders (auto-pause). Reset to 0 on any response. Daily habits only.
+  lastReminderDate?: string; // YYYY-MM-DD of the last daily reminder actually sent (auto-pause miss detection). Daily habits only.
+  remindersPausedUntil?: string; // YYYY-MM-DD; daily reminders auto-paused while targetDate < this. Set after 2 consecutive misses, cleared on response/resume.
   badges?: Badge[]; // Array of earned badges (backward compatible - optional)
   imgIndex?: number; // Index of the image folder used for celebration images (1-based, cycles through MAX_IMG_FOLDER_INDEX)
 }

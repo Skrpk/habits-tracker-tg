@@ -10,6 +10,8 @@ Everything flows through `TelegramBotService.processUpdate()`, which manually di
 
 Reminder answer callbacks all carry the reminder's day: `habit_check:{id}:{yes|no|skip|cancel}:{YYYY-MM-DD}` and `habit_postpone:{id}:{YYYY-MM-DD}` ("Check later"). `handleHabitPostpone` stores `Habit.postponedUntil` and strips the message's buttons; the re-ask is driven by the reminder cron via `GetHabitsDueForReminderUseCase` (see root gotcha #11), **not** an in-process timer. `habit_postpone` and `habit_check` have distinct prefixes (order-independent) — keep both branches awaited.
 
+`resume_reminders:{id}` (`handleResumeReminders` → `ResumeRemindersUseCase`) clears an auto-pause (root gotcha #12); the button rides the one-time notice sent by `sendPauseNotice`.
+
 ## Conversation state
 
 Multi-step flows store state in Redis under `conversation_state:{userId}` (never in-memory — serverless). Known prefixes:
@@ -35,3 +37,4 @@ Clear or advance state explicitly at the end of each step. Unhandled free text (
 - Keep business rules in `src/domain/use-cases/`; this service should orchestrate, not compute streaks/history itself.
 - Habit checks in the reminder path must pass `targetDate` through to the use case (see root gotcha #1) — never record against `new Date()`.
 - `sendSingleHabitReminder` takes the user's timezone and adds the `🕐 Check later` row only when `computePostponeTarget(now, tz)` is non-null (postpone stays within today). It also clears any `postponedUntil` on send. Whether-to-offer (send-time) and whether-still-valid (click-time, in `handleHabitPostpone`) both go through `src/domain/utils/postpone.ts` — keep that the single source of truth. Postpone state (`Habit.postponedUntil`) is set/cleared via `PostponeHabitReminderUseCase`, not by poking the repo inline.
+- `sendHabitReminders` returns the habit IDs it **successfully sent** (per-habit try/catch — one failure no longer aborts the batch). The reminder cron (`api/reminders.ts` + `reminders-server.ts`) uses this for auto-pause's persist-after-send: `EvaluateReminderPauseUseCase.filterDueHabits` decides purely, the cron persists a `toSend` update only for returned IDs, and `pausedNow` persists immediately + `sendPauseNotice`. See root gotcha #12; keep the two cron files in parity.

@@ -163,6 +163,8 @@ describe('RecordHabitCheckUseCase', () => {
     expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', {
       skipped: [{ skippedDay: 4, date: '2025-02-15' }],
       lastCheckedDate: '2025-02-15',
+      missedReminderCount: 0,
+      remindersPausedUntil: undefined,
     });
     expect(result.streak).toBe(4);
   });
@@ -237,6 +239,8 @@ describe('RecordHabitCheckUseCase', () => {
     expect(mockRepo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', {
       skipped: [{ skippedDay: 4, date: '2025-02-15', note: 'On vacation' }],
       lastCheckedDate: '2025-02-15',
+      missedReminderCount: 0,
+      remindersPausedUntil: undefined,
     });
   });
 
@@ -511,5 +515,34 @@ describe('RecordHabitCheckUseCase', () => {
     expect(call.badges).toHaveLength(1);
     expect(call.badges![0].type).toBe(5);
     expect(call.badges![0].earnedAt).toBeDefined();
+  });
+
+  describe('resets auto-pause state on any response', () => {
+    it.each([
+      ['complete', () => useCaseFor().execute(100, 'habit-1', true, 'user', '2025-02-15')],
+      ['drop', () => useCaseFor().execute(100, 'habit-1', false, 'user', '2025-02-15')],
+      ['skip', () => useCaseFor().skipHabit(100, 'habit-1', 'user', '2025-02-15')],
+    ])('%s clears missedReminderCount and remindersPausedUntil', async (_label, run) => {
+      const habit = createHabit({
+        streak: 1,
+        lastCheckedDate: '2025-02-13',
+        missedReminderCount: 1,
+        remindersPausedUntil: '2025-02-20',
+      });
+      mockRepo.getUserHabits
+        .mockResolvedValueOnce({ habits: [habit] })
+        .mockResolvedValueOnce({ habits: [{ ...habit, lastCheckedDate: '2025-02-15' }] });
+
+      await run();
+
+      const call = mockRepo.updateHabit.mock.calls[0][2];
+      expect(call.missedReminderCount).toBe(0);
+      expect(call.remindersPausedUntil).toBeUndefined();
+    });
+
+    // helper: build a use case bound to the shared mockRepo for this describe block
+    function useCaseFor() {
+      return new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
+    }
   });
 });

@@ -7,6 +7,7 @@ import { RecordHabitCheckUseCase } from '../src/domain/use-cases/RecordHabitChec
 import { DeleteHabitUseCase } from '../src/domain/use-cases/DeleteHabitUseCase';
 import { GetHabitsToCheckUseCase } from '../src/domain/use-cases/GetHabitsToCheckUseCase';
 import { GetHabitsDueForReminderUseCase } from '../src/domain/use-cases/GetHabitsDueForReminderUseCase';
+import { EvaluateReminderPauseUseCase } from '../src/domain/use-cases/EvaluateReminderPauseUseCase';
 import { SetHabitReminderScheduleUseCase } from '../src/domain/use-cases/SetHabitReminderScheduleUseCase';
 import { SubscriptionUseCase } from '../src/domain/use-cases/SubscriptionUseCase';
 import { Habit } from '../src/domain/entities/Habit';
@@ -165,6 +166,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const errors: Array<{ userId: number; error: string }> = [];
 
     // Send reminders grouped by user (targetDate = user's "today" in their timezone)
+    const evaluateReminderPauseUseCase = new EvaluateReminderPauseUseCase();
     for (const [userId, habits] of usersToNotify) {
       try {
         const prefs = await habitRepository.getUserPreferences(userId);
@@ -175,9 +177,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           month: '2-digit',
           day: '2-digit',
         }).format(now);
-        Logger.info('Sending reminder to user', { userId, habitCount: habits.length, targetDate });
 
-        await botService.sendHabitReminders(userId, habits, targetDate);
+        // Auto-pause: decide (pure), then persist after send (see EvaluateReminderPauseUseCase).
+        const { toSend, pausedNow } = evaluateReminderPauseUseCase.filterDueHabits(habits, targetDate);
+        Logger.info('Sending reminder to user', { userId, toSend: toSend.length, pausedNow: pausedNow.length, targetDate });
+
+        for (const { habit, update } of pausedNow) {
+          await habitRepository.updateHabit(userId, habit.id, update); // pause persists regardless
+          await botService.sendPauseNotice(userId, habit.name, habit.id);
+        }
+
+        const sentIds = await botService.sendHabitReminders(userId, toSend.map(t => t.habit), targetDate);
+        for (const { habit, update } of toSend) {
+          if (Object.keys(update).length > 0 && sentIds.includes(habit.id)) {
+            await habitRepository.updateHabit(userId, habit.id, update); // persist only what shipped
+          }
+        }
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

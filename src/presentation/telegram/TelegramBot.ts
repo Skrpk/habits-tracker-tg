@@ -11,6 +11,7 @@ import { CheckHabitReminderDueUseCase } from '../../domain/use-cases/CheckHabitR
 import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPreferencesUseCase';
 import { ToggleHabitDisabledUseCase } from '../../domain/use-cases/ToggleHabitDisabledUseCase';
 import { PostponeHabitReminderUseCase } from '../../domain/use-cases/PostponeHabitReminderUseCase';
+import { ResumeRemindersUseCase } from '../../domain/use-cases/ResumeRemindersUseCase';
 import { computePostponeTarget, localDay } from '../../domain/utils/postpone';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../../domain/use-cases/SubscriptionUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
@@ -40,6 +41,7 @@ export class TelegramBotService {
   private setUserPreferencesUseCase: SetUserPreferencesUseCase;
   private toggleHabitDisabledUseCase: ToggleHabitDisabledUseCase;
   private postponeHabitReminderUseCase: PostponeHabitReminderUseCase;
+  private resumeRemindersUseCase: ResumeRemindersUseCase;
   private subscriptionUseCase: SubscriptionUseCase;
   private quoteManager: QuoteManager;
   private openai: OpenAI | null = null;
@@ -107,6 +109,7 @@ export class TelegramBotService {
     this.setUserPreferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
     this.toggleHabitDisabledUseCase = new ToggleHabitDisabledUseCase(habitRepository);
     this.postponeHabitReminderUseCase = new PostponeHabitReminderUseCase(habitRepository);
+    this.resumeRemindersUseCase = new ResumeRemindersUseCase(habitRepository);
     this.subscriptionUseCase = new SubscriptionUseCase(habitRepository);
     this.quoteManager = new QuoteManager();
     
@@ -540,43 +543,78 @@ export class TelegramBotService {
     }
   }
 
-  async sendHabitReminders(userId: number, habits: Habit[], targetDate: string): Promise<void> {
+  /**
+   * One-time heads-up that a habit's reminders were auto-paused, with a
+   * "Resume now" button. Best-effort — swallows send failures (blocked user).
+   */
+  async sendPauseNotice(userId: number, habitName: string, habitId: string): Promise<void> {
     try {
-      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
-      const username = getUsername(preferences?.user);
-
-      Logger.info('Sending habit reminders', {
+      await this.bot.sendMessage(
         userId,
-        username,
-        habitCount: habits.length,
-        habitIds: habits.map(h => h.id),
-        targetDate,
-      });
-
-      if (habits.length === 0) {
-        Logger.info('No habits to remind', { userId, username });
-        return;
-      }
-
-      for (const habit of habits) {
-        Logger.info(`Sending reminder "${habit.name}" to user ${username} ${userId}`, {
-          userId,
-          username,
-          habitId: habit.id,
-          habitName: habit.name,
-          targetDate,
-        });
-        await this.sendSingleHabitReminder(userId, habit, targetDate, preferences?.timezone || 'UTC');
-      }
-
-      Logger.info('Habit reminders sent successfully', { userId, username });
+        `😴 You haven't responded to "${habitName}" reminders lately, so I've paused them for a week ` +
+        `to avoid nagging. Tap Resume anytime to turn them back on.`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: '▶️ Resume now', callback_data: `resume_reminders:${habitId}` }]],
+          },
+        }
+      );
     } catch (error) {
-      Logger.error('Error sending habit reminders', {
+      Logger.warn('Failed to send auto-pause notice', {
         userId,
+        habitId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      throw error;
     }
+  }
+
+  /**
+   * Send each habit's reminder, returning the IDs that were successfully sent.
+   * A single habit's failure no longer aborts the rest of the batch, and callers
+   * use the returned IDs to persist per-habit state only for what actually shipped.
+   */
+  async sendHabitReminders(userId: number, habits: Habit[], targetDate: string): Promise<string[]> {
+    const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+    const username = getUsername(preferences?.user);
+
+    Logger.info('Sending habit reminders', {
+      userId,
+      username,
+      habitCount: habits.length,
+      habitIds: habits.map(h => h.id),
+      targetDate,
+    });
+
+    if (habits.length === 0) {
+      Logger.info('No habits to remind', { userId, username });
+      return [];
+    }
+
+    const sentIds: string[] = [];
+    for (const habit of habits) {
+      Logger.info(`Sending reminder "${habit.name}" to user ${username} ${userId}`, {
+        userId,
+        username,
+        habitId: habit.id,
+        habitName: habit.name,
+        targetDate,
+      });
+      try {
+        await this.sendSingleHabitReminder(userId, habit, targetDate, preferences?.timezone || 'UTC');
+        sentIds.push(habit.id);
+      } catch (error) {
+        // sendSingleHabitReminder already logged, flagged blocked users, and
+        // notified ops. Skip this habit but keep sending the rest of the batch.
+        Logger.error('Habit reminder failed; continuing batch', {
+          userId,
+          habitId: habit.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    Logger.info('Habit reminders sent', { userId, username, sentCount: sentIds.length });
+    return sentIds;
   }
 
   private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string, userTimezone: string = 'UTC'): Promise<void> {
@@ -725,6 +763,36 @@ export class TelegramBotService {
       });
     } catch (error) {
       Logger.error('Error postponing habit reminder', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /** "Resume now" on an auto-paused habit: clear the pause and confirm. */
+  private async handleResumeReminders(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habit = await this.resumeRemindersUseCase.getHabit(userId, habitId);
+      if (!habit) {
+        await this.safeEditMessage('Habit not found.', { chat_id: chatId, message_id: messageId });
+        return;
+      }
+
+      await this.resumeRemindersUseCase.resume(userId, habitId);
+
+      await this.safeEditMessage(
+        `▶️ Reminders resumed for "${habit.name}". I'll keep nudging you.`,
+        { chat_id: chatId, message_id: messageId }
+      );
+    } catch (error) {
+      Logger.error('Error resuming reminders', {
         userId,
         habitId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -2432,6 +2500,13 @@ export class TelegramBotService {
 
     if (data === 'open_subscribe') {
       await this.handleSubscribeCommand(chatId, userId, username);
+      return;
+    }
+
+    // Handle "Resume now" for an auto-paused habit
+    const resumeMatch = data.match(/^resume_reminders:(.+)$/);
+    if (resumeMatch) {
+      await this.handleResumeReminders(userId, chatId, resumeMatch[1], query.message?.message_id);
       return;
     }
 

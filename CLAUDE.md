@@ -49,7 +49,7 @@ Dependency rule: `domain` depends on nothing outward. `infrastructure` implement
 
 ## Data models (see `src/domain/entities/`)
 
-- **Habit**: `id, userId, name, streak, createdAt, lastCheckedDate (YYYY-MM-DD)`, plus arrays `skipped[]`, `dropped[]`, optional `checked[]` (explicit dates for non-daily), `badges[]` (5/10/30/90-day), `reminderSchedule?`, `reminderEnabled?` (default true), `disabled?`, `postponedUntil?` (ISO UTC — transient "Check later" snooze, see gotcha #11).
+- **Habit**: `id, userId, name, streak, createdAt, lastCheckedDate (YYYY-MM-DD)`, plus arrays `skipped[]`, `dropped[]`, optional `checked[]` (explicit dates for non-daily), `badges[]` (5/10/30/90-day), `reminderSchedule?`, `reminderEnabled?` (default true), `disabled?`, `postponedUntil?` (ISO UTC — transient "Check later" snooze, see gotcha #11), `missedReminderCount?` / `lastReminderDate?` / `remindersPausedUntil?` (auto-pause state, daily-only, see gotcha #12).
 - **ReminderSchedule** (discriminated union on `type`): `daily | weekly | monthly | interval`, each with `hour`, `minute`, optional `timezone`; `weekly.daysOfWeek`, `monthly.daysOfMonth`, `interval.intervalDays` + optional `startDate`.
 - **UserPreferences**: `userId, user? (full Telegram user), timezone? (IANA), consentAccepted?, consentDate?, blocked?, premium?, premiumDate?, premiumType?, isLifetimePremium?`.
 
@@ -85,6 +85,8 @@ Dependency rule: `domain` depends on nothing outward. `infrastructure` implement
 
 11. **"Check later" postpone is poll-driven, not scheduled.** The reminder keyboard offers `🕐 Check later (in 1 hour)` (callback `habit_postpone:{id}:{targetDate}`) only while a 1-hour bump stays within the user's local day (helpers in `src/domain/utils/postpone.ts`; a 23:xx reminder shows nothing). Tapping it stores `Habit.postponedUntil` (ISO UTC) and strips the message's buttons — there is **no in-process timer** (serverless). `GetHabitsDueForReminderUseCase` re-includes a habit when `isPostponeDue()` (window match on the true instant, `<= now`, same local day, unchecked, reminders on) — so **both** cron entrypoints re-ask with no endpoint changes, at whatever cadence the cron runs. `sendSingleHabitReminder` **clears** `postponedUntil` on every send (re-ask is one-shot; the `lastCheckedDate`/same-day guards make any stale flag harmless). The postponed re-ask keeps the **original `targetDate`** (gotcha #1). Chat-only — no MiniApp postpone.
 
+12. **Auto-pause after 2 ignored reminders — DAILY habits only.** `EvaluateReminderPauseUseCase.filterDueHabits(habits, targetDate)` is **pure** (returns `{toSend, pausedNow}` with `Partial<Habit>` updates, no writes). Non-daily schedules short-circuit to `toSend` untouched — never miss-tracked or paused. A "miss" = the previous sent reminder (`lastReminderDate`) went unanswered (`lastCheckedDate < lastReminderDate` — `<`, not `!=`, so a proactive check isn't a false miss); `lastReminderDate === targetDate` short-circuits same-day re-asks (postpone) so they never count. 2 consecutive misses → `remindersPausedUntil = targetDate + REMINDER_PAUSE_DAYS` (default 7) + a one-time "Resume now" notice (`sendPauseNotice`, callback `resume_reminders:{id}`); the `GetHabitsDueForReminderUseCase` gate skips paused habits (pause wins over postpone) and the resume branch clears it once expired. **Persist-after-send:** the cron persists a `toSend` update only for IDs `sendHabitReminders` reports as sent (`pausedNow` persists immediately) — a failed send never advances miss state. Any response resets it (`RecordHabitCheckUseCase` complete/drop/skip clear `missedReminderCount`/`remindersPausedUntil`). Env: `REMINDER_MISS_THRESHOLD` (2), `REMINDER_PAUSE_DAYS` (7).
+
 ## How it runs
 
 **Production (Vercel):** Telegram → `/api/webhook` (verified via `WEBHOOK_SECRET_TOKEN` header, singleton bot service). Cron hits `/api/reminders` hourly at minute 0 (`0 * * * *`, verified via `x-vercel-cron` + `Authorization`): loads active users, skips `blocked`, computes each user's `targetDate` in their timezone, sends due reminders. `public/` served at root; `vercel.json` rewrites `/admin`, `/check`, `/schedule`, analytics routes and sets per-route `maxDuration` (`send-message` 300s, `reminders` 60s, `users` 30s).
@@ -94,7 +96,7 @@ Dependency rule: `domain` depends on nothing outward. `infrastructure` implement
 ## Environment variables
 
 Required: `TELEGRAM_BOT_TOKEN`, `REDIS_URL` (`redis://` or `rediss://`).
-Common optional: `WEBHOOK_URL`, `WEBHOOK_SECRET_TOKEN`, `USE_LOCAL_REDIS`, `NODE_ENV`, `CRON_SECRET`, `CRON_SCHEDULE`, `NOTIFICATION_CHANNEL_ID`, `ADMIN_USERS` (JSON array of numeric Telegram ids).
+Common optional: `WEBHOOK_URL`, `WEBHOOK_SECRET_TOKEN`, `USE_LOCAL_REDIS`, `NODE_ENV`, `CRON_SECRET`, `CRON_SCHEDULE`, `NOTIFICATION_CHANNEL_ID`, `ADMIN_USERS` (JSON array of numeric Telegram ids), `REMINDER_MISS_THRESHOLD` (auto-pause after N ignored daily reminders, default 2), `REMINDER_PAUSE_DAYS` (auto-pause length, default 7).
 Currently inert: `OPENAI_API_KEY` (AI insights disabled), `PREMIUM_STARS_PRICE`, `PREMIUM_STARS_ANNUAL`, `MAX_FREE_HABITS` (premium disabled).
 
 ## Testing

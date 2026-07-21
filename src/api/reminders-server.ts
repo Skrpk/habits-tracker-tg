@@ -4,6 +4,7 @@ import { join, extname, resolve } from 'path';
 import { VercelKVHabitRepository } from '../infrastructure/repositories/VercelKVHabitRepository';
 import { TelegramBotService } from '../presentation/telegram/TelegramBot';
 import { GetHabitsDueForReminderUseCase } from '../domain/use-cases/GetHabitsDueForReminderUseCase';
+import { EvaluateReminderPauseUseCase } from '../domain/use-cases/EvaluateReminderPauseUseCase';
 import { CreateHabitUseCase } from '../domain/use-cases/CreateHabitUseCase';
 import { GetUserHabitsUseCase } from '../domain/use-cases/GetUserHabitsUseCase';
 import { RecordHabitCheckUseCase } from '../domain/use-cases/RecordHabitCheckUseCase';
@@ -137,6 +138,7 @@ export async function handleRemindersEndpoint(
     const errors: Array<{ userId: number; error: string }> = [];
 
     // Send reminders grouped by user (targetDate = user's "today" in their timezone)
+    const evaluateReminderPauseUseCase = new EvaluateReminderPauseUseCase();
     for (const [userId, habits] of usersToNotify) {
       try {
         const prefs = await habitRepository.getUserPreferences(userId);
@@ -147,8 +149,21 @@ export async function handleRemindersEndpoint(
           month: '2-digit',
           day: '2-digit',
         }).format(now);
-        // Logger.info('Sending reminder to user', { userId, habitCount: habits.length, targetDate });
-        await botService.sendHabitReminders(userId, habits, targetDate);
+
+        // Auto-pause: decide (pure), then persist after send (mirrors api/reminders.ts).
+        const { toSend, pausedNow } = evaluateReminderPauseUseCase.filterDueHabits(habits, targetDate);
+
+        for (const { habit, update } of pausedNow) {
+          await habitRepository.updateHabit(userId, habit.id, update); // pause persists regardless
+          await botService.sendPauseNotice(userId, habit.name, habit.id);
+        }
+
+        const sentIds = await botService.sendHabitReminders(userId, toSend.map(t => t.habit), targetDate);
+        for (const { habit, update } of toSend) {
+          if (Object.keys(update).length > 0 && sentIds.includes(habit.id)) {
+            await habitRepository.updateHabit(userId, habit.id, update); // persist only what shipped
+          }
+        }
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
