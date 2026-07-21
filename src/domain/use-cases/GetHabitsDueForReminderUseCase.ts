@@ -1,6 +1,7 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
 import { Habit } from '../entities/Habit';
 import { CheckHabitReminderDueUseCase } from './CheckHabitReminderDueUseCase';
+import { isPostponeDue } from '../utils/postpone';
 import { Logger } from '../../infrastructure/logger/Logger';
 
 export class GetHabitsDueForReminderUseCase {
@@ -47,14 +48,21 @@ export class GetHabitsDueForReminderUseCase {
           continue;
         }
 
-        // Check if habit is due for reminder based on its schedule (using user's timezone)
-        if (this.checkReminderDue.isDue(habit, userDate, userHour, userMinute, userTimezone)) {
+        // A habit is due either on its normal schedule, or because a "Check
+        // later" postpone has come due (window match on the true instant, so any
+        // cron cadence catches it). reminderEnabled is honored for both paths.
+        const remindersOn = habit.reminderEnabled !== false;
+        const postponeDue = remindersOn && isPostponeDue(habit.postponedUntil, currentDate, userTimezone);
+        const scheduleDue = this.checkReminderDue.isDue(habit, userDate, userHour, userMinute, userTimezone);
+
+        if (postponeDue || scheduleDue) {
           habitsDueForReminder.push(habit);
           Logger.debug('Habit due for reminder', {
             userId: habit.userId,
             habitId: habit.id,
             habitName: habit.name,
             schedule: habit.reminderSchedule,
+            reason: postponeDue ? 'postpone' : 'schedule',
             userTimezone,
             userHour,
             userMinute,

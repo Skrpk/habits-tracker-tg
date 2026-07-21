@@ -1,14 +1,23 @@
 /**
  * Curated IANA representatives for the timezone picker (west → east).
  * Covers integer UTC−12…+12 plus common half-hour offsets.
- * Button labels are built at render time from the user's current clock.
+ * Button labels are built at render time from the user's current clock, and
+ * `buildTimezonePickerOptions()` keeps the FIRST representative per *current*
+ * offset — so a DST zone that springs forward (e.g. London +0→+1) would leave
+ * its base offset uncovered for half the year.
+ *
+ * Fix: after every DST zone, list a NO-DST "filler" that sits permanently at
+ * that base offset (Reykjavik@+0, Gambier@−9, Darwin@+9:30, Brisbane@+10,
+ * Tarawa@+12). In the DST zone's standard season it holds the base offset and
+ * the filler is deduped away; in its DST season it moves off and the filler
+ * keeps the base offset present. Order matters: DST zone first, filler second.
  */
 export const TIMEZONE_REPRESENTATIVES: readonly string[] = [
   'Etc/GMT+12',           // UTC−12
   'Pacific/Niue',         // UTC−11
   'Pacific/Honolulu',     // UTC−10
-  'Pacific/Gambier',      // UTC−9 (no DST — keeps −9 present while Anchorage is on DST)
   'America/Anchorage',    // UTC−9 / −8 DST
+  'Pacific/Gambier',      // UTC−9 (no-DST filler — holds −9 when Anchorage is on DST)
   'America/Los_Angeles',  // UTC−8 / −7 DST
   'America/Denver',       // UTC−7 / −6 DST
   'America/Chicago',      // UTC−6 / −5 DST
@@ -19,6 +28,7 @@ export const TIMEZONE_REPRESENTATIVES: readonly string[] = [
   'Atlantic/South_Georgia', // UTC−2
   'Atlantic/Cape_Verde',  // UTC−1
   'Europe/London',        // UTC+0 / +1 DST
+  'Atlantic/Reykjavik',   // UTC+0 (no-DST filler — holds +0 when London is on DST)
   'Europe/Rome',          // UTC+1 / +2 DST (Italy, France, Germany, Spain, …)
   'Europe/Kyiv',          // UTC+2 / +3 DST
   'Europe/Moscow',        // UTC+3
@@ -30,9 +40,12 @@ export const TIMEZONE_REPRESENTATIVES: readonly string[] = [
   'Asia/Shanghai',        // UTC+8
   'Asia/Tokyo',           // UTC+9
   'Australia/Adelaide',   // UTC+9:30 / +10:30 DST
+  'Australia/Darwin',     // UTC+9:30 (no-DST filler — holds +9:30 when Adelaide is on DST)
   'Australia/Sydney',     // UTC+10 / +11 DST
+  'Australia/Brisbane',   // UTC+10 (no-DST filler — holds +10 when Sydney is on DST)
   'Pacific/Guadalcanal',  // UTC+11
   'Pacific/Auckland',     // UTC+12 / +13 DST
+  'Pacific/Tarawa',       // UTC+12 (no-DST filler — holds +12 when Auckland is on DST)
 ];
 
 /** IANA ids previously offered in the UI — still valid in stored preferences / admin filters. */
@@ -122,6 +135,11 @@ export function formatLocalTime(timeZone: string, date: Date = new Date()): stri
 /**
  * Build picker rows: one per distinct current UTC offset, label `HH:MM · UTC±N`.
  * First representative in TIMEZONE_REPRESENTATIVES wins for a given offset.
+ *
+ * Rows are sorted by current offset (west → east) so both the offsets and the
+ * displayed clock times read monotonically — the source list can't be pre-sorted
+ * because DST shifts offsets at runtime (and no-DST fillers sit next to the DST
+ * zone they cover, not at their numeric position).
  */
 export function buildTimezonePickerOptions(now: Date = new Date()): TimezonePickerOption[] {
   const seen = new Set<number>();
@@ -147,6 +165,7 @@ export function buildTimezonePickerOptions(now: Date = new Date()): TimezonePick
     });
   }
 
+  options.sort((a, b) => a.offsetMinutes - b.offsetMinutes);
   return options;
 }
 

@@ -8,6 +8,8 @@ Everything flows through `TelegramBotService.processUpdate()`, which manually di
 
 `timezone_select` callback shape: `timezone_select:{iana}` (onboarding) or `timezone_select:{iana}:settings` (from Settings), parsed by `/^timezone_select:(.+?)(?::(.+))?$/`. Handlers must validate the id against `ALLOWED_TIMEZONE_IDS` before persisting, and guard `Intl` formatting — some allowlisted legacy ids (e.g. `Pacific/Baker_Island`) throw `RangeError`.
 
+Reminder answer callbacks all carry the reminder's day: `habit_check:{id}:{yes|no|skip|cancel}:{YYYY-MM-DD}` and `habit_postpone:{id}:{YYYY-MM-DD}` ("Check later"). `handleHabitPostpone` stores `Habit.postponedUntil` and strips the message's buttons; the re-ask is driven by the reminder cron via `GetHabitsDueForReminderUseCase` (see root gotcha #11), **not** an in-process timer. `habit_postpone` and `habit_check` have distinct prefixes (order-independent) — keep both branches awaited.
+
 ## Conversation state
 
 Multi-step flows store state in Redis under `conversation_state:{userId}` (never in-memory — serverless). Known prefixes:
@@ -27,7 +29,9 @@ Clear or advance state explicitly at the end of each step. Unhandled free text (
 
 ## Editing notes
 
-- Schedule input is simplified: user picks a type via button, then types e.g. `20:30` (daily), `monday 15:48` (weekly), `15,30 22:00` (monthly), `2 15:30` (interval). Default when skipped: daily 22:00 in the user's timezone.
+- **Schedule setup during creation is finish-first, not a gate.** A new habit is created already carrying a working default (`daily 22:00` in the user's tz, set in `VercelKVHabitRepository.createHabit`). `askForScheduleDuringCreation` therefore shows a *confirmation* — `👍 Sounds good` (`schedule_skip_new`, finish), `🕐 Change time` (`schedule_pick_time_new` → one-tap preset times `PRESET_REMINDER_TIMES`, each `schedule_settime_new:{habitId}:{HHMM}`), `📅 Different schedule` (`schedule_more_new` → Weekly/Monthly/Interval type picker). Advanced types (and `⌨️ Custom time`) still land on the typed mini-DSL below. `← Back` (`schedule_back_new`) returns to the confirmation, not a type gate. Keep the default reachable in one tap — don't turn the picker back into the first screen.
+- Typed schedule mini-DSL (custom time / advanced types, and the edit-existing flow): user picks a type, then types e.g. `20:30` (daily), `monday 15:48` (weekly), `15,30 22:00` (monthly), `2 15:30` (interval), parsed by `SetHabitReminderScheduleUseCase.parseSchedule`.
 - Use `safeEditMessage()` for edits that may be no-ops — it swallows Telegram's "message is not modified" error.
 - Keep business rules in `src/domain/use-cases/`; this service should orchestrate, not compute streaks/history itself.
 - Habit checks in the reminder path must pass `targetDate` through to the use case (see root gotcha #1) — never record against `new Date()`.
+- `sendSingleHabitReminder` takes the user's timezone and adds the `🕐 Check later` row only when `computePostponeTarget(now, tz)` is non-null (postpone stays within today). It also clears any `postponedUntil` on send. Whether-to-offer (send-time) and whether-still-valid (click-time, in `handleHabitPostpone`) both go through `src/domain/utils/postpone.ts` — keep that the single source of truth. Postpone state (`Habit.postponedUntil`) is set/cleared via `PostponeHabitReminderUseCase`, not by poking the repo inline.

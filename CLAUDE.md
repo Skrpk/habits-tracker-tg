@@ -49,7 +49,7 @@ Dependency rule: `domain` depends on nothing outward. `infrastructure` implement
 
 ## Data models (see `src/domain/entities/`)
 
-- **Habit**: `id, userId, name, streak, createdAt, lastCheckedDate (YYYY-MM-DD)`, plus arrays `skipped[]`, `dropped[]`, optional `checked[]` (explicit dates for non-daily), `badges[]` (5/10/30/90-day), `reminderSchedule?`, `reminderEnabled?` (default true), `disabled?`.
+- **Habit**: `id, userId, name, streak, createdAt, lastCheckedDate (YYYY-MM-DD)`, plus arrays `skipped[]`, `dropped[]`, optional `checked[]` (explicit dates for non-daily), `badges[]` (5/10/30/90-day), `reminderSchedule?`, `reminderEnabled?` (default true), `disabled?`, `postponedUntil?` (ISO UTC — transient "Check later" snooze, see gotcha #11).
 - **ReminderSchedule** (discriminated union on `type`): `daily | weekly | monthly | interval`, each with `hour`, `minute`, optional `timezone`; `weekly.daysOfWeek`, `monthly.daysOfMonth`, `interval.intervalDays` + optional `startDate`.
 - **UserPreferences**: `userId, user? (full Telegram user), timezone? (IANA), consentAccepted?, consentDate?, blocked?, premium?, premiumDate?, premiumType?, isLifetimePremium?`.
 
@@ -82,6 +82,8 @@ Dependency rule: `domain` depends on nothing outward. `infrastructure` implement
 9. **`safeEditMessage()`** swallows Telegram "message is not modified" errors — use it for edits that may be no-ops.
 
 10. **Unhandled text is forwarded to ops.** After consent + timezone are set, any message not consumed by conversation state or a known command falls through silently to the user and is forwarded (truncated, no `parse_mode`) to `NOTIFICATION_CHANNEL_ID` via `sendUnhandledMessageNotification`.
+
+11. **"Check later" postpone is poll-driven, not scheduled.** The reminder keyboard offers `🕐 Check later (in 1 hour)` (callback `habit_postpone:{id}:{targetDate}`) only while a 1-hour bump stays within the user's local day (helpers in `src/domain/utils/postpone.ts`; a 23:xx reminder shows nothing). Tapping it stores `Habit.postponedUntil` (ISO UTC) and strips the message's buttons — there is **no in-process timer** (serverless). `GetHabitsDueForReminderUseCase` re-includes a habit when `isPostponeDue()` (window match on the true instant, `<= now`, same local day, unchecked, reminders on) — so **both** cron entrypoints re-ask with no endpoint changes, at whatever cadence the cron runs. `sendSingleHabitReminder` **clears** `postponedUntil` on every send (re-ask is one-shot; the `lastCheckedDate`/same-day guards make any stale flag harmless). The postponed re-ask keeps the **original `targetDate`** (gotcha #1). Chat-only — no MiniApp postpone.
 
 ## How it runs
 

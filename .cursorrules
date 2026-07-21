@@ -87,6 +87,7 @@ The project follows **Clean Architecture** principles with clear separation of c
    - Default schedule: Daily at 22:00 in user's timezone
    - Reminders checked hourly via cron jobs
    - When sending reminders, the cron computes each user's "today" in their timezone and passes that as **targetDate** to `sendHabitReminders(userId, habits, targetDate)`. Reminder buttons include targetDate in callback_data (e.g. `habit_check:{habitId}:yes:{YYYY-MM-DD}`) so late responses count for the correct day.
+   - **Check later (in 1 hour):** reminders also carry a `🕐 Check later` button (`habit_postpone:{habitId}:{YYYY-MM-DD}`) unless a 1-hour bump would cross midnight in the user's timezone (a 23:xx reminder omits it). Tapping stores `Habit.postponedUntil` (ISO UTC) and removes the buttons; there is no in-process timer. `GetHabitsDueForReminderUseCase` re-asks the habit once its postpone is due (`isPostponeDue`, same-day window), and `sendSingleHabitReminder` clears the flag on send. Logic lives in `src/domain/utils/postpone.ts` + `PostponeHabitReminderUseCase`. Chat-only (no MiniApp postpone).
    - Users who have **blocked** the bot are skipped (no reminders sent) until they send `/start` again, which clears the blocked flag.
    - Production: Vercel Cron Jobs (`0 * * * *` - every hour at minute 0)
    - Development: Docker cron container (configurable schedule)
@@ -229,6 +230,7 @@ interface Habit {
   reminderSchedule?: ReminderSchedule; // Custom reminder schedule
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
   disabled?: boolean;      // Whether habit is paused
+  postponedUntil?: string; // ISO UTC — transient "Check later (in 1 hour)" snooze; re-asked by the cron, cleared on send
 }
 
 interface SkippedDay {

@@ -51,6 +51,7 @@ export interface Habit {
   reminderSchedule?: ReminderSchedule; // Reminder schedule configuration
   reminderEnabled?: boolean; // Whether reminders are enabled (default true)
   disabled?: boolean; // Whether the habit is disabled (default false)
+  postponedUntil?: string; // ISO-8601 UTC instant the reminder was postponed to ("Check later"). Absent = not postponed. Cleared on (re)send or check. One-shot.
   badges?: Badge[]; // Array of earned badges (backward compatible - optional)
   imgIndex?: number; // Index of the image folder used for celebration images (1-based, cycles through MAX_IMG_FOLDER_INDEX)
 }

@@ -10,6 +10,8 @@ import { SetHabitReminderScheduleUseCase } from '../../domain/use-cases/SetHabit
 import { CheckHabitReminderDueUseCase } from '../../domain/use-cases/CheckHabitReminderDueUseCase';
 import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPreferencesUseCase';
 import { ToggleHabitDisabledUseCase } from '../../domain/use-cases/ToggleHabitDisabledUseCase';
+import { PostponeHabitReminderUseCase } from '../../domain/use-cases/PostponeHabitReminderUseCase';
+import { computePostponeTarget, localDay } from '../../domain/utils/postpone';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../../domain/use-cases/SubscriptionUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
 import { Habit } from '../../domain/entities/Habit';
@@ -37,6 +39,7 @@ export class TelegramBotService {
   private checkReminderDue: CheckHabitReminderDueUseCase;
   private setUserPreferencesUseCase: SetUserPreferencesUseCase;
   private toggleHabitDisabledUseCase: ToggleHabitDisabledUseCase;
+  private postponeHabitReminderUseCase: PostponeHabitReminderUseCase;
   private subscriptionUseCase: SubscriptionUseCase;
   private quoteManager: QuoteManager;
   private openai: OpenAI | null = null;
@@ -103,6 +106,7 @@ export class TelegramBotService {
     const habitRepository = new VercelKVHabitRepository();
     this.setUserPreferencesUseCase = new SetUserPreferencesUseCase(habitRepository);
     this.toggleHabitDisabledUseCase = new ToggleHabitDisabledUseCase(habitRepository);
+    this.postponeHabitReminderUseCase = new PostponeHabitReminderUseCase(habitRepository);
     this.subscriptionUseCase = new SubscriptionUseCase(habitRepository);
     this.quoteManager = new QuoteManager();
     
@@ -562,7 +566,7 @@ export class TelegramBotService {
           habitName: habit.name,
           targetDate,
         });
-        await this.sendSingleHabitReminder(userId, habit, targetDate);
+        await this.sendSingleHabitReminder(userId, habit, targetDate, preferences?.timezone || 'UTC');
       }
 
       Logger.info('Habit reminders sent successfully', { userId, username });
@@ -575,23 +579,37 @@ export class TelegramBotService {
     }
   }
 
-  private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string): Promise<void> {
+  private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string, userTimezone: string = 'UTC'): Promise<void> {
     const suffix = targetDate ? `:${targetDate}` : '';
     const reminderText = `⏰ Reminder: Did you "${habit.name}" today?`;
 
-    const keyboardWithoutMiniApp = {
-      inline_keyboard: [
-        [
-          { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` },
-        ],
-        [
-          { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
-          { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
-        ],
+    const baseRows: any[][] = [
+      [
+        { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` },
       ],
-    };
+      [
+        { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
+        { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
+      ],
+    ];
+
+    // Offer "Check later" only while a 1-hour postpone stays within today
+    // (a 23:xx reminder can't be pushed without crossing midnight).
+    if (targetDate && computePostponeTarget(new Date(), userTimezone) !== null) {
+      baseRows.push([
+        { text: '🕐 Check later (in 1 hour)', callback_data: `habit_postpone:${habit.id}:${targetDate}` },
+      ]);
+    }
+
+    const keyboardWithoutMiniApp = { inline_keyboard: baseRows };
 
     try {
+      // Clear any postpone that led here — this send satisfies it, and clearing
+      // on every send also sweeps up stale flags from prior days.
+      if (habit.postponedUntil) {
+        await this.postponeHabitReminderUseCase.clearPostpone(userId, habit.id);
+      }
+
       const sent = await this.bot.sendMessage(userId, reminderText, {
         reply_markup: keyboardWithoutMiniApp,
       });
@@ -633,6 +651,85 @@ export class TelegramBotService {
       // Send notification to channel
       await this.sendErrorNotification(userId, habit.name, 'Error sending habit reminder', errorMessage);
       throw error;
+    }
+  }
+
+  /**
+   * "Check later (in 1 hour)": strip the reminder's buttons, store a postpone,
+   * and let the cron re-ask ~1h later (same day). If it's too late in the day to
+   * postpone, keep the answer buttons so the user can still respond.
+   */
+  private async handleHabitPostpone(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    targetDate: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habit = await this.postponeHabitReminderUseCase.getHabit(userId, habitId);
+      if (!habit) {
+        await this.safeEditMessage('Habit not found.', { chat_id: chatId, message_id: messageId });
+        return;
+      }
+
+      // Already answered for this day — nothing to postpone.
+      if (habit.lastCheckedDate === targetDate) {
+        await this.safeEditMessage(
+          `✅ "${habit.name}" is already recorded for today.`,
+          { chat_id: chatId, message_id: messageId }
+        );
+        return;
+      }
+
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = preferences?.timezone || 'UTC';
+      const now = new Date();
+
+      // Stale button (tapped on a later day) or too late to postpone within today:
+      // keep the answer buttons so the user can still respond now.
+      const target = computePostponeTarget(now, userTimezone);
+      if (localDay(now, userTimezone) !== targetDate || target === null) {
+        const suffix = `:${targetDate}`;
+        await this.safeEditMessage(
+          `It's too late to postpone "${habit.name}" today — tap ✅ / ⏭️ / ❌ when you can.`,
+          {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` }],
+                [
+                  { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
+                  { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
+                ],
+              ],
+            },
+          }
+        );
+        return;
+      }
+
+      await this.postponeHabitReminderUseCase.setPostpone(userId, habitId, target);
+
+      await this.safeEditMessage(
+        `🕐 Okay — I'll ask about "${habit.name}" again around ${formatLocalTime(userTimezone, target)}.`,
+        { chat_id: chatId, message_id: messageId }
+      );
+
+      Logger.info('Habit reminder postponed', {
+        userId,
+        habitId,
+        targetDate,
+        postponedUntil: target.toISOString(),
+      });
+    } catch (error) {
+      Logger.error('Error postponing habit reminder', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -1787,8 +1884,8 @@ export class TelegramBotService {
       );
 
       await this.safeEditMessage(
-        `🌱 Habit "${habit.name}" is ready! Your seed is in the ground.\n\n` +
-        `Schedule: ${scheduleDesc} (default)\n\n` +
+        `✅ "${habit.name}" is ready! Your seed is in the ground.\n\n` +
+        `⏰ ${scheduleDesc}\n\n` +
         `View all your habits with /myhabits`,
         {
           chat_id: chatId,
@@ -1807,6 +1904,8 @@ export class TelegramBotService {
     }
   }
 
+  // "← Back" from any customization sub-screen returns to the finish-first
+  // confirmation (the default daily reminder), not the old type-picker gate.
   private async handleScheduleBackNew(
     userId: number,
     chatId: number,
@@ -1828,11 +1927,165 @@ export class TelegramBotService {
       const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       const userTimezone = userPreferences?.timezone || 'UTC';
       const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
+      const schedule = habit.reminderSchedule || { type: 'daily' as const, hour: 22, minute: 0, timezone: userTimezone };
+      const time = `${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}`;
+
+      await this.safeEditMessage(
+        `🌱 "${habit.name}" is planted.\n\n` +
+        `⏰ We'll remind you *every day at ${time}* (${timezoneName}).\n\n` +
+        `Tap *👍 Sounds good* to finish — or adjust the reminder below.`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: this.buildNewHabitConfirmKeyboard(habitId),
+        }
+      );
+    } catch (error) {
+      Logger.error('Error going back to schedule picker', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // "🕐 Change time" / advanced "Daily": one-tap preset times for a daily reminder.
+  private async handleSchedulePickTimeNew(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      // If the user taps "⌨️ Custom time" they'll type HH:MM; parse it as daily.
+      await this.setConversationState(userId, `setting_schedule_new:${habitId}:daily`);
+
+      const timeRows: any[][] = [];
+      const presets = TelegramBotService.PRESET_REMINDER_TIMES;
+      for (let i = 0; i < presets.length; i += 2) {
+        const row = [presets[i], presets[i + 1]]
+          .filter(Boolean)
+          .map(t => ({ text: t, callback_data: `schedule_settime_new:${habitId}:${t.replace(':', '')}` }));
+        timeRows.push(row);
+      }
+
+      const keyboard = {
+        inline_keyboard: [
+          ...timeRows,
+          [{ text: '⌨️ Custom time', callback_data: `schedule_type_new:${habitId}:daily` }],
+          [{ text: '← Back', callback_data: `schedule_back_new:${habitId}` }],
+        ],
+      };
+
+      await this.safeEditMessage(
+        `🕐 What time each day should we remind you about "${habit.name}"?\n\n` +
+        `Pick a time, or tap *⌨️ Custom time* to type your own (HH:MM).`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: keyboard,
+        }
+      );
+    } catch (error) {
+      Logger.error('Error showing time picker for new habit', {
+        userId,
+        habitId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // A preset time was tapped: set a daily schedule at that time and finish.
+  private async handleScheduleSetTimeNew(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    hhmm: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      if (!this.setHabitReminderScheduleUseCase) {
+        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        return;
+      }
+
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) {
+        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      const hour = parseInt(hhmm.slice(0, 2), 10);
+      const minute = parseInt(hhmm.slice(2, 4), 10);
+
+      const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const userTimezone = userPreferences?.timezone || 'UTC';
+
+      const schedule = { type: 'daily' as const, hour, minute, timezone: userTimezone };
+      const updatedHabit = await this.setHabitReminderScheduleUseCase.execute(userId, habitId, schedule);
+      const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
+
+      await this.safeEditMessage(
+        `✅ "${updatedHabit.name}" is ready!\n\n` +
+        `⏰ ${scheduleDesc}\n\n` +
+        `View all your habits with /myhabits`,
+        {
+          chat_id: chatId,
+          message_id: messageId,
+        }
+      );
+
+      await this.clearConversationState(userId);
+    } catch (error) {
+      Logger.error('Error setting preset time for new habit', {
+        userId,
+        habitId,
+        hhmm,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // "📅 Different schedule": advanced type picker (Weekly/Monthly/Interval),
+  // kept out of the default path to avoid choice paralysis during onboarding.
+  private async handleScheduleMoreNew(
+    userId: number,
+    chatId: number,
+    habitId: string,
+    messageId?: number
+  ): Promise<void> {
+    try {
+      const habits = await this.getUserHabitsUseCase.execute(userId);
+      const habit = habits.find(h => h.id === habitId);
+
+      if (!habit) {
+        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.clearConversationState(userId);
+        return;
+      }
+
+      await this.setConversationState(userId, `setting_schedule_new:${habitId}`);
 
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '📅 Daily', callback_data: `schedule_type_new:${habitId}:daily` },
+            { text: '📅 Daily', callback_data: `schedule_pick_time_new:${habitId}` },
             { text: '📆 Weekly', callback_data: `schedule_type_new:${habitId}:weekly` },
           ],
           [
@@ -1840,14 +2093,14 @@ export class TelegramBotService {
             { text: '⏱️ Interval', callback_data: `schedule_type_new:${habitId}:interval` },
           ],
           [
-            { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
+            { text: '← Back', callback_data: `schedule_back_new:${habitId}` },
           ],
         ],
       };
 
       await this.safeEditMessage(
-        `⏰ Set up reminder schedule for "${habit.name}":\n\n` +
-        `Choose a schedule type or skip to use the default (daily at 22:00 ${timezoneName}).`,
+        `📅 How often should we remind you about "${habit.name}"?\n\n` +
+        `Pick a schedule type below.`,
         {
           chat_id: chatId,
           message_id: messageId,
@@ -1855,7 +2108,7 @@ export class TelegramBotService {
         }
       );
     } catch (error) {
-      Logger.error('Error going back to schedule picker', {
+      Logger.error('Error showing advanced schedule picker', {
         userId,
         habitId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -1899,37 +2152,45 @@ export class TelegramBotService {
     }
   }
 
+  // One-tap reminder times offered during habit creation (24h). Covers the
+  // common "morning / midday / evening" spread so ~most users never type.
+  private static readonly PRESET_REMINDER_TIMES = ['09:00', '12:00', '18:00', '20:00', '21:00', '22:00'];
+
+  /**
+   * Finish-first confirmation shown right after a habit is named. The habit is
+   * already fully working (default daily 22:00), so this is optional tuning, not
+   * a gate: "Sounds good" finishes; the other buttons customize.
+   */
+  private buildNewHabitConfirmKeyboard(habitId: string) {
+    return {
+      inline_keyboard: [
+        [{ text: '👍 Sounds good', callback_data: `schedule_skip_new:${habitId}` }],
+        [{ text: '🕐 Change time', callback_data: `schedule_pick_time_new:${habitId}` }],
+        [{ text: '📅 Different schedule', callback_data: `schedule_more_new:${habitId}` }],
+      ],
+    };
+  }
+
   private async askForScheduleDuringCreation(chatId: number, userId: number, habitId: string, habitName: string): Promise<void> {
     // Set conversation state for schedule configuration during creation
     await this.setConversationState(userId, `setting_schedule_new:${habitId}`);
-    
+
     // Get user's timezone for display
     const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
     const userTimezone = userPreferences?.timezone || 'UTC';
     const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
-    
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '📅 Daily', callback_data: `schedule_type_new:${habitId}:daily` },
-          { text: '📆 Weekly', callback_data: `schedule_type_new:${habitId}:weekly` },
-        ],
-        [
-          { text: '🗓️ Monthly', callback_data: `schedule_type_new:${habitId}:monthly` },
-          { text: '⏱️ Interval', callback_data: `schedule_type_new:${habitId}:interval` },
-        ],
-        [
-          { text: '⏭️ Skip (use default)', callback_data: `schedule_skip_new:${habitId}` },
-        ],
-      ],
-    };
 
+    // The habit already carries a working default schedule (daily 22:00); show
+    // the actual time rather than assuming, then let the user confirm or tune.
     const userHabits = await this.getUserHabitsUseCase.execute(userId);
+    const habit = userHabits.find(h => h.id === habitId);
+    const defaultSchedule = habit?.reminderSchedule || { type: 'daily' as const, hour: 22, minute: 0, timezone: userTimezone };
+    const defaultTime = `${defaultSchedule.hour.toString().padStart(2, '0')}:${defaultSchedule.minute.toString().padStart(2, '0')}`;
     const isFirstHabit = userHabits.length === 1;
 
     let text = `🌱 Habit "${habitName}" created! Your seed is planted.\n\n` +
-      `⏰ Now set up your reminder schedule:\n\n` +
-      `Choose a schedule type or skip to use the default (daily at 22:00 ${timezoneName}).`;
+      `⏰ We'll remind you *every day at ${defaultTime}* (${timezoneName}).\n\n` +
+      `Tap *👍 Sounds good* to finish — or adjust the reminder below.`;
 
     if (isFirstHabit) {
       text += `\n\n💡 *Tip:* Starting with just one habit is the best way to build consistency. ` +
@@ -1938,7 +2199,7 @@ export class TelegramBotService {
     }
 
     await this.bot.sendMessage(chatId, text, {
-      reply_markup: keyboard,
+      reply_markup: this.buildNewHabitConfirmKeyboard(habitId),
       parse_mode: 'Markdown',
     });
   }
@@ -2174,6 +2435,13 @@ export class TelegramBotService {
       return;
     }
 
+    // Handle "Check later (in 1 hour)" postpone
+    const postponeMatch = data.match(/^habit_postpone:(.+):(\d{4}-\d{2}-\d{2})$/);
+    if (postponeMatch) {
+      await this.handleHabitPostpone(userId, chatId, postponeMatch[1], postponeMatch[2], query.message?.message_id);
+      return;
+    }
+
     // Handle habit check (Yes/No/Skip/Cancel); optional 4th segment = targetDate (reminder's day)
     const checkMatch = data.match(/^habit_check:(.+):(yes|no|skip|cancel)(?::(.+))?$/);
     if (checkMatch) {
@@ -2252,10 +2520,31 @@ export class TelegramBotService {
       return;
     }
 
-    // Handle back to schedule type picker for new habits
+    // Handle back to the finish-first confirmation for new habits
     const scheduleBackNewMatch = data.match(/^schedule_back_new:(.+)$/);
     if (scheduleBackNewMatch) {
       await this.handleScheduleBackNew(userId, chatId, scheduleBackNewMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle one-tap daily time picker for new habits
+    const schedulePickTimeNewMatch = data.match(/^schedule_pick_time_new:(.+)$/);
+    if (schedulePickTimeNewMatch) {
+      await this.handleSchedulePickTimeNew(userId, chatId, schedulePickTimeNewMatch[1], query.message?.message_id);
+      return;
+    }
+
+    // Handle a tapped preset time (HHMM) for new habits
+    const scheduleSetTimeNewMatch = data.match(/^schedule_settime_new:(.+):(\d{4})$/);
+    if (scheduleSetTimeNewMatch) {
+      await this.handleScheduleSetTimeNew(userId, chatId, scheduleSetTimeNewMatch[1], scheduleSetTimeNewMatch[2], query.message?.message_id);
+      return;
+    }
+
+    // Handle "Different schedule" advanced type picker for new habits
+    const scheduleMoreNewMatch = data.match(/^schedule_more_new:(.+)$/);
+    if (scheduleMoreNewMatch) {
+      await this.handleScheduleMoreNew(userId, chatId, scheduleMoreNewMatch[1], query.message?.message_id);
       return;
     }
 
