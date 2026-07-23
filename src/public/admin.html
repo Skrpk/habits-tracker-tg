@@ -377,7 +377,13 @@
         }
 
         .habits-list li {
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .habit-schedule {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--hb-text-muted);
         }
 
         .user-card-actions {
@@ -654,15 +660,21 @@
                 if (habits.length) {
                     html += '<ul class="habits-list">';
                     habits.forEach(function (h) {
-                        html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + '</li>';
+                        var flags = [];
+                        if (h.scheduleDescription) flags.push(escapeHtml(h.scheduleDescription));
+                        if (h.reminderEnabled === false) flags.push('reminders off');
+                        if (h.disabled) flags.push('disabled');
+                        var sub = flags.length ? '<span class="habit-schedule">' + flags.join(' · ') + '</span>' : '';
+                        html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + sub + '</li>';
                     });
                     html += '</ul>';
                 } else {
                     html += '<p class="meta">No habits</p>';
                 }
                 html += '<div class="user-card-actions">';
-                html += '<button type="button" class="btn-lifetime" data-user-id="' + u.userId + '" data-grant="' + (p.isLifetimePremium ? 'false' : 'true') + '">' +
-                    (p.isLifetimePremium ? 'Revoke lifetime' : 'Grant lifetime') + '</button>';
+                // "Grant lifetime" temporarily disabled (premium gating is off app-wide).
+                // html += '<button type="button" class="btn-lifetime" data-user-id="' + u.userId + '" data-grant="' + (p.isLifetimePremium ? 'false' : 'true') + '">' +
+                //     (p.isLifetimePremium ? 'Revoke lifetime' : 'Grant lifetime') + '</button>';
                 html += '<button type="button" class="btn-card-send" data-user-id="' + u.userId + '">Send message</button>';
                 html += '</div>';
                 html += '</article>';

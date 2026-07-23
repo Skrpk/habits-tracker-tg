@@ -6,6 +6,9 @@ import { ALLOWED_TIMEZONE_IDS } from '../constants/allowedTimezones';
 import type { Habit } from '../domain/entities/Habit';
 import type { UserPreferences } from '../domain/entities/UserPreferences';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../domain/use-cases/SubscriptionUseCase';
+import { CheckHabitReminderDueUseCase } from '../domain/use-cases/CheckHabitReminderDueUseCase';
+
+const checkReminderDue = new CheckHabitReminderDueUseCase();
 
 const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
 const SEND_MESSAGE_BATCH_SIZE = 1000;
@@ -228,6 +231,7 @@ export async function getFilteredUserIdsForAdmin(
 }
 
 function serializeHabit(h: Habit) {
+  const schedule = h.reminderSchedule || { type: 'daily' as const, hour: 22, minute: 0, timezone: 'UTC' };
   return {
     id: h.id,
     name: h.name,
@@ -236,6 +240,7 @@ function serializeHabit(h: Habit) {
     lastCheckedDate: h.lastCheckedDate,
     disabled: h.disabled === true,
     reminderEnabled: h.reminderEnabled !== false,
+    scheduleDescription: checkReminderDue.getScheduleDescription(schedule),
   };
 }
 
