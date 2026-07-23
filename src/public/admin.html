@@ -38,7 +38,7 @@
         }
 
         .container {
-            max-width: 560px;
+            max-width: 1180px;
             margin: 0 auto;
             padding: 1.25rem 1.25rem 2rem;
         }
@@ -60,6 +60,31 @@
             border-radius: 14px;
             padding: 1rem;
             margin-bottom: 1rem;
+        }
+
+        /* Filter fields flow into columns on wider screens, stack on mobile. */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.75rem 1rem;
+        }
+
+        .filters-grid .row {
+            margin-bottom: 0;
+        }
+
+        .filters-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .filters-actions .btn-apply,
+        .filters-actions .btn-send-msg {
+            width: auto;
+            margin-top: 0;
+            flex: 1 1 220px;
         }
 
         .filters label {
@@ -258,12 +283,79 @@
             margin-bottom: 1rem;
         }
 
+        /* Count + pagination bar above the results. */
+        .results-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .results-count {
+            font-family: var(--hb-font-display);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--hb-text);
+        }
+
+        .results-count .range {
+            font-family: var(--hb-font-body);
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: var(--hb-text-muted);
+            margin-left: 0.4rem;
+        }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-btn {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid var(--hb-border);
+            border-radius: 10px;
+            background: var(--hb-surface);
+            font-family: var(--hb-font-body);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--hb-accent-dark);
+            cursor: pointer;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        .page-info {
+            font-size: 0.85rem;
+            color: var(--hb-text-secondary);
+            min-width: 5.5rem;
+            text-align: center;
+        }
+
+        /* Results become a responsive card grid on wide screens, 1 column on mobile. */
+        #results.results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 0.75rem;
+            align-items: start;
+        }
+
         .user-card {
             background: var(--hb-surface);
             border: 1px solid var(--hb-border);
             border-radius: 14px;
             padding: 1rem;
             margin-bottom: 0.75rem;
+        }
+
+        #results.results-grid .user-card {
+            margin-bottom: 0;
         }
 
         .user-card h2 {
@@ -310,50 +402,55 @@
         </header>
 
         <section class="filters" id="filters">
-            <div class="row">
-                <label for="filterPremium">Premium (isAdmin filter)</label>
-                <select id="filterPremium">
-                    <option value="">Any</option>
-                    <option value="true">Premium</option>
-                    <option value="false">Not premium</option>
-                </select>
-            </div>
-            <div class="row">
-                <label for="filterBlocked">Blocked</label>
-                <select id="filterBlocked">
-                    <option value="">Any</option>
-                    <option value="true">Blocked only</option>
-                    <option value="false">Not blocked</option>
-                </select>
-            </div>
-            <div class="row">
-                <label for="filterTz">Timezone</label>
-                <select id="filterTz">
-                    <option value="">Any</option>
-                </select>
-            </div>
-            <div class="row">
-                <label for="filterUserId">User ID (exact match)</label>
-                <input type="text" id="filterUserId" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 123456789" autocomplete="off" />
-            </div>
-            <div class="row">
-                <label>Consent date (terms accepted)</label>
-                <div class="consent-range-row">
-                    <div>
-                        <label for="filterConsentFrom" style="font-size:0.7rem;margin-bottom:0.2rem;">From</label>
-                        <input type="date" id="filterConsentFrom" />
-                    </div>
-                    <div>
-                        <label for="filterConsentTo" style="font-size:0.7rem;margin-bottom:0.2rem;">To</label>
-                        <input type="date" id="filterConsentTo" />
+            <div class="filters-grid">
+                <div class="row">
+                    <label for="filterPremium">Premium (isAdmin filter)</label>
+                    <select id="filterPremium">
+                        <option value="">Any</option>
+                        <option value="true">Premium</option>
+                        <option value="false">Not premium</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label for="filterBlocked">Blocked</label>
+                    <select id="filterBlocked">
+                        <option value="">Any</option>
+                        <option value="true">Blocked only</option>
+                        <option value="false">Not blocked</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label for="filterTz">Timezone</label>
+                    <select id="filterTz">
+                        <option value="">Any</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label for="filterUserId">User ID (exact match)</label>
+                    <input type="text" id="filterUserId" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 123456789" autocomplete="off" />
+                </div>
+                <div class="row">
+                    <label>Consent date (terms accepted)</label>
+                    <div class="consent-range-row">
+                        <div>
+                            <label for="filterConsentFrom" style="font-size:0.7rem;margin-bottom:0.2rem;">From</label>
+                            <input type="date" id="filterConsentFrom" />
+                        </div>
+                        <div>
+                            <label for="filterConsentTo" style="font-size:0.7rem;margin-bottom:0.2rem;">To</label>
+                            <input type="date" id="filterConsentTo" />
+                        </div>
                     </div>
                 </div>
             </div>
-            <button type="button" class="btn-apply" id="applyBtn">Apply filters</button>
-            <button type="button" class="btn-send-msg" id="sendBulkBtn">Send message</button>
+            <div class="filters-actions">
+                <button type="button" class="btn-apply" id="applyBtn">Apply filters</button>
+                <button type="button" class="btn-send-msg" id="sendBulkBtn">Send message</button>
+            </div>
         </section>
 
         <div id="status"></div>
+        <div id="resultsBar"></div>
         <div id="results"></div>
     </div>
 
@@ -503,7 +600,10 @@
 
             function renderError(msg) {
                 document.getElementById('status').innerHTML = '<div class="error">' + msg + '</div>';
-                document.getElementById('results').innerHTML = '';
+                document.getElementById('resultsBar').innerHTML = '';
+                var results = document.getElementById('results');
+                results.classList.remove('results-grid');
+                results.innerHTML = '';
             }
 
             async function grantLifetimePremium(userId, grant) {
@@ -534,44 +634,90 @@
                 }
             }
 
-            function renderUsers(data) {
-                document.getElementById('status').innerHTML = '';
-                var users = data.users || [];
-                if (!users.length) {
-                    document.getElementById('results').innerHTML = '<p class="empty">No users match.</p>';
+            var PAGE_SIZE = 25;
+            var allUsers = [];
+            var currentPage = 1;
+
+            function renderUserCard(u) {
+                var p = u.preferences || {};
+                var habits = u.habits || [];
+                var uname = p.telegram && p.telegram.username ? '@' + p.telegram.username : '';
+                var bits = ['ID ' + u.userId];
+                if (p.timezone) bits.push(p.timezone);
+                if (p.premium) bits.push('premium');
+                if (p.isLifetimePremium) bits.push('lifetime');
+                if (p.blocked) bits.push('blocked');
+                if (p.consentDate) bits.push('consent ' + p.consentDate);
+                var html = '<article class="user-card">';
+                html += '<h2>' + (uname || 'User ' + u.userId) + '</h2>';
+                html += '<div class="meta">' + bits.join(' · ') + '</div>';
+                if (habits.length) {
+                    html += '<ul class="habits-list">';
+                    habits.forEach(function (h) {
+                        html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + '</li>';
+                    });
+                    html += '</ul>';
+                } else {
+                    html += '<p class="meta">No habits</p>';
+                }
+                html += '<div class="user-card-actions">';
+                html += '<button type="button" class="btn-lifetime" data-user-id="' + u.userId + '" data-grant="' + (p.isLifetimePremium ? 'false' : 'true') + '">' +
+                    (p.isLifetimePremium ? 'Revoke lifetime' : 'Grant lifetime') + '</button>';
+                html += '<button type="button" class="btn-card-send" data-user-id="' + u.userId + '">Send message</button>';
+                html += '</div>';
+                html += '</article>';
+                return html;
+            }
+
+            function renderResults() {
+                var results = document.getElementById('results');
+                var bar = document.getElementById('resultsBar');
+                var total = allUsers.length;
+
+                if (!total) {
+                    bar.innerHTML = '<div class="results-count">0 leads</div>';
+                    results.classList.remove('results-grid');
+                    results.innerHTML = '<p class="empty">No users match.</p>';
                     return;
                 }
-                var html = '';
-                users.forEach(function (u) {
-                    var p = u.preferences || {};
-                    var habits = u.habits || [];
-                    var uname = p.telegram && p.telegram.username ? '@' + p.telegram.username : '';
-                    var bits = ['ID ' + u.userId];
-                    if (p.timezone) bits.push(p.timezone);
-                    if (p.premium) bits.push('premium');
-                    if (p.isLifetimePremium) bits.push('lifetime');
-                    if (p.blocked) bits.push('blocked');
-                    if (p.consentDate) bits.push('consent ' + p.consentDate);
-                    html += '<article class="user-card">';
-                    html += '<h2>' + (uname || 'User ' + u.userId) + '</h2>';
-                    html += '<div class="meta">' + bits.join(' · ') + '</div>';
-                    if (habits.length) {
-                        html += '<ul class="habits-list">';
-                        habits.forEach(function (h) {
-                            html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + '</li>';
-                        });
-                        html += '</ul>';
-                    } else {
-                        html += '<p class="meta">No habits</p>';
-                    }
-                    html += '<div class="user-card-actions">';
-                    html += '<button type="button" class="btn-lifetime" data-user-id="' + u.userId + '" data-grant="' + (p.isLifetimePremium ? 'false' : 'true') + '">' +
-                        (p.isLifetimePremium ? 'Revoke lifetime' : 'Grant lifetime') + '</button>';
-                    html += '<button type="button" class="btn-card-send" data-user-id="' + u.userId + '">Send message</button>';
-                    html += '</div>';
-                    html += '</article>';
-                });
-                document.getElementById('results').innerHTML = html;
+
+                var pages = Math.ceil(total / PAGE_SIZE);
+                if (currentPage > pages) currentPage = pages;
+                if (currentPage < 1) currentPage = 1;
+
+                var start = (currentPage - 1) * PAGE_SIZE;
+                var end = Math.min(start + PAGE_SIZE, total);
+                var pageUsers = allUsers.slice(start, end);
+
+                var countLabel = total + (total === 1 ? ' lead' : ' leads');
+                var rangeLabel = pages > 1
+                    ? '<span class="range">showing ' + (start + 1) + '–' + end + '</span>'
+                    : '';
+                var pagination = '';
+                if (pages > 1) {
+                    pagination =
+                        '<div class="pagination">' +
+                        '<button type="button" class="page-btn" id="prevPage"' + (currentPage === 1 ? ' disabled' : '') + '>‹ Prev</button>' +
+                        '<span class="page-info">Page ' + currentPage + ' / ' + pages + '</span>' +
+                        '<button type="button" class="page-btn" id="nextPage"' + (currentPage === pages ? ' disabled' : '') + '>Next ›</button>' +
+                        '</div>';
+                }
+                bar.innerHTML = '<div class="results-count">' + countLabel + rangeLabel + '</div>' + pagination;
+
+                results.classList.add('results-grid');
+                results.innerHTML = pageUsers.map(renderUserCard).join('');
+
+                var prev = document.getElementById('prevPage');
+                var next = document.getElementById('nextPage');
+                if (prev) prev.addEventListener('click', function () { currentPage--; renderResults(); window.scrollTo(0, 0); });
+                if (next) next.addEventListener('click', function () { currentPage++; renderResults(); window.scrollTo(0, 0); });
+            }
+
+            function renderUsers(data) {
+                document.getElementById('status').innerHTML = '';
+                allUsers = data.users || [];
+                currentPage = 1;
+                renderResults();
             }
 
             function escapeHtml(s) {
@@ -582,7 +728,10 @@
 
             async function load() {
                 document.getElementById('status').innerHTML = '<p class="loading">Loading…</p>';
-                document.getElementById('results').innerHTML = '';
+                document.getElementById('resultsBar').innerHTML = '';
+                var results = document.getElementById('results');
+                results.classList.remove('results-grid');
+                results.innerHTML = '';
                 var initData = getInitData();
                 if (!initData) {
                     renderError('Open this page from Telegram (initData missing).');
