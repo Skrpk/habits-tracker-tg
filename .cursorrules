@@ -104,7 +104,7 @@ The project follows **Clean Architecture** principles with clear separation of c
 
 8. **Ops notifications channel**
    - When `NOTIFICATION_CHANNEL_ID` is set, the bot posts to that channel for new users, analytics events, habit reactions, etc.
-   - **Unhandled text**: After consent and timezone are set, any message that is not consumed by conversation state or a known command falls through silently to the user; the same text (truncated) is forwarded to the channel with user id, chat id, username, and name (`sendUnhandledMessageNotification`, plain text, no `parse_mode` on user content)
+   - **Unhandled text**: After consent and timezone are set, any message that is not consumed by conversation state or a known command gets a friendly fallback reply listing the available commands (`sendUnhandledMessageReply`, awaited — keep its command list in sync with `setupBotCommands()`); the same text (truncated) is also forwarded to the channel with user id, chat id, username, and name (`sendUnhandledMessageNotification`, plain text, no `parse_mode` on user content)
 
 ## File Structure
 

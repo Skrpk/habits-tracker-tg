@@ -23,7 +23,7 @@ Multi-step flows store state in Redis under `conversation_state:{userId}` (never
 
 Drop/skip from chat records an **empty note** — there is no note prompt in chat mode. Notes are entered only from the MiniApp (`api/check.ts` / `reminders-server.ts`, which accept `note` in the POST body).
 
-Clear or advance state explicitly at the end of each step. Unhandled free text (after consent + timezone are set) falls through silently to the user and is forwarded to the ops channel via `sendUnhandledMessageNotification`.
+Clear or advance state explicitly at the end of each step. Unhandled free text (after consent + timezone are set) gets a friendly fallback reply listing the available commands (`sendUnhandledMessageReply`) and is also forwarded to the ops channel via `sendUnhandledMessageNotification`. Keep that reply's command list in sync with `setupBotCommands()`.
 
 ## Commands menu
 

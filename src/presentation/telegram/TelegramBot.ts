@@ -964,12 +964,13 @@ export class TelegramBotService {
           return;
         }
         
-        // Unhandled text — no user-facing reply; optional channel notification
+        // Unhandled text — reply with a friendly fallback + command list, and forward to ops channel
         Logger.info('Unhandled message received', {
           userId,
           chatId,
           textLength: text.length,
         });
+        await this.sendUnhandledMessageReply(chatId);
         void this.sendUnhandledMessageNotification(chatId, userId, username, text, msg.from);
         return;
       }
@@ -1182,6 +1183,31 @@ export class TelegramBotService {
   }
 
   private static readonly UNHANDLED_MESSAGE_MAX_LEN = 3000;
+
+  /**
+   * Replies to the user when their message isn't a known command or expected input.
+   * Lists the available commands so they know what they can do. Never throws.
+   */
+  private async sendUnhandledMessageReply(chatId: number): Promise<void> {
+    const message =
+      "🤔 Sorry, I can't process that message.\n\n" +
+      "I'm a habit-tracking bot, so I only understand a few commands. " +
+      'Here\'s what you can do:\n\n' +
+      '➕ /newhabit — Create a new habit to track\n' +
+      '📋 /myhabits — View all your habits\n' +
+      '📊 /analytics — View your habits analytics\n' +
+      '⚙️ /settings — Manage your settings\n\n' +
+      'Tip: you can also tap the menu button (☰) next to the message box to see the commands.';
+
+    try {
+      await this.bot.sendMessage(chatId, message);
+    } catch (error) {
+      Logger.error('Error sending unhandled message reply', {
+        chatId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
 
   /**
    * Forwards unhandled chat text to NOTIFICATION_CHANNEL_ID (plain text, truncated).
