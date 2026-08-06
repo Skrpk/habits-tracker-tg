@@ -45,9 +45,10 @@ The project follows **Clean Architecture** principles with clear separation of c
 ## Key Features
 
 1. **User Onboarding**
-   - On first `/start`, users pick timezone by matching the live clock on their phone (`buildTimezonePickerOptions` in `src/constants/allowedTimezones.ts`; IANA id stored). Coverage includes UTC−12…+12 plus common half-hour offsets. Existing stored IANA values (including legacy like `Europe/Paris`) keep working without a forced re-pick.
-   - Timezone preference is stored and used for all habit reminders
-   - Users can change timezone later (stored in `UserPreferences`)
+   - On first `/start`, step 1 is a **language picker** (`en`/`uk`/`ru`) — choosing a language IS the consent action (`setLanguage` records `consentAccepted = true` + `consentDate`; the picker shows a consent line + Privacy/Terms links). There is **no** separate Accept/Decline consent step. The picker is gated on `!consentAccepted`, NOT `!language`, so **legacy users are not re-onboarded** — they default via `mapTelegramLangCode(user.language_code) → 'en'` and change language in Settings.
+   - Step 2 is timezone: users pick by matching the live clock on their phone (`buildTimezonePickerOptions` in `src/constants/allowedTimezones.ts`; IANA id stored). Coverage includes UTC−12…+12 plus common half-hour offsets. Existing stored IANA values (including legacy like `Europe/Paris`) keep working without a forced re-pick.
+   - Timezone + language preferences are stored in `UserPreferences`; both changeable later in Settings.
+   - **i18n**: user-facing bot strings go through `t(lang, key, params)` (`src/i18n/`, dicts `en/uk/ru` at key + `{placeholder}` parity, enforced by test); `en` is the fallback. Add new keys to all three. MiniApp pages are NOT localized (out of scope). Command menu registered per language via `setMyCommands({ language_code })`.
 
 2. **Habit Management**
    - Create habits via `/newhabit` (multi-step conversation)
@@ -88,7 +89,7 @@ The project follows **Clean Architecture** principles with clear separation of c
    - Reminders checked hourly via cron jobs
    - When sending reminders, the cron computes each user's "today" in their timezone and passes that as **targetDate** to `sendHabitReminders(userId, habits, targetDate)`. Reminder buttons include targetDate in callback_data (e.g. `habit_check:{habitId}:yes:{YYYY-MM-DD}`) so late responses count for the correct day.
    - **Check later (in 1 hour):** reminders also carry a `🕐 Check later` button (`habit_postpone:{habitId}:{YYYY-MM-DD}`) unless a 1-hour bump would cross midnight in the user's timezone (a 23:xx reminder omits it). Tapping stores `Habit.postponedUntil` (ISO UTC) and removes the buttons; there is no in-process timer. `GetHabitsDueForReminderUseCase` re-asks the habit once its postpone is due (`isPostponeDue`, same-day window), and `sendSingleHabitReminder` clears the flag on send. Logic lives in `src/domain/utils/postpone.ts` + `PostponeHabitReminderUseCase`. Chat-only (no MiniApp postpone).
-   - **Auto-pause after 2 ignored reminders (DAILY habits only):** `EvaluateReminderPauseUseCase.filterDueHabits(habits, targetDate)` is pure (returns `{toSend, pausedNow}` with `Partial<Habit>` updates). Non-daily schedules are never miss-tracked/paused. A miss = previous sent reminder unanswered (`lastCheckedDate < lastReminderDate`); 2 in a row → `remindersPausedUntil = targetDate + REMINDER_PAUSE_DAYS` (default 7) + one-time "Resume now" notice (`sendPauseNotice`, callback `resume_reminders:{habitId}` → `ResumeRemindersUseCase`). The `GetHabitsDueForReminderUseCase` gate skips paused habits (pause > postpone); resume branch clears it when expired. Persist-after-send: `sendHabitReminders` returns sent IDs; the cron persists `toSend` updates only for those, `pausedNow` immediately. Any response resets it (`RecordHabitCheckUseCase`). Env: `REMINDER_MISS_THRESHOLD` (2), `REMINDER_PAUSE_DAYS` (7).
+   - **Auto-pause after 2 ignored reminders (DAILY habits only):** `EvaluateReminderPauseUseCase.filterDueHabits(habits, targetDate)` is pure (returns `{toSend, pausedNow}` with `Partial<Habit>` updates). Non-daily schedules are never miss-tracked/paused. A miss = previous sent reminder unanswered (`lastCheckedDate < lastReminderDate`); 2 in a row → `remindersPausedUntil = targetDate + REMINDER_PAUSE_DAYS` (default 3) + one-time "Resume now" notice (`sendPauseNotice`, callback `resume_reminders:{habitId}` → `ResumeRemindersUseCase`). The `GetHabitsDueForReminderUseCase` gate skips paused habits (pause > postpone); resume branch clears it when expired. Persist-after-send: `sendHabitReminders` returns sent IDs; the cron persists `toSend` updates only for those, `pausedNow` immediately. Any response resets it (`RecordHabitCheckUseCase`). Env: `REMINDER_MISS_THRESHOLD` (2), `REMINDER_PAUSE_DAYS` (3).
    - Users who have **blocked** the bot are skipped (no reminders sent) until they send `/start` again, which clears the blocked flag.
    - Production: Vercel Cron Jobs (`0 * * * *` - every hour at minute 0)
    - Development: Docker cron container (configurable schedule)
@@ -269,7 +270,8 @@ interface UserPreferences {
   userId: number;
   user?: TelegramBot.User; // Full Telegram user object with all user information
   timezone?: string; // IANA timezone — should be one of ALLOWED_TIMEZONE_IDS when set via bot
-  consentAccepted?: boolean; // Whether user has accepted the privacy policy and terms
+  language?: 'en' | 'uk' | 'ru'; // UI language chosen at onboarding; undefined for legacy users (resolve to 'en')
+  consentAccepted?: boolean; // Whether user has accepted the privacy policy and terms (set by setLanguage — see onboarding)
   consentDate?: string; // ISO date string when consent was given (YYYY-MM-DD)
   blocked?: boolean; // When true, user has blocked the bot; skip reminders until they /start again
   premium?: boolean;
@@ -332,12 +334,12 @@ interface UserPreferences {
 
 7. **Redis Connection**: Connection is managed per-request in serverless functions with connection pooling and timeout handling.
 
-8. **Bot Commands Menu**: `setMyCommands()` registers (note: `/start` is not in the menu but is the primary onboarding entry):
+8. **Bot Commands Menu**: `setMyCommands()` registers **once per language** (default scope + `en`/`uk`/`ru` via `language_code`; descriptions from `t(lang, 'cmd.*')`) (note: `/start` is not in the menu but is the primary onboarding entry):
    - `/newhabit` - Create a new habit to track
    - `/myhabits` - View all your habits
    - `/analytics` - Analytics dashboard link
-   - `/settings` - Settings (timezone; **Admin Panel** WebApp button only if user id is in `ADMIN_USERS`)
-   - `/subscribe` - Premium subscription flow
+   - `/settings` - Settings (timezone + language; **Admin Panel** WebApp button only if user id is in `ADMIN_USERS`)
+   - `/subscribe` - Premium subscription flow (currently commented out)
    - Undocumented: `/quote` (admin-only tooling, not in menu)
 
 9. **Analytics Data Inference** (`computeCheckHistory`):

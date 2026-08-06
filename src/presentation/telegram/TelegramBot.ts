@@ -12,6 +12,7 @@ import { SetUserPreferencesUseCase } from '../../domain/use-cases/SetUserPrefere
 import { ToggleHabitDisabledUseCase } from '../../domain/use-cases/ToggleHabitDisabledUseCase';
 import { PostponeHabitReminderUseCase } from '../../domain/use-cases/PostponeHabitReminderUseCase';
 import { ResumeRemindersUseCase } from '../../domain/use-cases/ResumeRemindersUseCase';
+import { REMINDER_PAUSE_DAYS } from '../../domain/use-cases/EvaluateReminderPauseUseCase';
 import { computePostponeTarget, localDay } from '../../domain/utils/postpone';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../../domain/use-cases/SubscriptionUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
@@ -21,6 +22,14 @@ import { kv } from '../../infrastructure/config/kv';
 import { isAdminUser } from '../../infrastructure/admin/parseAdminUsers';
 import { buildTimezonePickerOptions, ALLOWED_TIMEZONE_IDS, formatLocalTime, formatUtcOffset, getUtcOffsetMinutes } from '../../constants/allowedTimezones';
 import { QuoteManager } from '../../infrastructure/quotes/QuoteManager';
+import {
+  t,
+  Language,
+  SUPPORTED_LANGUAGES,
+  isSupportedLanguage,
+  languageNativeName,
+  mapTelegramLangCode,
+} from '../../i18n';
 import OpenAI from 'openai';
 
 // Helper function to get username from Telegram user
@@ -125,29 +134,24 @@ export class TelegramBotService {
   }
 
   private async setupBotCommands(): Promise<void> {
+    // Register the command menu once per supported language (Telegram scopes it by
+    // the client's language_code). English ('en') doubles as the default scope so
+    // clients in unsupported languages still get a menu. Keep this list in sync
+    // with the /start welcome and the unhandled-message reply.
+    const buildCommands = (lang: Language) => [
+      { command: 'newhabit', description: t(lang, 'cmd.newhabit') },
+      { command: 'myhabits', description: t(lang, 'cmd.myhabits') },
+      { command: 'analytics', description: t(lang, 'cmd.analytics') },
+      { command: 'settings', description: t(lang, 'cmd.settings') },
+    ];
+
     try {
-      await this.bot.setMyCommands([
-        {
-          command: 'newhabit',
-          description: 'Create a new habit to track',
-        },
-        {
-          command: 'myhabits',
-          description: 'View all your habits',
-        },
-        {
-          command: 'analytics',
-          description: 'View your habits analytics',
-        },
-        {
-          command: 'settings',
-          description: 'Manage your settings',
-        },
-        // {
-        //   command: 'subscribe',
-        //   description: 'Get Premium for unlimited habits and more',
-        // },
-      ]);
+      // Default scope (no language_code) — fallback for any client language.
+      await this.bot.setMyCommands(buildCommands('en'));
+      // Per-language scopes.
+      for (const { code } of SUPPORTED_LANGUAGES) {
+        await this.bot.setMyCommands(buildCommands(code), { language_code: code });
+      }
       Logger.info('Bot commands menu set successfully');
     } catch (error) {
       Logger.error('Error setting bot commands', {
@@ -202,16 +206,17 @@ export class TelegramBotService {
 
   private async showHabitsList(userId: number, chatId: number, messageId?: number): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
-      
+
       Logger.info('Showing habits list', {
         userId,
         chatId,
         habitCount: habits.length,
       });
-      
+
       if (habits.length === 0) {
-        const message = 'You don\'t have any habits yet. Create one with /newhabit <name>';
+        const message = t(lang, 'habits.list.empty');
         if (messageId) {
           await this.safeEditMessage(message, {
             chat_id: chatId,
@@ -238,13 +243,13 @@ export class TelegramBotService {
       };
 
       // Build message with skipped dates
-      let message = '📋 Your Habits:\n\n';
+      let message = `${t(lang, 'habits.list.header')}\n\n`;
       habits.forEach((habit, index) => {
         const skippedCount = (habit.skipped || []).length;
-        const statusText = habit.disabled === true ? '⏸️ Disabled' : '▶️ Active';
+        const statusText = habit.disabled === true ? t(lang, 'habits.status.disabled') : t(lang, 'habits.status.active');
         message += `${index + 1}. ${habit.name} (${statusText})\n`;
-        message += `   🔥 Streak: ${habit.streak} days\n`;
-        message += `   ⏭️ Skipped: ${skippedCount} day${skippedCount !== 1 ? 's' : ''}\n`;
+        message += `   ${t(lang, 'habits.list.streak', { streak: habit.streak })}\n`;
+        message += `   ${t(lang, 'habits.list.skipped', { count: skippedCount })}\n`;
         if (skippedCount > 0) {
           // Format and show skipped dates
           const skippedDates = (habit.skipped || [])
@@ -253,11 +258,11 @@ export class TelegramBotService {
               return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             })
             .join(', ');
-          message += `   📅 Skipped on: ${skippedDates}\n`;
+          message += `   ${t(lang, 'habits.list.skipped_on', { dates: skippedDates })}\n`;
         }
         message += '\n';
       });
-      message += 'Click on a habit to view details or delete it.';
+      message += t(lang, 'habits.list.footer');
       
       if (messageId) {
         await this.safeEditMessage(message, {
@@ -277,23 +282,24 @@ export class TelegramBotService {
 
   private async showHabitDetails(userId: number, chatId: number, habitId: string, messageId?: number): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
         await this.safeAnswerCallbackQuery('', {
-          text: 'Habit not found',
+          text: t(lang, 'habits.not_found'),
           show_alert: true,
         });
         return;
       }
 
       const skippedCount = (habit.skipped || []).length;
-      
+
       // Get user's timezone for default schedule display
       const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       const userTimezone = userPreferences?.timezone || 'UTC';
-      
+
       const schedule = habit.reminderSchedule || {
         type: 'daily' as const,
         hour: 22,
@@ -301,40 +307,40 @@ export class TelegramBotService {
         timezone: userTimezone,
       };
       const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
-      const reminderStatus = habit.reminderEnabled !== false ? '✅ Enabled' : '❌ Disabled';
-      const disabledStatus = habit.disabled === true ? '⏸️ Disabled' : '▶️ Active';
-      
+      const reminderStatus = habit.reminderEnabled !== false ? t(lang, 'habits.reminder_on') : t(lang, 'habits.reminder_off');
+      const disabledStatus = habit.disabled === true ? t(lang, 'habits.status.disabled') : t(lang, 'habits.status.active');
+
       // Format badges
       let badgesText = '';
       const badges = habit.badges || [];
       if (badges.length > 0) {
         const { getBadgeInfo } = await import('../../domain/utils/HabitBadges');
         const badgeEmojis = badges.map(b => getBadgeInfo(b.type).emoji).join(' ');
-        badgesText = `\n🏆 Badges: ${badgeEmojis}`;
+        badgesText = `\n${t(lang, 'habits.details.badges', { badges: badgeEmojis })}`;
       }
-      
-      const message = `📋 Habit Details\n\n` +
-        `Name: ${habit.name}\n` +
-        `Status: ${disabledStatus}\n` +
-        `🔥 Streak: ${habit.streak} days${badgesText}\n` +
-        `⏭️ Skipped days: ${skippedCount}\n` +
-        `⏰ Reminder: ${scheduleDesc} (${reminderStatus})\n` +
-        `📅 Last checked: ${habit.lastCheckedDate || 'Never'}\n` +
-        `📆 Created: ${new Date(habit.createdAt).toLocaleDateString()}`;
+
+      const message = `${t(lang, 'habits.details.title')}\n\n` +
+        `${t(lang, 'habits.details.name', { name: habit.name })}\n` +
+        `${t(lang, 'habits.details.status', { status: disabledStatus })}\n` +
+        `${t(lang, 'habits.details.streak', { streak: habit.streak })}${badgesText}\n` +
+        `${t(lang, 'habits.details.skipped', { count: skippedCount })}\n` +
+        `${t(lang, 'habits.details.reminder', { schedule: scheduleDesc, status: reminderStatus })}\n` +
+        `${t(lang, 'habits.details.last_checked', { date: habit.lastCheckedDate || t(lang, 'habits.details.never') })}\n` +
+        `${t(lang, 'habits.details.created', { date: new Date(habit.createdAt).toLocaleDateString() })}`;
 
       const keyboard = {
         inline_keyboard: [
           [
-            { text: habit.disabled === true ? '▶️ Enable Habit' : '⏸️ Disable Habit', callback_data: `habit_toggle_disabled:${habit.id}` },
+            { text: habit.disabled === true ? t(lang, 'btn.enable') : t(lang, 'btn.disable'), callback_data: `habit_toggle_disabled:${habit.id}` },
           ],
           [
-            { text: '⏰ Set Reminder Schedule', callback_data: `habit_set_schedule:${habit.id}` },
+            { text: t(lang, 'btn.set_schedule'), callback_data: `habit_set_schedule:${habit.id}` },
           ],
           [
-            { text: '🗑️ Delete Habit', callback_data: `habit_delete:${habit.id}` },
+            { text: t(lang, 'btn.delete'), callback_data: `habit_delete:${habit.id}` },
           ],
           [
-            { text: '← Back to List', callback_data: 'habit_list' },
+            { text: t(lang, 'btn.back_to_list'), callback_data: 'habit_list' },
           ],
         ],
       };
@@ -387,10 +393,10 @@ export class TelegramBotService {
       //   }
       // }
 
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const isDisabled = await this.toggleHabitDisabledUseCase.execute(userId, habitId);
-      const statusText = isDisabled ? 'disabled' : 'enabled';
       await this.safeAnswerCallbackQuery(callbackQueryId, {
-        text: `Habit ${statusText}`,
+        text: isDisabled ? t(lang, 'habits.toast.disabled') : t(lang, 'habits.toast.enabled'),
         show_alert: false,
       });
 
@@ -412,21 +418,22 @@ export class TelegramBotService {
 
   private async deleteHabit(userId: number, chatId: number, habitId: string, messageId?: number, username?: string): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
         Logger.warn('Habit not found for deletion', { userId, username, habitId, chatId });
         await this.safeAnswerCallbackQuery('', {
-          text: 'Habit not found',
+          text: t(lang, 'habits.not_found'),
           show_alert: true,
         });
         return;
       }
 
       await this.deleteHabitUseCase.execute(userId, habitId, username, habit.name);
-      
-      const message = `✅ Habit "${habit.name}" deleted successfully!`;
+
+      const message = t(lang, 'habits.deleted', { name: habit.name });
 
       if (messageId) {
         await this.safeEditMessage(message, {
@@ -454,6 +461,7 @@ export class TelegramBotService {
 
   private async askAboutHabits(userId: number, chatId: number): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habitsToCheck = await this.getHabitsToCheckUseCase.execute(userId);
 
       Logger.info('Checking habits for user', {
@@ -465,7 +473,7 @@ export class TelegramBotService {
 
       if (habitsToCheck.length === 0) {
         Logger.info('All habits already checked for today', { userId, chatId });
-        await this.bot.sendMessage(chatId, '✅ All habits checked for today! Great job! 🎉');
+        await this.bot.sendMessage(chatId, t(lang, 'reminder.all_checked'));
         return;
       }
 
@@ -481,18 +489,18 @@ export class TelegramBotService {
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes` },
+            { text: t(lang, 'reminder.btn.yes'), callback_data: `habit_check:${habit.id}:yes` },
           ],
           [
-            { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no` },
-            { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip` },
+            { text: t(lang, 'reminder.btn.no'), callback_data: `habit_check:${habit.id}:no` },
+            { text: t(lang, 'reminder.btn.skip'), callback_data: `habit_check:${habit.id}:skip` },
           ],
         ],
       };
 
       await this.bot.sendMessage(
         chatId,
-        `Did you "${habit.name}" today?`,
+        t(lang, 'reminder.ask', { name: habit.name }),
         {
           reply_markup: keyboard,
         }
@@ -549,13 +557,13 @@ export class TelegramBotService {
    */
   async sendPauseNotice(userId: number, habitName: string, habitId: string): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       await this.bot.sendMessage(
         userId,
-        `😴 You haven't responded to "${habitName}" reminders lately, so I've paused them for a week ` +
-        `to avoid nagging. Tap Resume anytime to turn them back on.`,
+        t(lang, 'reminder.paused_notice', { name: habitName, days: REMINDER_PAUSE_DAYS }),
         {
           reply_markup: {
-            inline_keyboard: [[{ text: '▶️ Resume now', callback_data: `resume_reminders:${habitId}` }]],
+            inline_keyboard: [[{ text: t(lang, 'reminder.btn.resume'), callback_data: `resume_reminders:${habitId}` }]],
           },
         }
       );
@@ -576,6 +584,7 @@ export class TelegramBotService {
   async sendHabitReminders(userId: number, habits: Habit[], targetDate: string): Promise<string[]> {
     const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
     const username = getUsername(preferences?.user);
+    const lang = preferences?.language ?? mapTelegramLangCode(preferences?.user?.language_code);
 
     Logger.info('Sending habit reminders', {
       userId,
@@ -600,7 +609,7 @@ export class TelegramBotService {
         targetDate,
       });
       try {
-        await this.sendSingleHabitReminder(userId, habit, targetDate, preferences?.timezone || 'UTC');
+        await this.sendSingleHabitReminder(userId, habit, targetDate, preferences?.timezone || 'UTC', lang);
         sentIds.push(habit.id);
       } catch (error) {
         // sendSingleHabitReminder already logged, flagged blocked users, and
@@ -617,17 +626,17 @@ export class TelegramBotService {
     return sentIds;
   }
 
-  private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string, userTimezone: string = 'UTC'): Promise<void> {
+  private async sendSingleHabitReminder(userId: number, habit: Habit, targetDate: string, userTimezone: string = 'UTC', lang: Language = 'en'): Promise<void> {
     const suffix = targetDate ? `:${targetDate}` : '';
-    const reminderText = `⏰ Reminder: Did you "${habit.name}" today?`;
+    const reminderText = t(lang, 'reminder.ask', { name: habit.name });
 
     const baseRows: any[][] = [
       [
-        { text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` },
+        { text: t(lang, 'reminder.btn.yes'), callback_data: `habit_check:${habit.id}:yes${suffix}` },
       ],
       [
-        { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
-        { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
+        { text: t(lang, 'reminder.btn.no'), callback_data: `habit_check:${habit.id}:no${suffix}` },
+        { text: t(lang, 'reminder.btn.skip'), callback_data: `habit_check:${habit.id}:skip${suffix}` },
       ],
     ];
 
@@ -635,7 +644,7 @@ export class TelegramBotService {
     // (a 23:xx reminder can't be pushed without crossing midnight).
     if (targetDate && computePostponeTarget(new Date(), userTimezone) !== null) {
       baseRows.push([
-        { text: '🕐 Check later (in 1 hour)', callback_data: `habit_postpone:${habit.id}:${targetDate}` },
+        { text: t(lang, 'reminder.btn.later'), callback_data: `habit_postpone:${habit.id}:${targetDate}` },
       ]);
     }
 
@@ -662,7 +671,7 @@ export class TelegramBotService {
         inline_keyboard: [
           ...keyboardWithoutMiniApp.inline_keyboard,
           [
-            { text: '📱 Reply in MiniApp', web_app: { url: checkUrl } },
+            { text: t(lang, 'reminder.btn.miniapp'), web_app: { url: checkUrl } },
           ],
         ],
       };
@@ -705,22 +714,24 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
+      const lang = preferences?.language ?? mapTelegramLangCode(preferences?.user?.language_code);
+
       const habit = await this.postponeHabitReminderUseCase.getHabit(userId, habitId);
       if (!habit) {
-        await this.safeEditMessage('Habit not found.', { chat_id: chatId, message_id: messageId });
+        await this.safeEditMessage(t(lang, 'reminder.habit_not_found'), { chat_id: chatId, message_id: messageId });
         return;
       }
 
       // Already answered for this day — nothing to postpone.
       if (habit.lastCheckedDate === targetDate) {
         await this.safeEditMessage(
-          `✅ "${habit.name}" is already recorded for today.`,
+          t(lang, 'reminder.already_recorded', { name: habit.name }),
           { chat_id: chatId, message_id: messageId }
         );
         return;
       }
 
-      const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       const userTimezone = preferences?.timezone || 'UTC';
       const now = new Date();
 
@@ -730,16 +741,16 @@ export class TelegramBotService {
       if (localDay(now, userTimezone) !== targetDate || target === null) {
         const suffix = `:${targetDate}`;
         await this.safeEditMessage(
-          `It's too late to postpone "${habit.name}" today — tap ✅ / ⏭️ / ❌ when you can.`,
+          t(lang, 'reminder.too_late', { name: habit.name }),
           {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: {
               inline_keyboard: [
-                [{ text: '✅ Yes', callback_data: `habit_check:${habit.id}:yes${suffix}` }],
+                [{ text: t(lang, 'reminder.btn.yes'), callback_data: `habit_check:${habit.id}:yes${suffix}` }],
                 [
-                  { text: '❌ No (drop streak)', callback_data: `habit_check:${habit.id}:no${suffix}` },
-                  { text: '⏭️ Skip (keep streak)', callback_data: `habit_check:${habit.id}:skip${suffix}` },
+                  { text: t(lang, 'reminder.btn.no'), callback_data: `habit_check:${habit.id}:no${suffix}` },
+                  { text: t(lang, 'reminder.btn.skip'), callback_data: `habit_check:${habit.id}:skip${suffix}` },
                 ],
               ],
             },
@@ -751,7 +762,7 @@ export class TelegramBotService {
       await this.postponeHabitReminderUseCase.setPostpone(userId, habitId, target);
 
       await this.safeEditMessage(
-        `🕐 Okay — I'll ask about "${habit.name}" again around ${formatLocalTime(userTimezone, target)}.`,
+        t(lang, 'reminder.postponed', { name: habit.name, time: formatLocalTime(userTimezone, target) }),
         { chat_id: chatId, message_id: messageId }
       );
 
@@ -779,16 +790,17 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habit = await this.resumeRemindersUseCase.getHabit(userId, habitId);
       if (!habit) {
-        await this.safeEditMessage('Habit not found.', { chat_id: chatId, message_id: messageId });
+        await this.safeEditMessage(t(lang, 'habits.not_found'), { chat_id: chatId, message_id: messageId });
         return;
       }
 
       await this.resumeRemindersUseCase.resume(userId, habitId);
 
       await this.safeEditMessage(
-        `▶️ Reminders resumed for "${habit.name}". I'll keep nudging you.`,
+        t(lang, 'reminder.resumed', { name: habit.name }),
         { chat_id: chatId, message_id: messageId }
       );
     } catch (error) {
@@ -901,10 +913,13 @@ export class TelegramBotService {
           return;
         }
 
-        // Guard: require consent + timezone before any other command
+        // Guard: require consent + timezone before any other command.
+        // (Gated on consentAccepted, NOT language — legacy users have no stored
+        // language and must not be re-blocked; they default to English.)
         const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
         if (!preferences || !preferences.consentAccepted || !preferences.timezone) {
-          await this.bot.sendMessage(chatId, 'Please complete setup first by sending /start');
+          const guardLang = preferences?.language ?? mapTelegramLangCode(msg.from?.language_code);
+          await this.bot.sendMessage(chatId, t(guardLang, 'setup.required'));
           return;
         }
         
@@ -970,7 +985,7 @@ export class TelegramBotService {
           chatId,
           textLength: text.length,
         });
-        await this.sendUnhandledMessageReply(chatId);
+        await this.sendUnhandledMessageReply(chatId, preferences.language ?? mapTelegramLangCode(msg.from?.language_code));
         void this.sendUnhandledMessageNotification(chatId, userId, username, text, msg.from);
         return;
       }
@@ -995,7 +1010,7 @@ export class TelegramBotService {
         await this.safeAnswerCallbackQuery(update.callback_query.id);
 
         const cbData = update.callback_query.data || '';
-        const isOnboardingCallback = cbData.startsWith('consent_') ||
+        const isOnboardingCallback = cbData.startsWith('language_') ||
                                       cbData.startsWith('timezone_') ||
                                       cbData.startsWith('tz_page:');
 
@@ -1005,7 +1020,8 @@ export class TelegramBotService {
             // Query is already answered above, so send a normal message instead of an alert.
             const cbChatId = update.callback_query.message?.chat.id;
             if (cbChatId) {
-              await this.bot.sendMessage(cbChatId, 'Please complete setup first by sending /start');
+              const guardLang = cbPreferences?.language ?? mapTelegramLangCode(user?.language_code);
+              await this.bot.sendMessage(cbChatId, t(guardLang, 'setup.required'));
             }
             return;
           }
@@ -1079,33 +1095,29 @@ export class TelegramBotService {
         await this.setUserPreferencesUseCase.updateUser(userId, user);
       }
       
+      // Gate the language step on consent, NOT on `language`: choosing a language
+      // records consent, so a user without consent hasn't onboarded. Legacy users
+      // (consentAccepted from the old flow, no stored language) are NOT re-prompted
+      // — they default to English and can switch in Settings (decision 2).
       if (!preferences || !preferences.consentAccepted) {
-        // Show consent message first
-        await this.showConsentMessage(chatId, userId);
-        return;
-      }
-      
-      // Check if user has set their timezone
-      if (!preferences.timezone) {
-        // Show timezone selection
-        await this.showTimezoneSelection(chatId, userId);
+        await this.showLanguageSelection(chatId, userId, user);
         return;
       }
 
-      // User has consent and timezone set, show welcome message
+      const lang = preferences.language ?? mapTelegramLangCode(user?.language_code);
+
+      // Check if user has set their timezone
+      if (!preferences.timezone) {
+        // Show timezone selection
+        await this.showTimezoneSelection(chatId, userId, lang);
+        return;
+      }
+
+      // User has completed onboarding — show welcome message
       Logger.info('Sending welcome message', { chatId });
       const sentMessage = await this.bot.sendMessage(
         chatId,
-        '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
-        '— Plutarch\n\n' +
-        '*Welcome to Habits Tracker! 🎯*\n\n' +
-        'Commands:\n' +
-        '/newhabit - Create a new habit\n\n' +
-        '/myhabits - View all your habits\n\n' +
-        '/analytics - View detailed analytics and graphs\n\n' +
-        '/settings - Manage your settings\n\n' +
-        // '/subscribe - Get Premium for unlimited habits\n\n' +
-        'The bot will remind you to check your habits! ⏰\n\n',
+        t(lang, 'welcome'),
         { parse_mode: 'Markdown' }
       );
       Logger.info('Welcome message sent successfully', {
@@ -1188,19 +1200,9 @@ export class TelegramBotService {
    * Replies to the user when their message isn't a known command or expected input.
    * Lists the available commands so they know what they can do. Never throws.
    */
-  private async sendUnhandledMessageReply(chatId: number): Promise<void> {
-    const message =
-      "🤔 Sorry, I can't process that message.\n\n" +
-      "I'm a habit-tracking bot, so I only understand a few commands. " +
-      'Here\'s what you can do:\n\n' +
-      '➕ /newhabit — Create a new habit to track\n' +
-      '📋 /myhabits — View all your habits\n' +
-      '📊 /analytics — View your habits analytics\n' +
-      '⚙️ /settings — Manage your settings\n\n' +
-      'Tip: you can also tap the menu button (☰) next to the message box to see the commands.';
-
+  private async sendUnhandledMessageReply(chatId: number, lang: Language = 'en'): Promise<void> {
     try {
-      await this.bot.sendMessage(chatId, message);
+      await this.bot.sendMessage(chatId, t(lang, 'unhandled.reply'));
     } catch (error) {
       Logger.error('Error sending unhandled message reply', {
         chatId,
@@ -1510,46 +1512,35 @@ export class TelegramBotService {
     }
   }
 
-  private async showConsentMessage(chatId: number, userId: number): Promise<void> {
-    const consentMessage = 
-      '📋 *Privacy Policy & Terms of Service*\n\n' +
-      'Before using Habits Tracker, please review and accept our policies:\n\n' +
-      '🔒 *Data Collection*\n' +
-      '• We store your habit data (names, streaks, completion dates)\n' +
-      '• We store your timezone preference for accurate reminders\n' +
-      '• We store conversation state temporarily during multi-step interactions\n' +
-      '• All data is stored securely in our database\n\n' +
-      '📱 *How We Use Your Data*\n' +
-      '• To send you habit reminders at your preferred times\n' +
-      '• To track your habit streaks and progress\n' +
-      '• To provide you with habit management features\n' +
-      '• We do not share your data with third parties\n\n' +
-      '⚙️ *Your Rights*\n' +
-      '• You can delete your habits at any time\n' +
-      '• You can stop using the bot at any time\n' +
-      '• Your data is associated only with your Telegram user ID\n\n' +
-      '📝 *Terms*\n' +
-      '• This bot is provided "as is" without warranties\n' +
-      '• We reserve the right to update these policies\n' +
-      '• Continued use implies acceptance of any policy changes\n\n' +
-      'By clicking "✅ I Accept", you agree to our Privacy Policy and Terms of Service.';
+  /**
+   * First onboarding step: pick a language. Choosing one also records consent
+   * (see handleLanguageSelection / SetUserPreferencesUseCase.setLanguage), so the
+   * consent line + policy links below keep acceptance meaningful. The prompt is
+   * language-neutral (trilingual) because the user hasn't chosen a language yet.
+   */
+  private async showLanguageSelection(chatId: number, userId: number, user?: TelegramBot.User): Promise<void> {
+    const prompt =
+      '🌍 *Please choose your language*\n' +
+      'Будь ласка, оберіть мову\n' +
+      'Пожалуйста, выберите язык\n\n' +
+      'By choosing a language you agree to our ' +
+      '[Privacy Policy](https://habits-builder.com/privacy-policy) and ' +
+      '[Terms](https://habits-builder.com/terms).';
 
     const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '✅ I Accept', callback_data: 'consent_accept' },
-          { text: '❌ Decline', callback_data: 'consent_decline' },
-        ],
-      ],
+      inline_keyboard: SUPPORTED_LANGUAGES.map(l => [
+        { text: l.label, callback_data: `language_select:${l.code}` },
+      ]),
     };
 
-    await this.bot.sendMessage(chatId, consentMessage, {
+    await this.bot.sendMessage(chatId, prompt, {
       parse_mode: 'Markdown',
+      disable_web_page_preview: true,
       reply_markup: keyboard,
     });
   }
 
-  private async showTimezoneSelection(chatId: number, userId: number): Promise<void> {
+  private async showTimezoneSelection(chatId: number, userId: number, lang: Language = 'en'): Promise<void> {
     const timezones = buildTimezonePickerOptions();
 
     // Create keyboard with timezone buttons (2 columns)
@@ -1572,9 +1563,7 @@ export class TelegramBotService {
 
     await this.bot.sendMessage(
       chatId,
-      '🌍 *Welcome to Habits Tracker!*\n\n' +
-      'Look at the clock on your phone and pick the time that matches.\n\n' +
-      'You can change this later in Settings.',
+      t(lang, 'onboarding.timezone.prompt'),
       {
         parse_mode: 'Markdown',
         reply_markup: keyboard,
@@ -1585,12 +1574,12 @@ export class TelegramBotService {
   private async handleNewHabitCommand(chatId: number, userId: number, username: string): Promise<void> {
     // Set conversation state to "creating_habit"
     await this.setConversationState(userId, 'creating_habit');
-    
+
     Logger.info('User started creating habit', { userId, username, chatId });
+    const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
     await this.bot.sendMessage(
       chatId,
-      '📝 What would you like to name your new habit?\n\n' +
-      'Just type the name and send it to me.'
+      t(lang, 'newhabit.prompt')
     );
   }
 
@@ -1602,10 +1591,11 @@ export class TelegramBotService {
     conversationState: string
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       // Parse conversation state: set_schedule:habitId:scheduleType or setting_schedule_new:habitId:scheduleType
       const match = conversationState.match(/^(?:set_schedule|setting_schedule_new):(.+):(.+)$/);
       if (!match) {
-        await this.bot.sendMessage(chatId, 'Invalid conversation state. Please try again.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.invalid_state'));
         await this.clearConversationState(userId);
         return;
       }
@@ -1615,7 +1605,7 @@ export class TelegramBotService {
       const isNewHabit = conversationState.startsWith('setting_schedule_new:');
 
       if (!this.setHabitReminderScheduleUseCase) {
-        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.not_available'));
         await this.clearConversationState(userId);
         return;
       }
@@ -1676,12 +1666,8 @@ export class TelegramBotService {
       const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
 
       const completionMessage = isNewHabit
-        ? `🌱 Habit "${updatedHabit.name}" is ready! Your seed is in the ground.\n\n` +
-          `Schedule: ${scheduleDesc}\n\n` +
-          `View all your habits with /myhabits`
-        : `✅ Reminder schedule updated!\n\n` +
-          `Habit: ${updatedHabit.name}\n` +
-          `Schedule: ${scheduleDesc}`;
+        ? t(lang, 'schedule.dsl.completion_new', { name: updatedHabit.name, schedule: scheduleDesc })
+        : t(lang, 'schedule.dsl.completion_update', { name: updatedHabit.name, schedule: scheduleDesc });
 
       await this.bot.sendMessage(chatId, completionMessage);
 
@@ -1708,61 +1694,51 @@ export class TelegramBotService {
     }
   }
 
-  private async handleConsentAcceptance(
+  /**
+   * Language pick handler. Onboarding: sets language (+ records consent, see
+   * setLanguage) then advances to the timezone step. From Settings: just updates
+   * the language and returns to the Settings menu.
+   */
+  private async handleLanguageSelection(
     userId: number,
     chatId: number,
+    langChoice: string,
     messageId?: number,
-    user?: TelegramBot.User
+    user?: TelegramBot.User,
+    isFromSettings: boolean = false
   ): Promise<void> {
     try {
-      await this.setUserPreferencesUseCase.setConsent(userId, true, user);
-      
+      if (!isSupportedLanguage(langChoice)) {
+        Logger.warn('Invalid language selected', { userId, langChoice });
+        await this.bot.sendMessage(chatId, 'Invalid language. Please try again.');
+        return;
+      }
+
+      await this.setUserPreferencesUseCase.setLanguage(userId, langChoice, user);
+      const langName = languageNativeName(langChoice);
+
+      if (isFromSettings) {
+        await this.safeEditMessage(
+          t(langChoice, 'settings.language.updated', { lang: langName }),
+          { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+        );
+        // Return to settings menu in the new language
+        await this.handleSettingsCommand(chatId, userId, user?.username || 'unknown', messageId);
+        Logger.info('User changed language from settings', { userId, language: langChoice });
+        return;
+      }
+
       await this.safeEditMessage(
-        '✅ *Thank you for accepting our Privacy Policy and Terms of Service!*\n\n' +
-        'Now let\'s set up your timezone to ensure reminders arrive at the right time.',
-        {
-          chat_id: chatId,
-          message_id: messageId,
-          parse_mode: 'Markdown',
-        }
+        t(langChoice, 'onboarding.language.confirmed', { lang: langName }),
+        { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
       );
 
       // Proceed to timezone selection (must be awaited — see gotcha #6)
-      await this.showTimezoneSelection(chatId, userId);
+      await this.showTimezoneSelection(chatId, userId, langChoice);
 
-      Logger.info('User accepted consent', { userId });
+      Logger.info('User selected language', { userId, language: langChoice });
     } catch (error) {
-      Logger.error('Error accepting consent', {
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      await this.bot.sendMessage(chatId, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  private async handleConsentDecline(
-    userId: number,
-    chatId: number,
-    messageId?: number,
-    user?: TelegramBot.User
-  ): Promise<void> {
-    try {
-      await this.setUserPreferencesUseCase.setConsent(userId, false, user);
-      
-      await this.safeEditMessage(
-        '❌ *Consent Declined*\n\n' +
-        'We\'re sorry, but we cannot provide our services without your consent to our Privacy Policy and Terms of Service.\n\n' +
-        'If you change your mind, you can start the bot again with /start and accept the policies.',
-        {
-          chat_id: chatId,
-          message_id: messageId,
-          parse_mode: 'Markdown',
-        }
-      );
-
-      Logger.info('User declined consent', { userId });
-    } catch (error) {
-      Logger.error('Error declining consent', {
+      Logger.error('Error setting language', {
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -1784,9 +1760,10 @@ export class TelegramBotService {
 
     try {
       const preferences = await this.setUserPreferencesUseCase.getPreferences(userId);
-      const currentTimezone = preferences?.timezone || 'Not set';
-      let timezoneDisplay = 'Not set';
-      if (currentTimezone !== 'Not set') {
+      const lang = preferences?.language ?? mapTelegramLangCode(preferences?.user?.language_code);
+      const currentTimezone = preferences?.timezone;
+      let timezoneDisplay = t(lang, 'common.not_set');
+      if (currentTimezone) {
         try {
           const now = new Date();
           timezoneDisplay = `${formatLocalTime(currentTimezone, now)} · ${formatUtcOffset(getUtcOffsetMinutes(currentTimezone, now))}`;
@@ -1794,23 +1771,28 @@ export class TelegramBotService {
           timezoneDisplay = currentTimezone.split('/').pop()?.replace(/_/g, ' ') || currentTimezone;
         }
       }
+      const languageDisplay = languageNativeName(lang);
 
       const keyboardRows: TelegramBot.InlineKeyboardButton[][] = [
         [
-          { text: '🌍 Change Timezone', callback_data: 'settings_timezone' },
+          { text: t(lang, 'settings.btn.timezone'), callback_data: 'settings_timezone' },
+        ],
+        [
+          { text: t(lang, 'settings.btn.language'), callback_data: 'settings_language' },
         ],
       ];
       if (userId && isAdminUser(userId)) {
         keyboardRows.push([
-          { text: 'Admin Panel', web_app: { url: 'https://habits-builder.com/admin' } },
+          { text: t(lang, 'settings.btn.admin'), web_app: { url: 'https://habits-builder.com/admin' } },
         ]);
       }
       const keyboard = { inline_keyboard: keyboardRows };
 
-      const message = `⚙️ *Settings*\n\n` +
-        `*Current Settings:*\n` +
-        `🌍 Timezone: ${timezoneDisplay}\n\n` +
-        `Select an option to change:`;
+      const message = `${t(lang, 'settings.title')}\n\n` +
+        `${t(lang, 'settings.current')}\n` +
+        `${t(lang, 'settings.timezone_label', { value: timezoneDisplay })}\n` +
+        `${t(lang, 'settings.language_label', { value: languageDisplay })}\n\n` +
+        `${t(lang, 'settings.select_option')}`;
 
       if (messageId) {
         await this.safeEditMessage(message, {
@@ -1842,6 +1824,7 @@ export class TelegramBotService {
     chatId: number,
     messageId?: number
   ): Promise<void> {
+    const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
     const timezones = buildTimezonePickerOptions();
 
     // Create keyboard with timezone buttons (2 columns)
@@ -1864,11 +1847,48 @@ export class TelegramBotService {
 
     // Add back button
     keyboard.inline_keyboard.push([
-      { text: '← Back to Settings', callback_data: 'settings_menu' },
+      { text: t(lang, 'settings.back'), callback_data: 'settings_menu' },
     ]);
 
-    const message = '🌍 *Change Timezone*\n\n' +
-      'Look at the clock on your phone and pick the time that matches.';
+    const message = t(lang, 'settings.timezone.title');
+
+    if (messageId) {
+      await this.safeEditMessage(message, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+    } else {
+      await this.bot.sendMessage(chatId, message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+    }
+  }
+
+  /**
+   * Language picker reached from Settings — updates language in place and returns
+   * to the Settings menu (via `language_select:{lang}:settings`). Does not re-run
+   * onboarding.
+   */
+  private async showLanguageSelectionFromSettings(
+    userId: number,
+    chatId: number,
+    messageId?: number
+  ): Promise<void> {
+    const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
+
+    const keyboard = {
+      inline_keyboard: [
+        ...SUPPORTED_LANGUAGES.map(l => [
+          { text: l.label, callback_data: `language_select:${l.code}:settings` },
+        ]),
+        [{ text: t(lang, 'settings.back'), callback_data: 'settings_menu' }],
+      ],
+    };
+
+    const message = t(lang, 'settings.language.title');
 
     if (messageId) {
       await this.safeEditMessage(message, {
@@ -1894,6 +1914,8 @@ export class TelegramBotService {
     isFromSettings: boolean = false
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId, user);
+
       if (!ALLOWED_TIMEZONE_IDS.includes(timezone)) {
         Logger.warn('Invalid timezone selected', { userId, timezone });
         await this.bot.sendMessage(chatId, 'Invalid timezone. Please try again.');
@@ -1908,31 +1930,21 @@ export class TelegramBotService {
       if (isFromSettings) {
         // Return to settings menu after timezone change
         await this.safeEditMessage(
-          `✅ Timezone updated to ${timezoneLabel}\n\n` +
-          'Returning to settings...',
+          t(lang, 'settings.timezone.updated', { tz: timezoneLabel }),
           {
             chat_id: chatId,
             message_id: messageId,
             parse_mode: 'Markdown',
           }
         );
-        
+
         // Show settings menu again
         await this.handleSettingsCommand(chatId, userId, user?.username || 'unknown', messageId);
       } else {
-        // Original welcome message flow
+        // Onboarding: confirm timezone, then show the welcome message
         await this.safeEditMessage(
-          `✅ Timezone set to ${timezoneLabel}\n\n` +
-          '✨ _Choose what is best, and habit will make it pleasant and easy._ ✨\n' +
-          '— Plutarch\n\n' +
-          '*Welcome to Habits Tracker! 🎯*\n\n' +
-          'Commands:\n' +
-          '/newhabit - Create a new habit\n\n' +
-          '/myhabits - View all your habits\n\n' +
-          '/analytics - View detailed analytics and graphs\n\n' +
-          '/settings - Manage your settings\n\n' +
-          // '/subscribe - Get Premium for unlimited habits\n\n' +
-          'The bot will remind you to check your habits! ⏰\n\n',
+          `${t(lang, 'onboarding.timezone.set', { tz: timezoneLabel })}\n\n` +
+          t(lang, 'welcome'),
           {
             chat_id: chatId,
             message_id: messageId,
@@ -1959,11 +1971,12 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
-        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.bot.sendMessage(chatId, t(lang, 'habits.not_found'));
         await this.clearConversationState(userId);
         return;
       }
@@ -1971,16 +1984,13 @@ export class TelegramBotService {
       // Get user's timezone for display
       const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       const userTimezone = userPreferences?.timezone || 'UTC';
-      const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
 
       const scheduleDesc = this.checkReminderDue.getScheduleDescription(
         habit.reminderSchedule || { type: 'daily', hour: 22, minute: 0, timezone: userTimezone }
       );
 
       await this.safeEditMessage(
-        `✅ "${habit.name}" is ready! Your seed is in the ground.\n\n` +
-        `⏰ ${scheduleDesc}\n\n` +
-        `View all your habits with /myhabits`,
+        t(lang, 'create.ready_full', { name: habit.name, schedule: scheduleDesc }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -2007,11 +2017,12 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
-        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.bot.sendMessage(chatId, t(lang, 'habits.not_found'));
         await this.clearConversationState(userId);
         return;
       }
@@ -2025,14 +2036,12 @@ export class TelegramBotService {
       const time = `${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}`;
 
       await this.safeEditMessage(
-        `🌱 "${habit.name}" is planted.\n\n` +
-        `⏰ We'll remind you *every day at ${time}* (${timezoneName}).\n\n` +
-        `Tap *👍 Sounds good* to finish — or adjust the reminder below.`,
+        t(lang, 'create.planted', { name: habit.name, time, tz: timezoneName }),
         {
           chat_id: chatId,
           message_id: messageId,
           parse_mode: 'Markdown',
-          reply_markup: this.buildNewHabitConfirmKeyboard(habitId),
+          reply_markup: this.buildNewHabitConfirmKeyboard(habitId, lang),
         }
       );
     } catch (error) {
@@ -2053,11 +2062,12 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
-        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.bot.sendMessage(chatId, t(lang, 'habits.not_found'));
         await this.clearConversationState(userId);
         return;
       }
@@ -2070,21 +2080,20 @@ export class TelegramBotService {
       for (let i = 0; i < presets.length; i += 2) {
         const row = [presets[i], presets[i + 1]]
           .filter(Boolean)
-          .map(t => ({ text: t, callback_data: `schedule_settime_new:${habitId}:${t.replace(':', '')}` }));
+          .map(preset => ({ text: preset, callback_data: `schedule_settime_new:${habitId}:${preset.replace(':', '')}` }));
         timeRows.push(row);
       }
 
       const keyboard = {
         inline_keyboard: [
           ...timeRows,
-          [{ text: '⌨️ Custom time', callback_data: `schedule_type_new:${habitId}:daily` }],
-          [{ text: '← Back', callback_data: `schedule_back_new:${habitId}` }],
+          [{ text: t(lang, 'btn.custom_time'), callback_data: `schedule_type_new:${habitId}:daily` }],
+          [{ text: t(lang, 'btn.back'), callback_data: `schedule_back_new:${habitId}` }],
         ],
       };
 
       await this.safeEditMessage(
-        `🕐 What time each day should we remind you about "${habit.name}"?\n\n` +
-        `Pick a time, or tap *⌨️ Custom time* to type your own (HH:MM).`,
+        t(lang, 'schedule.pick_time', { name: habit.name }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -2111,15 +2120,16 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       if (!this.setHabitReminderScheduleUseCase) {
-        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.not_available'));
         return;
       }
 
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
       if (!habit) {
-        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.bot.sendMessage(chatId, t(lang, 'habits.not_found'));
         await this.clearConversationState(userId);
         return;
       }
@@ -2135,9 +2145,7 @@ export class TelegramBotService {
       const scheduleDesc = this.checkReminderDue.getScheduleDescription(schedule);
 
       await this.safeEditMessage(
-        `✅ "${updatedHabit.name}" is ready!\n\n` +
-        `⏰ ${scheduleDesc}\n\n` +
-        `View all your habits with /myhabits`,
+        t(lang, 'create.ready_short', { name: updatedHabit.name, schedule: scheduleDesc }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -2165,11 +2173,12 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
-        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.bot.sendMessage(chatId, t(lang, 'habits.not_found'));
         await this.clearConversationState(userId);
         return;
       }
@@ -2179,22 +2188,21 @@ export class TelegramBotService {
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '📅 Daily', callback_data: `schedule_pick_time_new:${habitId}` },
-            { text: '📆 Weekly', callback_data: `schedule_type_new:${habitId}:weekly` },
+            { text: t(lang, 'btn.daily'), callback_data: `schedule_pick_time_new:${habitId}` },
+            { text: t(lang, 'btn.weekly'), callback_data: `schedule_type_new:${habitId}:weekly` },
           ],
           [
-            { text: '🗓️ Monthly', callback_data: `schedule_type_new:${habitId}:monthly` },
-            { text: '⏱️ Interval', callback_data: `schedule_type_new:${habitId}:interval` },
+            { text: t(lang, 'btn.monthly'), callback_data: `schedule_type_new:${habitId}:monthly` },
+            { text: t(lang, 'btn.interval'), callback_data: `schedule_type_new:${habitId}:interval` },
           ],
           [
-            { text: '← Back', callback_data: `schedule_back_new:${habitId}` },
+            { text: t(lang, 'btn.back'), callback_data: `schedule_back_new:${habitId}` },
           ],
         ],
       };
 
       await this.safeEditMessage(
-        `📅 How often should we remind you about "${habit.name}"?\n\n` +
-        `Pick a schedule type below.`,
+        t(lang, 'schedule.more', { name: habit.name }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -2213,17 +2221,18 @@ export class TelegramBotService {
 
   private async handleHabitNameInput(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
     const trimmedName = habitName.trim();
-    
+    const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
+
     if (!trimmedName || trimmedName.length === 0) {
       Logger.info('Empty habit name provided', { userId, username, chatId });
-      await this.bot.sendMessage(chatId, '❌ Habit name cannot be empty. Please try again with /newhabit');
+      await this.bot.sendMessage(chatId, t(lang, 'newhabit.name_empty'));
       return;
     }
 
     // Check if name starts with a command (user might have sent a command by mistake)
     if (trimmedName.startsWith('/')) {
       Logger.info('User sent command instead of habit name', { userId, username, chatId, text: trimmedName });
-      await this.bot.sendMessage(chatId, '❌ Please provide a habit name, not a command. Try again with /newhabit');
+      await this.bot.sendMessage(chatId, t(lang, 'newhabit.name_is_command'));
       return;
     }
 
@@ -2255,12 +2264,12 @@ export class TelegramBotService {
    * already fully working (default daily 22:00), so this is optional tuning, not
    * a gate: "Sounds good" finishes; the other buttons customize.
    */
-  private buildNewHabitConfirmKeyboard(habitId: string) {
+  private buildNewHabitConfirmKeyboard(habitId: string, lang: Language = 'en') {
     return {
       inline_keyboard: [
-        [{ text: '👍 Sounds good', callback_data: `schedule_skip_new:${habitId}` }],
-        [{ text: '🕐 Change time', callback_data: `schedule_pick_time_new:${habitId}` }],
-        [{ text: '📅 Different schedule', callback_data: `schedule_more_new:${habitId}` }],
+        [{ text: t(lang, 'btn.sounds_good'), callback_data: `schedule_skip_new:${habitId}` }],
+        [{ text: t(lang, 'btn.change_time'), callback_data: `schedule_pick_time_new:${habitId}` }],
+        [{ text: t(lang, 'btn.different_schedule'), callback_data: `schedule_more_new:${habitId}` }],
       ],
     };
   }
@@ -2273,6 +2282,7 @@ export class TelegramBotService {
     const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
     const userTimezone = userPreferences?.timezone || 'UTC';
     const timezoneName = userTimezone.split('/').pop()?.replace(/_/g, ' ') || userTimezone;
+    const lang = userPreferences?.language ?? mapTelegramLangCode(userPreferences?.user?.language_code);
 
     // The habit already carries a working default schedule (daily 22:00); show
     // the actual time rather than assuming, then let the user confirm or tune.
@@ -2282,18 +2292,14 @@ export class TelegramBotService {
     const defaultTime = `${defaultSchedule.hour.toString().padStart(2, '0')}:${defaultSchedule.minute.toString().padStart(2, '0')}`;
     const isFirstHabit = userHabits.length === 1;
 
-    let text = `🌱 Habit "${habitName}" created! Your seed is planted.\n\n` +
-      `⏰ We'll remind you *every day at ${defaultTime}* (${timezoneName}).\n\n` +
-      `Tap *👍 Sounds good* to finish — or adjust the reminder below.`;
+    let text = t(lang, 'create.confirm', { name: habitName, time: defaultTime, tz: timezoneName });
 
     if (isFirstHabit) {
-      text += `\n\n💡 *Tip:* Starting with just one habit is the best way to build consistency. ` +
-        `Give yourself a few days to get into the rhythm before adding more — ` +
-        `you'll be surprised how much easier it is to stick with it!`;
+      text += `\n\n${t(lang, 'create.confirm.tip')}`;
     }
 
     await this.bot.sendMessage(chatId, text, {
-      reply_markup: this.buildNewHabitConfirmKeyboard(habitId),
+      reply_markup: this.buildNewHabitConfirmKeyboard(habitId, lang),
       parse_mode: 'Markdown',
     });
   }
@@ -2301,10 +2307,11 @@ export class TelegramBotService {
   private async handleNewHabitCommandWithName(chatId: number, userId: number, username: string, habitName: string): Promise<void> {
     // Backward compatibility: handle /newhabit <name> format
     const trimmedName = habitName.trim();
-    
+    const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
+
     if (!trimmedName || trimmedName.length === 0) {
       Logger.info('Invalid habit creation request', { userId, username, chatId });
-      await this.bot.sendMessage(chatId, 'Please provide a habit name: /newhabit <name>');
+      await this.bot.sendMessage(chatId, t(lang, 'newhabit.provide_name'));
       return;
     }
 
@@ -2312,8 +2319,7 @@ export class TelegramBotService {
       const habit = await this.createHabitUseCase.execute(userId, trimmedName, username);
       await this.bot.sendMessage(
         chatId,
-        `🌱 Habit "${habit.name}" created! Your seed is planted.\n\n` +
-        `View all your habits with /myhabits`
+        t(lang, 'newhabit.created_simple', { name: habit.name })
       );
     } catch (error) {
       Logger.error('Error creating habit', {
@@ -2462,6 +2468,7 @@ export class TelegramBotService {
       return;
     }
 
+    const lang = await this.setUserPreferencesUseCase.getLanguage(userId, user);
     Logger.info('User requested analytics', { userId, username, chatId });
     
     // Get base URL from environment variables
@@ -2477,14 +2484,8 @@ export class TelegramBotService {
     // const analyticsUrl = `${baseUrl}/analytics/${userId}`;
     const analyticsUrl = `https://habits-builder.com/analytics/${userId}`;
     
-    const message = `📊 *Your Habits Analytics*\n\n` +
-      `View detailed analytics and graphs for all your habits.\n\n` +
-      `Click the link below to see:\n` +
-      `• Streak trends over time\n` +
-      `• Completion statistics\n` +
-      `• Skipped and dropped days\n` +
-      `• Timeline of all check events`;
-    
+    const message = t(lang, 'analytics.intro');
+
     Logger.debug('Sending analytics message', { chatId, userId, username, message });
     await this.bot.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
@@ -2492,7 +2493,7 @@ export class TelegramBotService {
       reply_markup: {
         inline_keyboard: [[
         {
-          "text": "📊 Open Analytics",
+          "text": t(lang, 'analytics.btn.open'),
           "web_app": { "url": analyticsUrl }
         }
       ]]
@@ -2698,14 +2699,13 @@ export class TelegramBotService {
       return;
     }
 
-    // Handle consent acceptance/rejection
-    if (data === 'consent_accept') {
-      await this.handleConsentAcceptance(userId, chatId, query.message?.message_id, query.from);
-      return;
-    }
-
-    if (data === 'consent_decline') {
-      await this.handleConsentDecline(userId, chatId, query.message?.message_id, query.from);
+    // Handle language selection (onboarding and from settings)
+    // Shape: language_select:{en|uk|ru} or language_select:{lang}:settings
+    const languageMatch = data.match(/^language_select:([a-z]{2})(?::(settings))?$/);
+    if (languageMatch) {
+      const langChoice = languageMatch[1];
+      const isFromSettings = languageMatch[2] === 'settings';
+      await this.handleLanguageSelection(userId, chatId, langChoice, query.message?.message_id, query.from, isFromSettings);
       return;
     }
 
@@ -2717,6 +2717,11 @@ export class TelegramBotService {
 
     if (data === 'settings_timezone') {
       await this.showTimezoneSelectionFromSettings(userId, chatId, query.message?.message_id);
+      return;
+    }
+
+    if (data === 'settings_language') {
+      await this.showLanguageSelectionFromSettings(userId, chatId, query.message?.message_id);
       return;
     }
 
@@ -2767,26 +2772,27 @@ export class TelegramBotService {
     targetDate?: string
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId, query.from);
       const habitsBefore = await this.getUserHabitsUseCase.execute(userId);
       const habitBefore = habitsBefore.find(h => h.id === habitId);
       const badgesBefore = habitBefore?.badges || [];
 
       const updatedHabit = await this.recordHabitCheckUseCase.execute(userId, habitId, completed, username, targetDate);
-      
+
       const emoji = completed ? '✅' : '❌';
       const { getBadgeInfo, BADGE_TREE_MESSAGES, getNextMilestone } = await import('../../domain/utils/HabitBadges');
 
       let message: string;
       if (!completed) {
-        message = `Streak reset. You can start fresh tomorrow! 💪`;
+        message = t(lang, 'check.reset');
       } else if (updatedHabit.streak === 1) {
         const next = getNextMilestone(1, updatedHabit.badges || []);
-        message = `🌱 Your seed has sprouted! Streak for "${updatedHabit.name}" is now 1 day!`;
+        message = t(lang, 'check.sprouted', { name: updatedHabit.name });
         if (next) {
-          message += `\n\n${next.daysLeft} more days until your first badge ${next.emoji}`;
+          message += `\n\n${t(lang, 'check.first_badge', { days: next.daysLeft, emoji: next.emoji })}`;
         }
       } else {
-        message = `Great! Your streak for "${updatedHabit.name}" is now ${updatedHabit.streak} days! 🔥`;
+        message = t(lang, 'check.great', { name: updatedHabit.name, streak: updatedHabit.streak });
       }
 
       // Check if new badges were earned
@@ -2832,7 +2838,7 @@ export class TelegramBotService {
         }
 
         if (celebrationImageNumbers.length > 0) {
-          await this.safeEditMessage(`${emoji} Checked!`, {
+          await this.safeEditMessage(`${emoji} ${t(lang, 'check.checked')}`, {
             chat_id: chatId,
             message_id: query.message?.message_id,
           });
@@ -2904,13 +2910,14 @@ export class TelegramBotService {
     targetDate?: string
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
         Logger.warn('Habit not found for skip confirmation', { userId, habitId, chatId });
         await this.safeAnswerCallbackQuery('', {
-          text: 'Habit not found',
+          text: t(lang, 'habits.not_found'),
           show_alert: true,
         });
         return;
@@ -2920,14 +2927,14 @@ export class TelegramBotService {
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '✅ Yes, skip', callback_data: `habit_skip_confirm:${habitId}${suffix}` },
-            { text: '❌ Cancel', callback_data: `habit_check:${habitId}:cancel${suffix}` },
+            { text: t(lang, 'skip.btn.yes'), callback_data: `habit_skip_confirm:${habitId}${suffix}` },
+            { text: t(lang, 'btn.cancel'), callback_data: `habit_check:${habitId}:cancel${suffix}` },
           ],
         ],
       };
 
       await this.safeEditMessage(
-        `Are you sure you want to skip "${habit.name}" today?\n\n⏭️ Your streak will be preserved.`,
+        t(lang, 'skip.confirm', { name: habit.name }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -2953,11 +2960,12 @@ export class TelegramBotService {
     targetDate?: string
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId, user);
       // Skip notes are entered from the MiniApp only; from chat the note is left empty.
       const updatedHabit = await this.recordHabitCheckUseCase.skipHabit(userId, habitId, username, targetDate);
 
       await this.safeEditMessage(
-        `⏭️ Skipped "${updatedHabit.name}" today. Your streak of ${updatedHabit.streak} days is preserved! 💪`,
+        t(lang, 'skip.result', { name: updatedHabit.name, streak: updatedHabit.streak }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -3009,6 +3017,7 @@ export class TelegramBotService {
     username?: string
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       // Get habit details to show in confirmation
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
@@ -3016,19 +3025,19 @@ export class TelegramBotService {
       if (!habit) {
         Logger.warn('Habit not found for deletion confirmation', { userId, username, habitId, chatId });
         await this.safeAnswerCallbackQuery('', {
-          text: 'Habit not found',
+          text: t(lang, 'habits.not_found'),
           show_alert: true,
         });
         return;
       }
 
       // Show confirmation message
-      const confirmationMessage = `⚠️ Are you sure you want to delete "${habit.name}"?\n\nThis action cannot be undone.`;
+      const confirmationMessage = t(lang, 'habits.delete.confirm', { name: habit.name });
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '✅ Yes, delete', callback_data: `habit_delete_confirm:${habitId}` },
-            { text: '❌ Cancel', callback_data: `habit_view:${habitId}` },
+            { text: t(lang, 'btn.delete_yes'), callback_data: `habit_delete_confirm:${habitId}` },
+            { text: t(lang, 'btn.cancel'), callback_data: `habit_view:${habitId}` },
           ],
         ],
       };
@@ -3082,12 +3091,13 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit) {
         await this.safeAnswerCallbackQuery(callbackQueryId);
-        await this.bot.sendMessage(chatId, 'Habit not found.');
+        await this.bot.sendMessage(chatId, t(lang, 'habits.not_found'));
         return;
       }
 
@@ -3105,22 +3115,22 @@ export class TelegramBotService {
 
       if (!this.setHabitReminderScheduleUseCase) {
         await this.safeAnswerCallbackQuery(callbackQueryId);
-        await this.bot.sendMessage(chatId, 'Schedule management is not available. Please contact support.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.not_available_support'));
         return;
       }
 
       const keyboard = {
         inline_keyboard: [
           [
-            { text: '📅 Daily', callback_data: `schedule_type:${habitId}:daily` },
-            { text: '📆 Weekly', callback_data: `schedule_type:${habitId}:weekly` },
+            { text: t(lang, 'btn.daily'), callback_data: `schedule_type:${habitId}:daily` },
+            { text: t(lang, 'btn.weekly'), callback_data: `schedule_type:${habitId}:weekly` },
           ],
           [
-            { text: '🗓️ Monthly', callback_data: `schedule_type:${habitId}:monthly` },
-            { text: '⏱️ Interval', callback_data: `schedule_type:${habitId}:interval` },
+            { text: t(lang, 'btn.monthly'), callback_data: `schedule_type:${habitId}:monthly` },
+            { text: t(lang, 'btn.interval'), callback_data: `schedule_type:${habitId}:interval` },
           ],
           [
-            { text: '← Back', callback_data: `habit_view:${habitId}` },
+            { text: t(lang, 'btn.back'), callback_data: `habit_view:${habitId}` },
           ],
         ],
       };
@@ -3128,11 +3138,10 @@ export class TelegramBotService {
       // Get user's timezone for default schedule display
       const userPreferences = await this.setUserPreferencesUseCase.getPreferences(userId);
       const userTimezone = userPreferences?.timezone || 'UTC';
-      
+      const currentDesc = this.checkReminderDue.getScheduleDescription(habit.reminderSchedule || { type: 'daily', hour: 22, minute: 0, timezone: userTimezone });
+
       await this.safeEditMessage(
-        `⏰ Set Reminder Schedule for "${habit.name}"\n\n` +
-        `Current: ${this.checkReminderDue.getScheduleDescription(habit.reminderSchedule || { type: 'daily', hour: 22, minute: 0, timezone: userTimezone })}\n\n` +
-        `Choose a schedule type:`,
+        t(lang, 'schedule.set', { name: habit.name, current: currentDesc }),
         {
           chat_id: chatId,
           message_id: messageId,
@@ -3158,68 +3167,43 @@ export class TelegramBotService {
     isNewHabit: boolean = false
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       const habits = await this.getUserHabitsUseCase.execute(userId);
       const habit = habits.find(h => h.id === habitId);
 
       if (!habit || !this.setHabitReminderScheduleUseCase) {
-        await this.bot.sendMessage(chatId, 'Error: Habit not found or schedule management unavailable.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.habit_or_unavailable'));
         return;
       }
 
-      let message = `⏰ Set ${scheduleType.charAt(0).toUpperCase() + scheduleType.slice(1)} Schedule\n\n`;
-      let keyboard: any;
-
+      let message: string;
       switch (scheduleType) {
         case 'daily':
-          message += 'Enter the time for daily reminders.\n\n' +
-            'Examples:\n' +
-            '• 20:30 - Every day at 8:30 PM\n' +
-            '• 09:00 - Every day at 9:00 AM\n\n' +
-            '📝 Reply with: HH:MM';
+          message = t(lang, 'schedule.type.daily');
           break;
-
         case 'weekly':
-          message += 'Enter days and time for weekly reminders.\n\n' +
-            'Examples:\n' +
-            '• monday 18:00 - Every Monday at 6 PM\n' +
-            '• tuesday,saturday 20:00 - Every Tuesday and Saturday at 8 PM\n' +
-            '• monday,wednesday,friday 08:00 - Mon/Wed/Fri at 8 AM\n\n' +
-            'Days: sunday, monday, tuesday, wednesday, thursday, friday, saturday\n\n' +
-            '📝 Reply with: day1,day2 HH:MM';
+          message = t(lang, 'schedule.type.weekly');
           break;
-
         case 'monthly':
-          message += 'Enter day(s) of month and time for monthly reminders.\n\n' +
-            'Examples:\n' +
-            '• 15 15:42 - 15th of each month at 3:42 PM\n' +
-            '• 20,26 22:00 - 20th and 26th at 10 PM\n' +
-            '• 1,15 09:00 - 1st and 15th at 9 AM\n\n' +
-            '📝 Reply with: day1,day2 HH:MM';
+          message = t(lang, 'schedule.type.monthly');
           break;
-
         case 'interval':
-          message += 'Enter number of days and time for interval reminders.\n\n' +
-            'Examples:\n' +
-            '• 2 15:30 - Every 2 days at 3:30 PM\n' +
-            '• 3 09:00 - Every 3 days at 9 AM\n' +
-            '• 5 20:00 - Every 5 days at 8 PM\n\n' +
-            '📝 Reply with: N HH:MM';
+          message = t(lang, 'schedule.type.interval');
           break;
-
         default:
-          await this.bot.sendMessage(chatId, 'Unknown schedule type.');
+          await this.bot.sendMessage(chatId, t(lang, 'schedule.unknown_type'));
           return;
       }
 
       const scheduleUrl = `https://habits-builder.com/schedule?habitId=${habitId}&type=${scheduleType}&chatId=${chatId}&msgId=${messageId}&isNew=${isNewHabit ? '1' : '0'}`;
 
-      keyboard = {
+      const keyboard = {
         inline_keyboard: [
           [
-            { text: '🌐 Configure in MiniApp', web_app: { url: scheduleUrl } },
+            { text: t(lang, 'btn.configure_miniapp'), web_app: { url: scheduleUrl } },
           ],
           [
-            { text: '← Back', callback_data: isNewHabit ? `schedule_back_new:${habitId}` : `habit_set_schedule:${habitId}` },
+            { text: t(lang, 'btn.back'), callback_data: isNewHabit ? `schedule_back_new:${habitId}` : `habit_set_schedule:${habitId}` },
           ],
         ],
       };
@@ -3252,15 +3236,16 @@ export class TelegramBotService {
     messageId?: number
   ): Promise<void> {
     try {
+      const lang = await this.setUserPreferencesUseCase.getLanguage(userId);
       if (!this.setHabitReminderScheduleUseCase) {
-        await this.bot.sendMessage(chatId, 'Schedule management is not available.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.not_available'));
         return;
       }
 
       // Retrieve stored quick schedules from conversation state
       const conversationState = await this.getConversationState(userId);
       if (!conversationState || !conversationState.startsWith(`schedule_quick:${habitId}:`)) {
-        await this.bot.sendMessage(chatId, 'Schedule options expired. Please try again.');
+        await this.bot.sendMessage(chatId, t(lang, 'schedule.options_expired'));
         return;
       }
 

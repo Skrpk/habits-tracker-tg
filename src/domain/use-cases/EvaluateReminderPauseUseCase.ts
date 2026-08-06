@@ -13,7 +13,7 @@ import { Habit, ReminderSchedule } from '../entities/Habit';
 /** Consecutive misses that trigger a pause. */
 export const REMINDER_MISS_THRESHOLD = parseInt(process.env.REMINDER_MISS_THRESHOLD || '2', 10);
 /** Days a daily habit's reminders are paused once the threshold is hit. */
-export const REMINDER_PAUSE_DAYS = parseInt(process.env.REMINDER_PAUSE_DAYS || '7', 10);
+export const REMINDER_PAUSE_DAYS = parseInt(process.env.REMINDER_PAUSE_DAYS || '3', 10);
 
 /** Only daily habits participate in auto-pause. A missing schedule defaults to daily (matches isDue). */
 export function isAutoPauseEligible(schedule: ReminderSchedule | undefined): boolean {

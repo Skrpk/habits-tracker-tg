@@ -6,7 +6,11 @@
 
 Everything flows through `TelegramBotService.processUpdate()`, which manually dispatches messages, commands, and callback queries — there is no framework router. Callback queries are matched with a long series of `data === '…'` and `data.match(/^prefix:(.+)$/)` branches (~24 of them). When you add a callback, add its branch here and **await** the handler so the serverless invocation doesn't return early.
 
+**Onboarding is language → timezone → welcome** (the old Privacy/Terms consent step is gone; see root gotcha #13). `language_select:{en|uk|ru}` (onboarding) or `language_select:{lang}:settings` (from Settings), parsed by `/^language_select:([a-z]{2})(?::(settings))?$/` → `handleLanguageSelection`, which validates via `isSupportedLanguage`, calls `setLanguage` (records consent), then advances to the timezone step (or back to Settings). The `/start` gate for showing the language picker is **`!consentAccepted`**, NOT `!language` — legacy users (consent, no language) must not be re-onboarded. Add `language_` / `timezone_` / `tz_page:` prefixes to the `isOnboardingCallback` allowlist so the pre-consent guard doesn't block them.
+
 `timezone_select` callback shape: `timezone_select:{iana}` (onboarding) or `timezone_select:{iana}:settings` (from Settings), parsed by `/^timezone_select:(.+?)(?::(.+))?$/`. Handlers must validate the id against `ALLOWED_TIMEZONE_IDS` before persisting, and guard `Intl` formatting — some allowlisted legacy ids (e.g. `Pacific/Baker_Island`) throw `RangeError`.
+
+**i18n:** user-facing strings go through `t(lang, key, params)` (`src/i18n/`), not literals. Resolve `lang` from `preferences.language ?? mapTelegramLangCode(user?.language_code)` (or `setUserPreferencesUseCase.getLanguage(userId, user)`) and pass it down; `en` is the fallback. Add new keys to **all three** dicts (`en/uk/ru`) — parity is tested. Migration is incremental; untouched handlers may still hold English literals.
 
 Reminder answer callbacks all carry the reminder's day: `habit_check:{id}:{yes|no|skip|cancel}:{YYYY-MM-DD}` and `habit_postpone:{id}:{YYYY-MM-DD}` ("Check later"). `handleHabitPostpone` stores `Habit.postponedUntil` and strips the message's buttons; the re-ask is driven by the reminder cron via `GetHabitsDueForReminderUseCase` (see root gotcha #11), **not** an in-process timer. `habit_postpone` and `habit_check` have distinct prefixes (order-independent) — keep both branches awaited.
 
@@ -27,7 +31,7 @@ Clear or advance state explicitly at the end of each step. Unhandled free text (
 
 ## Commands menu
 
-`setMyCommands()` registers: `/newhabit`, `/myhabits`, `/analytics`, `/settings`, `/subscribe`. Deliberately **not** in the menu: `/start` (primary onboarding entry, still handled) and `/quote` (admin-only tooling). There is **no `/admin` command** — the Admin Panel is a `web_app` button shown only in Settings when `isAdminUser` is true. Don't add an `/admin` command or menu entry.
+`setMyCommands()` registers `/newhabit`, `/myhabits`, `/analytics`, `/settings` **once per language** — a default (no `language_code`) scope plus `en`/`uk`/`ru` scopes, descriptions via `t(lang, 'cmd.*')`. Deliberately **not** in the menu: `/start` (primary onboarding entry, still handled) and `/quote` (admin-only tooling). There is **no `/admin` command** — the Admin Panel is a `web_app` button shown only in Settings when `isAdminUser` is true. Don't add an `/admin` command or menu entry. Keep this list in sync with the `welcome` and `unhandled.reply` i18n strings.
 
 ## Editing notes
 

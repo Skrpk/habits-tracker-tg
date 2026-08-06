@@ -1,10 +1,47 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
 import { UserPreferences } from '../entities/UserPreferences';
 import { Logger } from '../../infrastructure/logger/Logger';
+import { Language, mapTelegramLangCode } from '../../i18n';
 import TelegramBot from 'node-telegram-bot-api';
 
 export class SetUserPreferencesUseCase {
   constructor(private habitRepository: IHabitRepository) {}
+
+  /**
+   * Sets the user's UI language. Choosing a language IS the consent action, so
+   * this also records consent (backward-compatible with the old consent step):
+   * `consentAccepted = true` and, on first accept, stamps `consentDate`.
+   */
+  async setLanguage(userId: number, language: Language, user?: TelegramBot.User): Promise<UserPreferences> {
+    const existing = await this.habitRepository.getUserPreferences(userId);
+
+    const preferences: UserPreferences = {
+      userId,
+      user: user || existing?.user,
+      language,
+      consentAccepted: true,
+      // Preserve the original consent date on repeat calls (e.g. changing language later).
+      consentDate: existing?.consentDate ?? new Date().toISOString().split('T')[0],
+    };
+
+    await this.habitRepository.saveUserPreferences(preferences);
+
+    Logger.info('User language set', { userId, language });
+
+    return preferences;
+  }
+
+  /**
+   * Resolves the language to render for a user: stored choice → Telegram
+   * language_code → English. Legacy users (no stored language) fall through here.
+   */
+  async getLanguage(userId: number, user?: TelegramBot.User): Promise<Language> {
+    const preferences = await this.habitRepository.getUserPreferences(userId);
+    if (preferences?.language) {
+      return preferences.language;
+    }
+    return mapTelegramLangCode(user?.language_code);
+  }
 
   async setTimezone(userId: number, timezone: string, user?: TelegramBot.User): Promise<UserPreferences> {
     // Validate timezone (basic check - IANA timezone format)
