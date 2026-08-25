@@ -694,6 +694,10 @@ export class TelegramBotService {
       if (errorMessage.toLowerCase().includes('bot was blocked by the user')) {
         await this.setUserPreferencesUseCase.setBlocked(userId, true);
       }
+      // If user user was deactivated mark as blocked so we skip reminders until they /start again
+      if (errorMessage.toLowerCase().includes('user is deactivated')) {
+        await this.setUserPreferencesUseCase.setBlocked(userId, true);
+      }
       
       // Send notification to channel
       await this.sendErrorNotification(userId, habit.name, 'Error sending habit reminder', errorMessage);
