@@ -99,18 +99,20 @@ function computeDailyHabitHistory(
     return history;
   }
   
-  // For daily habits: all days from creation to today are considered completed
-  // unless they are in the skipped or dropped list.
-  // Do not infer today as completed if the habit hasn't been checked yet (lastCheckedDate !== today).
+  // For daily habits: days from creation up to and including the last interaction
+  // (`lastCheckedDate`, which advances on complete/skip/drop) are considered completed
+  // unless explicitly skipped or dropped. Any day AFTER `lastCheckedDate` has not been
+  // answered — a not-yet-checked today or a silently missed day — so it is NOT inferred
+  // as completed (rendered as a gap). Because `lastCheckedDate` is the latest interaction,
+  // these misses are always trailing, so the completed streak stays correct.
   const adjustedHistory: CheckHistoryEntry[] = [];
   let currentStreak = 0;
   const currentDate = new Date(creationDate);
-  const todayStr = today.toISOString().split('T')[0];
+  const lastInteractionDate = habit.lastCheckedDate || '';
 
   while (currentDate <= today) {
     const dateStr = currentDate.toISOString().split('T')[0];
-    const isToday = dateStr === todayStr;
-    const checkedToday = (habit.lastCheckedDate || '') === todayStr;
+    const isAfterLastInteraction = dateStr > lastInteractionDate;
 
     if (droppedDates.has(dateStr)) {
       // Drop: reset streak to 0
@@ -133,9 +135,9 @@ function computeDailyHabitHistory(
         ...(skip.note && { note: skip.note }),
       });
       // Streak remains the same
-    } else if (isToday && !checkedToday) {
-      // Today but habit not checked yet — don't infer as completed
-      // (no entry added; streak unchanged)
+    } else if (isAfterLastInteraction) {
+      // Day after the last interaction — not yet answered (today) or silently
+      // missed (a past gap). Don't infer as completed (no entry; streak unchanged).
     } else {
       // All other days are considered completed
       currentStreak++;

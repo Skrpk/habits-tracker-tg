@@ -345,7 +345,7 @@ interface UserPreferences {
 9. **Analytics Data Inference** (`computeCheckHistory`):
    - Reconstructs habit history from minimal stored data (no per-day storage)
    - Only infers completions when `streak > 0` OR there are skipped/dropped days (user interaction)
-   - **Does not infer today as completed** if the habit has not been checked yet (`lastCheckedDate !== today`), so "today" does not show as a phantom completion.
+   - **Only infers completions up to `lastCheckedDate`** (the last day the user interacted — it advances on complete/skip/drop). Any day AFTER `lastCheckedDate` is NOT inferred as completed: this covers a not-yet-checked today AND silently-missed past days (e.g. an ignored/auto-paused run), which render as gaps instead of phantom completions. Because `lastCheckedDate` is the latest interaction, these misses are always trailing, so the completed streak stays correct. NOTE: interior silent misses (miss a day, then check again later — which advances `lastCheckedDate` past it) are NOT recoverable from stored data and still infer as completed.
    - Works backwards from today to match stored streak value exactly
    - Processes all days from creation to today, but only marks completions for:
      - Current streak period (most recent N days where N = streak)
