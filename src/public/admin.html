@@ -394,15 +394,43 @@
             font-style: italic;
         }
 
+        .hm-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.3rem;
+            padding: 0.2rem 0.5rem;
+            font-family: inherit;
+            font-size: 0.76rem;
+            color: var(--hb-text-secondary);
+            background: var(--hb-card-bg);
+            border: 1px solid var(--hb-border);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .hm-toggle:hover {
+            color: var(--hb-accent-dark);
+            border-color: var(--hb-accent);
+        }
+
+        .hm-toggle .hm-caret {
+            font-size: 0.65rem;
+            line-height: 1;
+            transition: transform 0.15s ease;
+        }
+
+        .hm-toggle[aria-expanded="true"] .hm-caret {
+            transform: rotate(90deg);
+        }
+
         /* The calendar is ~670px wide; cards are narrower, so it scrolls. */
         .hm-scroll {
             overflow-x: auto;
             overflow-y: hidden;
-            margin: 0.3rem 0 0.55rem -1.1rem;
+            margin: 0.4rem 0 0.55rem -1.1rem;
         }
 
-        /* Height is fixed in CSS so the layout (and the IntersectionObserver
-           that lazily boots each chart) is correct before ECharts initialises. */
         .hm-canvas {
             height: 106px;
         }
@@ -709,7 +737,9 @@
             var HM_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
             var hmCharts = [];
-            var hmObserver = null;
+            /* Charts are built on first expand, so the click handler needs the
+               users currently on screen. */
+            var hmPageUsers = [];
 
             /* Only non-empty days go into the series; days with no entry fall
                through to the calendar's own empty cell color. */
@@ -734,21 +764,17 @@
             }
 
             function disposeHeatmaps() {
-                if (hmObserver) {
-                    hmObserver.disconnect();
-                    hmObserver = null;
-                }
                 hmCharts.forEach(function (c) {
                     try { c.dispose(); } catch (e) { /* already gone */ }
                 });
                 hmCharts = [];
             }
 
-            function buildHeatmap(el, pageUsers) {
+            function buildHeatmap(el) {
                 if (el.getAttribute('data-hm-ready') === '1') return;
                 el.setAttribute('data-hm-ready', '1');
 
-                var user = pageUsers[Number(el.getAttribute('data-u'))];
+                var user = hmPageUsers[Number(el.getAttribute('data-u'))];
                 var habit = user && user.habits ? user.habits[Number(el.getAttribute('data-h'))] : null;
                 var activity = habit && habit.activity;
                 if (!activity || !activity.days) return;
@@ -797,29 +823,30 @@
                 hmCharts.push(chart);
             }
 
-            /* Boot each chart only as it scrolls into view — a page of 25 users
-               can hold well over a hundred calendars. */
-            function mountHeatmaps(pageUsers) {
-                disposeHeatmaps();
-                if (typeof echarts === 'undefined') return;
+            /* Heatmaps start collapsed: a page of 25 users can hold well over a
+               hundred calendars, and building them all costs far more than any
+               admin needs at once. The chart is created on first expand and then
+               kept — reopening just unhides it. */
+            function toggleHeatmap(button) {
+                var wrap = button.nextElementSibling;
+                if (!wrap || !wrap.classList.contains('hm-scroll')) return;
 
-                var nodes = document.querySelectorAll('.hm-canvas');
-                if (!nodes.length) return;
-
-                if (!window.IntersectionObserver) {
-                    Array.prototype.forEach.call(nodes, function (el) { buildHeatmap(el, pageUsers); });
+                var expanded = button.getAttribute('aria-expanded') === 'true';
+                if (expanded) {
+                    wrap.hidden = true;
+                    button.setAttribute('aria-expanded', 'false');
                     return;
                 }
 
-                hmObserver = new IntersectionObserver(function (entries, obs) {
-                    entries.forEach(function (entry) {
-                        if (!entry.isIntersecting) return;
-                        obs.unobserve(entry.target);
-                        buildHeatmap(entry.target, pageUsers);
-                    });
-                }, { rootMargin: '250px 0px' });
+                wrap.hidden = false;
+                button.setAttribute('aria-expanded', 'true');
 
-                Array.prototype.forEach.call(nodes, function (el) { hmObserver.observe(el); });
+                // Build after unhiding: ECharts measures nothing here (width and
+                // height are passed explicitly), but a visible container keeps the
+                // first paint honest.
+                if (typeof echarts !== 'undefined') {
+                    buildHeatmap(wrap.querySelector('.hm-canvas'));
+                }
             }
 
             function renderUserCard(u, userIndex) {
@@ -850,7 +877,11 @@
                             ? '<span class="hm-note">completions not inferred while disabled / reminders off</span>'
                             : '';
                         var heatmap = h.activity
-                            ? '<div class="hm-scroll"><div class="hm-canvas" data-u="' + userIndex + '" data-h="' + habitIndex + '"></div></div>'
+                            ? '<button type="button" class="hm-toggle" aria-expanded="false">' +
+                                  '<span class="hm-caret">▶</span>Activity</button>' +
+                              '<div class="hm-scroll" hidden>' +
+                                  '<div class="hm-canvas" data-u="' + userIndex + '" data-h="' + habitIndex + '"></div>' +
+                              '</div>'
                             : '';
                         html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + sub + note + heatmap + '</li>';
                     });
@@ -912,8 +943,8 @@
                 bar.innerHTML = '<div class="results-count">' + countLabel + rangeLabel + '</div>' + pagination + legend;
 
                 results.classList.add('results-grid');
+                hmPageUsers = pageUsers;
                 results.innerHTML = pageUsers.map(renderUserCard).join('');
-                mountHeatmaps(pageUsers);
 
                 var prev = document.getElementById('prevPage');
                 var next = document.getElementById('nextPage');
@@ -985,6 +1016,11 @@
                 if (t.classList && t.classList.contains('btn-card-send')) {
                     var uid = parseInt(t.getAttribute('data-user-id'), 10);
                     if (!isNaN(uid)) openSendModal(uid);
+                    return;
+                }
+                var toggle = t.closest && t.closest('.hm-toggle');
+                if (toggle) {
+                    toggleHeatmap(toggle);
                 }
             });
             load();

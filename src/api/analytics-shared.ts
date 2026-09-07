@@ -3,6 +3,7 @@ import type { Habit } from '../domain/entities/Habit';
 import { GetUserHabitsUseCase } from '../domain/use-cases/GetUserHabitsUseCase';
 import { SubscriptionUseCase } from '../domain/use-cases/SubscriptionUseCase';
 import { computeCheckHistory } from '../domain/utils/HabitAnalytics';
+import { buildHabitActivity, type HabitActivity } from '../domain/utils/HabitHeatmap';
 import { kv } from '../infrastructure/config/kv';
 import { Logger } from '../infrastructure/logger/Logger';
 import OpenAI from 'openai';
@@ -64,6 +65,8 @@ export interface AnalyticsHabitItem {
   dropped: Habit['dropped'];
   badges: Habit['badges'];
   checkHistory: ReturnType<typeof computeCheckHistory>;
+  /** Compact per-day activity for the heatmap — same contract as the admin list. */
+  activity: HabitActivity;
   disabled: boolean;
   reminderSchedule: Habit['reminderSchedule'];
   reminderEnabled: Habit['reminderEnabled'];
@@ -94,6 +97,7 @@ export async function getAnalyticsData(
     dropped: habit.dropped || [],
     badges: habit.badges || [],
     checkHistory: computeCheckHistory(habit),
+    activity: buildHabitActivity(habit),
     disabled: habit.disabled || false,
     reminderSchedule: habit.reminderSchedule,
     reminderEnabled: habit.reminderEnabled,

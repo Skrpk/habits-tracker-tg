@@ -370,9 +370,10 @@ interface UserPreferences {
 
 14. **Admin Activity Heatmap**:
    - `/api/users` returns `habit.activity = { start, end, days }`; `days` is one char per day (`0` none, `1` dropped, `2` skipped, `3` completed), built by `buildHabitActivity()` in `src/domain/utils/HabitHeatmap.ts` over a trailing 365-day window clamped to `createdAt`. Compact on purpose — a page of 25 users can hold hundreds of habits.
-   - `admin.html` renders it with ECharts 6.1.0 UMD (jsDelivr) — `calendar` + `heatmap` + `visualMap: piecewise`, one canvas per habit, lazily booted by `IntersectionObserver`, disposed via `disposeHeatmaps()` on every re-render/pagination.
+   - `admin.html` renders it with ECharts 6.1.0 UMD (jsDelivr) — `calendar` + `heatmap` + `visualMap: piecewise`, one canvas per habit. Grids are collapsed behind an `Activity` toggle and built on first expand (`data-hm-ready` guard); disposed via `disposeHeatmaps()` on every re-render/pagination.
    - `buildHabitActivity` mirrors `computeCheckHistory`'s local-midnight → `toISOString()` transform so window and entries always agree (prod is UTC; local dev is off by one day).
    - Disabled / reminders-off habits get no inferred completions, so the grid is empty by design — the card carries a note.
+   - The analytics MiniApp shows the same `activity` per habit, but drawn with the Chart.js `matrix` controller (`chartjs-chart-matrix`, ~1.7KB gz) instead of ECharts (~369KB gz) — that page already loads Chart.js and is user-facing. Registered as `charts.heatmap` so `showHabitsList()` disposes it; axes pin ticks via `afterBuildTicks`.
 
 ## Build Process
 

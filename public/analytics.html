@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@3.0.8/dist/chartjs-chart-matrix.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -241,6 +242,59 @@
             padding: 1.5rem;
             border-radius: 14px;
             border: 1px solid var(--hb-border);
+        }
+
+        .heatmap-container {
+            margin-bottom: 2rem;
+            background: var(--hb-surface);
+            padding: 1.5rem;
+            border-radius: 14px;
+            border: 1px solid var(--hb-border);
+        }
+
+        .heatmap-container h3 {
+            font-family: var(--hb-font-display);
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        /* A year is ~700px wide; on a phone it scrolls sideways. */
+        .hm-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .hm-canvas-wrap {
+            height: 128px;
+        }
+
+        .hm-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem 1rem;
+            font-size: 0.8rem;
+            color: var(--hb-text-secondary);
+            margin-top: 0.6rem;
+        }
+
+        .hm-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .hm-legend i {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+        }
+
+        .hm-note {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--hb-text-muted);
+            font-style: italic;
+            margin-top: 0.5rem;
         }
 
         .stats-grid {
@@ -1189,6 +1243,20 @@
 
                 <div id="insights-block" class="insights-wrapper" style="display: none;"></div>
 
+                <div class="heatmap-container">
+                    <h3>Activity</h3>
+                    <div class="hm-scroll"><div class="hm-canvas-wrap"><canvas id="activityHeatmap"></canvas></div></div>
+                    <div class="hm-legend">
+                        <span><i style="background: #2D9F6F"></i>Completed</span>
+                        <span><i style="background: #E5B94E"></i>Skipped</span>
+                        <span><i style="background: #E07A5F"></i>Dropped</span>
+                        <span><i style="background: #EAEAE4"></i>No data</span>
+                    </div>
+                    ${habit.disabled || habit.reminderEnabled === false
+                        ? '<span class="hm-note">Completions are not inferred while a habit is disabled or has reminders off.</span>'
+                        : ''}
+                </div>
+
                 <div class="chart-container">
                     <canvas id="streakChart"></canvas>
                 </div>
@@ -1205,6 +1273,7 @@
             `;
 
             timelinePage = 1; // Reset to first page when showing a new habit
+            renderHeatmap(habit);
             renderCharts(habit);
             renderTimeline(habit);
 
@@ -1227,6 +1296,140 @@
             setTimeout(() => {
                 detailContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 150);
+        }
+
+        /* ---------------- Activity heatmap ----------------
+           `habit.activity` arrives from /api/analytics as { start, end, days },
+           one character per day: 0 none, 1 dropped, 2 skipped, 3 completed.
+           Same contract the admin panel uses — see src/domain/utils/HabitHeatmap.ts.
+
+           Drawn with the Chart.js matrix controller rather than a second chart
+           library, so the page keeps shipping one charting runtime. */
+
+        const HM_EMPTY_COLOR = '#EAEAE4';
+        const HM_COLORS = { 0: '#EAEAE4', 1: '#E07A5F', 2: '#E5B94E', 3: '#2D9F6F' };
+        const HM_LABELS = { 0: 'No data', 1: 'Dropped', 2: 'Skipped', 3: 'Completed' };
+        const HM_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const HM_WEEKDAYS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+        const HM_CELL = 14;
+
+        function buildHeatmapCells(activity) {
+            const cells = [];
+            const monthStarts = {};
+            const cursor = new Date(activity.start + 'T00:00:00Z');
+            // Column 0 is the (possibly partial) week the window starts in.
+            const leadOffset = (cursor.getUTCDay() + 6) % 7;
+
+            for (let i = 0; i < activity.days.length; i++) {
+                const iso = cursor.toISOString().slice(0, 10);
+                const x = Math.floor((leadOffset + i) / 7);
+                const y = (cursor.getUTCDay() + 6) % 7; // 0 = Monday
+
+                if (cursor.getUTCDate() === 1 && monthStarts[x] === undefined) {
+                    monthStarts[x] = HM_MONTHS[cursor.getUTCMonth()];
+                }
+                cells.push({ x: x, y: y, v: Number(activity.days.charAt(i)), d: iso });
+                cursor.setUTCDate(cursor.getUTCDate() + 1);
+            }
+
+            const weeks = Math.ceil((leadOffset + activity.days.length) / 7);
+
+            // The window rarely starts on the 1st, so column 0 has no label of its
+            // own. Add the starting month there, unless the next label is so close
+            // the two would collide.
+            const firstLabelled = Object.keys(monthStarts).map(Number).sort(function (a, b) { return a - b; })[0];
+            if (firstLabelled === undefined || firstLabelled >= 3) {
+                monthStarts[0] = HM_MONTHS[new Date(activity.start + 'T00:00:00Z').getUTCMonth()];
+            }
+
+            return { cells: cells, weeks: weeks, monthStarts: monthStarts };
+        }
+
+        function renderHeatmap(habit) {
+            if (charts.heatmap) {
+                charts.heatmap.destroy();
+                delete charts.heatmap;
+            }
+
+            const canvas = document.getElementById('activityHeatmap');
+            const activity = habit.activity;
+            if (!canvas || !activity || !activity.days) return;
+
+            const built = buildHeatmapCells(activity);
+
+            // Fix the canvas width so cells stay square; .hm-scroll handles overflow.
+            const wrap = canvas.parentElement;
+            wrap.style.width = (built.weeks * HM_CELL + 48) + 'px';
+
+            charts.heatmap = new Chart(canvas.getContext('2d'), {
+                type: 'matrix',
+                data: {
+                    datasets: [{
+                        data: built.cells,
+                        backgroundColor: function (c) { return HM_COLORS[c.raw.v] || HM_EMPTY_COLOR; },
+                        borderWidth: 0,
+                        borderRadius: 2,
+                        width: function (c) { return ((c.chart.chartArea || {}).width || 0) / built.weeks - 2; },
+                        height: function (c) { return ((c.chart.chartArea || {}).height || 0) / 7 - 2; }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            displayColors: false,
+                            callbacks: {
+                                title: function () { return ''; },
+                                label: function (c) { return c.raw.d + ' — ' + HM_LABELS[c.raw.v]; }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            offset: false,
+                            min: -0.5,
+                            max: built.weeks - 0.5,
+                            position: 'top',
+                            grid: { display: false, drawBorder: false },
+                            border: { display: false },
+                            afterBuildTicks: function (axis) {
+                                const ticks = [];
+                                for (let i = 0; i < built.weeks; i++) ticks.push({ value: i });
+                                axis.ticks = ticks;
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 0,
+                                font: { size: 10 },
+                                color: '#888888',
+                                callback: function (value) { return built.monthStarts[value] || ''; }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            offset: false,
+                            reverse: true,
+                            min: -0.5,
+                            max: 6.5,
+                            grid: { display: false, drawBorder: false },
+                            border: { display: false },
+                            afterBuildTicks: function (axis) {
+                                axis.ticks = [0, 1, 2, 3, 4, 5, 6].map(function (v) { return { value: v }; });
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                font: { size: 10 },
+                                color: '#888888',
+                                callback: function (value) { return HM_WEEKDAYS[value] || ''; }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function renderCharts(habit) {
