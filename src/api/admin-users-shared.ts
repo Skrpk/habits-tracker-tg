@@ -7,6 +7,7 @@ import type { Habit } from '../domain/entities/Habit';
 import type { UserPreferences } from '../domain/entities/UserPreferences';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../domain/use-cases/SubscriptionUseCase';
 import { CheckHabitReminderDueUseCase } from '../domain/use-cases/CheckHabitReminderDueUseCase';
+import { buildHabitActivity } from '../domain/utils/HabitHeatmap';
 
 const checkReminderDue = new CheckHabitReminderDueUseCase();
 
@@ -241,6 +242,9 @@ function serializeHabit(h: Habit) {
     disabled: h.disabled === true,
     reminderEnabled: h.reminderEnabled !== false,
     scheduleDescription: checkReminderDue.getScheduleDescription(schedule),
+    // Compact per-day activity for the admin heatmap (~365 bytes, not one JSON
+    // object per day — the list can hold hundreds of habits).
+    activity: buildHabitActivity(h),
   };
 }
 

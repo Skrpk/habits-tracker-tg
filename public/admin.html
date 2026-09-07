@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -341,7 +342,7 @@
         /* Results become a responsive card grid on wide screens, 1 column on mobile. */
         #results.results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             gap: 0.75rem;
             align-items: start;
         }
@@ -384,6 +385,47 @@
             display: block;
             font-size: 0.78rem;
             color: var(--hb-text-muted);
+        }
+
+        .hm-note {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--hb-text-muted);
+            font-style: italic;
+        }
+
+        /* The calendar is ~670px wide; cards are narrower, so it scrolls. */
+        .hm-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            margin: 0.3rem 0 0.55rem -1.1rem;
+        }
+
+        /* Height is fixed in CSS so the layout (and the IntersectionObserver
+           that lazily boots each chart) is correct before ECharts initialises. */
+        .hm-canvas {
+            height: 106px;
+        }
+
+        .hm-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.15rem 0.75rem;
+            font-size: 0.78rem;
+            color: var(--hb-text-secondary);
+            margin-top: 0.35rem;
+        }
+
+        .hm-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .hm-legend i {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
         }
 
         .user-card-actions {
@@ -491,6 +533,11 @@
             if (tg) {
                 tg.ready();
                 tg.expand();
+                // Heatmaps scroll horizontally; without this the mini app can
+                // swipe-to-close mid-drag. Bot API 7.7+, hence the guard.
+                if (typeof tg.disableVerticalSwipes === 'function') {
+                    tg.disableVerticalSwipes();
+                }
             }
 
             var tzSel = document.getElementById('filterTz');
@@ -605,6 +652,7 @@
             }
 
             function renderError(msg) {
+                disposeHeatmaps();
                 document.getElementById('status').innerHTML = '<div class="error">' + msg + '</div>';
                 document.getElementById('resultsBar').innerHTML = '';
                 var results = document.getElementById('results');
@@ -644,7 +692,137 @@
             var allUsers = [];
             var currentPage = 1;
 
-            function renderUserCard(u) {
+            /* ---------------- Activity heatmap (ECharts calendar) ----------------
+               `habit.activity` arrives from /api/users as { start, end, days },
+               where `days` is one character per day: 0 none, 1 dropped,
+               2 skipped, 3 completed. See src/domain/utils/HabitHeatmap.ts. */
+
+            var HM_EMPTY_COLOR = '#EAEAE4';
+            var HM_COLORS = { 1: '#E07A5F', 2: '#E5B94E', 3: '#2D9F6F' };
+            var HM_LABELS = { 1: 'Dropped', 2: 'Skipped', 3: 'Completed' };
+            var HM_CELL = 12;
+            var HM_TOP = 18;
+            var HM_LEFT = 26;
+            var HM_RIGHT = 6;
+            var HM_HEIGHT = 106;
+            var HM_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            var HM_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+            var hmCharts = [];
+            var hmObserver = null;
+
+            /* Only non-empty days go into the series; days with no entry fall
+               through to the calendar's own empty cell color. */
+            function activityToSeries(activity) {
+                var out = [];
+                var cursor = new Date(activity.start + 'T00:00:00Z');
+                for (var i = 0; i < activity.days.length; i++) {
+                    var ch = activity.days.charAt(i);
+                    if (ch !== '0') {
+                        out.push([cursor.toISOString().slice(0, 10), Number(ch)]);
+                    }
+                    cursor.setUTCDate(cursor.getUTCDate() + 1);
+                }
+                return out;
+            }
+
+            function activityWidth(activity) {
+                var first = new Date(activity.start + 'T00:00:00Z');
+                var offset = (first.getUTCDay() + 6) % 7; // Monday-first column index
+                var weeks = Math.ceil((offset + activity.days.length) / 7);
+                return HM_LEFT + weeks * HM_CELL + HM_RIGHT;
+            }
+
+            function disposeHeatmaps() {
+                if (hmObserver) {
+                    hmObserver.disconnect();
+                    hmObserver = null;
+                }
+                hmCharts.forEach(function (c) {
+                    try { c.dispose(); } catch (e) { /* already gone */ }
+                });
+                hmCharts = [];
+            }
+
+            function buildHeatmap(el, pageUsers) {
+                if (el.getAttribute('data-hm-ready') === '1') return;
+                el.setAttribute('data-hm-ready', '1');
+
+                var user = pageUsers[Number(el.getAttribute('data-u'))];
+                var habit = user && user.habits ? user.habits[Number(el.getAttribute('data-h'))] : null;
+                var activity = habit && habit.activity;
+                if (!activity || !activity.days) return;
+
+                var width = activityWidth(activity);
+                el.style.width = width + 'px';
+
+                var chart = echarts.init(el, null, { renderer: 'canvas', width: width, height: HM_HEIGHT });
+                chart.setOption({
+                    animation: false,
+                    tooltip: {
+                        trigger: 'item',
+                        confine: true,
+                        formatter: function (p) {
+                            return p.value[0] + '<br/>' + (HM_LABELS[p.value[1]] || '');
+                        }
+                    },
+                    visualMap: {
+                        show: false,
+                        type: 'piecewise',
+                        pieces: [
+                            { value: 1, color: HM_COLORS[1] },
+                            { value: 2, color: HM_COLORS[2] },
+                            { value: 3, color: HM_COLORS[3] }
+                        ]
+                    },
+                    calendar: {
+                        top: HM_TOP,
+                        left: HM_LEFT,
+                        right: HM_RIGHT,
+                        cellSize: [HM_CELL, HM_CELL],
+                        range: [activity.start, activity.end],
+                        splitLine: { show: false },
+                        itemStyle: { color: HM_EMPTY_COLOR, borderColor: '#FFFFFF', borderWidth: 2 },
+                        yearLabel: { show: false },
+                        monthLabel: { nameMap: HM_MONTHS, fontSize: 9, color: '#888888', margin: 6 },
+                        dayLabel: { firstDay: 1, nameMap: HM_DAYS, fontSize: 9, color: '#888888', margin: 4 }
+                    },
+                    series: [{
+                        type: 'heatmap',
+                        coordinateSystem: 'calendar',
+                        data: activityToSeries(activity),
+                        itemStyle: { borderColor: '#FFFFFF', borderWidth: 2 }
+                    }]
+                });
+                hmCharts.push(chart);
+            }
+
+            /* Boot each chart only as it scrolls into view — a page of 25 users
+               can hold well over a hundred calendars. */
+            function mountHeatmaps(pageUsers) {
+                disposeHeatmaps();
+                if (typeof echarts === 'undefined') return;
+
+                var nodes = document.querySelectorAll('.hm-canvas');
+                if (!nodes.length) return;
+
+                if (!window.IntersectionObserver) {
+                    Array.prototype.forEach.call(nodes, function (el) { buildHeatmap(el, pageUsers); });
+                    return;
+                }
+
+                hmObserver = new IntersectionObserver(function (entries, obs) {
+                    entries.forEach(function (entry) {
+                        if (!entry.isIntersecting) return;
+                        obs.unobserve(entry.target);
+                        buildHeatmap(entry.target, pageUsers);
+                    });
+                }, { rootMargin: '250px 0px' });
+
+                Array.prototype.forEach.call(nodes, function (el) { hmObserver.observe(el); });
+            }
+
+            function renderUserCard(u, userIndex) {
                 var p = u.preferences || {};
                 var habits = u.habits || [];
                 var uname = p.telegram && p.telegram.username ? '@' + p.telegram.username : '';
@@ -659,13 +837,22 @@
                 html += '<div class="meta">' + bits.join(' · ') + '</div>';
                 if (habits.length) {
                     html += '<ul class="habits-list">';
-                    habits.forEach(function (h) {
+                    habits.forEach(function (h, habitIndex) {
                         var flags = [];
                         if (h.scheduleDescription) flags.push(escapeHtml(h.scheduleDescription));
                         if (h.reminderEnabled === false) flags.push('reminders off');
                         if (h.disabled) flags.push('disabled');
                         var sub = flags.length ? '<span class="habit-schedule">' + flags.join(' · ') + '</span>' : '';
-                        html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + sub + '</li>';
+                        // Completions are inferred, and inference is switched off for
+                        // disabled habits / habits with reminders off — say so, or an
+                        // empty grid reads as "never did it".
+                        var note = (h.disabled || h.reminderEnabled === false)
+                            ? '<span class="hm-note">completions not inferred while disabled / reminders off</span>'
+                            : '';
+                        var heatmap = h.activity
+                            ? '<div class="hm-scroll"><div class="hm-canvas" data-u="' + userIndex + '" data-h="' + habitIndex + '"></div></div>'
+                            : '';
+                        html += '<li>' + escapeHtml(h.name) + ' — streak ' + h.streak + sub + note + heatmap + '</li>';
                     });
                     html += '</ul>';
                 } else {
@@ -685,6 +872,8 @@
                 var results = document.getElementById('results');
                 var bar = document.getElementById('resultsBar');
                 var total = allUsers.length;
+
+                disposeHeatmaps();
 
                 if (!total) {
                     bar.innerHTML = '<div class="results-count">0 leads</div>';
@@ -714,10 +903,17 @@
                         '<button type="button" class="page-btn" id="nextPage"' + (currentPage === pages ? ' disabled' : '') + '>Next ›</button>' +
                         '</div>';
                 }
-                bar.innerHTML = '<div class="results-count">' + countLabel + rangeLabel + '</div>' + pagination;
+                var legend = '<div class="hm-legend">' +
+                    '<span><i style="background:' + HM_COLORS[3] + '"></i>Completed</span>' +
+                    '<span><i style="background:' + HM_COLORS[2] + '"></i>Skipped</span>' +
+                    '<span><i style="background:' + HM_COLORS[1] + '"></i>Dropped</span>' +
+                    '<span><i style="background:' + HM_EMPTY_COLOR + '"></i>No data</span>' +
+                    '</div>';
+                bar.innerHTML = '<div class="results-count">' + countLabel + rangeLabel + '</div>' + pagination + legend;
 
                 results.classList.add('results-grid');
                 results.innerHTML = pageUsers.map(renderUserCard).join('');
+                mountHeatmaps(pageUsers);
 
                 var prev = document.getElementById('prevPage');
                 var next = document.getElementById('nextPage');
@@ -739,6 +935,7 @@
             }
 
             async function load() {
+                disposeHeatmaps();
                 document.getElementById('status').innerHTML = '<p class="loading">Loading…</p>';
                 document.getElementById('resultsBar').innerHTML = '';
                 var results = document.getElementById('results');

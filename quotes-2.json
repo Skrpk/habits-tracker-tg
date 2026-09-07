@@ -1,3396 +1,980 @@
 {
-  "quotes": [
-    {
-      "text": "If it is not right do not do it; if it is not true do not say it.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "The greater the difficulty, the more glory in surmounting it. Skillful pilots gain their reputation from storms and tempests.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "He who spares the wicked injures the good.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Some things are in our control and others not. Things in our control are opinion, pursuit, desire, aversion, and, in a word, whatever are our own actions. Things not in our control are body, property, reputation, command, and, in one word, whatever are not our actions.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Make the best use of what is in your power, and take the rest as it happens.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "People are not disturbed by things, but by the views they take of them.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "We should love all our dear ones… but always with the thought that we have no promise that we may keep them forever—nay, no promise even that we may keep them for long.",
-      "author": "Seneca"
-    },
-    {
-      "text": "For mankind, evil is injustice and cruelty and indifference to a neighbour’s trouble, while virtue is brotherly love and goodness and justice and beneficence and concern for the welfare of your neighbour—with.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "A bad feeling is a commotion of the mind repugnant to reason, and against nature.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "True happiness is to enjoy the present, without anxious dependence upon the future, not to amuse ourselves with either hopes or fears but to rest satisfied with what we have, which is sufficient, for he that is so wants nothing. The greatest blessings of mankind are within us and within our reach. A wise man is content with his lot, whatever it may be, without wishing for what he has not.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Wealth is able to buy the pleasures of eating, drinking and other sensual pursuits-yet can never afford a cheerful spirit or freedom from sorrow.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "To accept injury without a spirit of savage resentment-to show ourselves merciful toward those who wrong us-being a source of good hope to them-is characteristic of a benevolent and civilized way of life.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "What good are gilded rooms or precious stones-fitted on the floor, inlaid in the walls, carried from great distances at the greatest expense? These things are pointless and unnecessary-without them isn’t it possible to live healthy? Aren’t they the source of constant trouble? Don’t they cost vast sums of money that, through public and private charity, may have benefited many?",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Events do not just happen, but arrive by appointment.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "If we were to measure what is good by how much pleasure it brings, nothing would be better than self-control- if we were to measure what is to be avoided by its pain, nothing would be more painful than lack of self-control.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Sometimes even to live is an act of courage.",
-      "author": "Seneca"
-    },
-    {
-      "text": "It is not that we have so little time but that we lose so much. The life we receive is not short but we make it so; we are not ill provided but use what we have wastefully.",
-      "author": "Seneca"
-    },
-    {
-      "text": "It is a rough road that leads to the heights of greatness.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Or is it your reputation that’s bothering you? But look at how soon we’re all forgotten. The abyss of endless time that swallows it all. The emptiness of those applauding hands. The people who praise us; how capricious they are, how arbitrary. And the tiny region it takes place. The whole earth a point in space – and most of it uninhabited.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "To accuse others for one’s own misfortune is a sign of want of education. To accuse oneself shows that one’s education has begun. To accuse neither oneself nor others shows that one’s education is complete.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "If you want to improve, be content to be thought foolish and stupid.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "To accept injury without a spirit of savage resentment-to show ourselves merciful toward those who wrong us-being&nbsp;a source of good hope to them-is characteristic of a benevolent and civilized way of life.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Often a very old man has no other proof of his long life than his age.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Seek not the good in external things;seek it in yourselves.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Happiness is a good flow of life.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "If you really want to escape the things that harass you, what you’re needing is not to be in a different place but to be a different person.",
-      "author": "Seneca"
-    },
-    {
-      "text": "When you arise in the morning, think of what a precious privilege it is to be alive – to breathe, to think, to enjoy, to love",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "The key is to keep company only with people who uplift you, whose presence calls forth your best.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Whenever you are about to find fault with someone, ask yourself the following question: What fault of mine most nearly resembles the one I am about to criticize?",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "As is a tale, so is life: not how long it is, but how good it is, is what matters",
-      "author": "Seneca"
-    },
-    {
-      "text": "In our control is the most beautiful and important&nbsp;thing, the thing because of which even the god himself is happy— namely, the proper use of our impressions. We must concern ourselves absolutely&nbsp; with the things that are under our control and entrust&nbsp;the things not in our control to the universe.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Difficulties strengthen the mind, as labor does the body.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Husband and wife should come together to craft a shared life, procreating children, seeing all things as shared between them-with nothing withheld or private to one another-not even their bodies.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Being good is the same as being a philosopher.&nbsp;If you obey your father, you will follow the will of a&nbsp;man; if you choose the philosopher’s life, the will&nbsp;of the universe. It is plain, therefore, that your duty lies in the pursuit of philosophy.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "They lose the day in expectation of the night, and the night in fear of the dawn.",
-      "author": "Seneca"
-    },
-    {
-      "text": "He suffers more than necessary, who suffers before it is necessary.",
-      "author": "Seneca"
-    },
-    {
-      "text": "You will earn the respect of all if you begin by earning the respect of yourself. Don’t expect to encourage good deeds in people conscious of your own misdeeds.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "From good people you’ll learn good,&nbsp;but if you mingle with the bad you’ll&nbsp;destroy such soul as you had.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "The happiness of your life depends upon the quality of your thoughts.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "No man is crushed by misfortune unless he has first been deceived by prosperity.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Choose to die well while you can; wait too long, and it might become impossible to do so.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "The soul becomes dyed with the color of its thoughts",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "People are frugal in guarding their personal property; but as soon as it comes to squandering time they are most wasteful of the one thing in which it is right to be stingy.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Man conquers the world by conquering himself.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "If you lay violent hands on me, you’ll have my body, but my mind will remain with Stilpo.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "Everything that happens is either endurable or not. If it’s endurable, then endure it. Stop complaining. If it’s unendurable… then stop complaining. Your destruction will mean its end as well. Just remember: you can endure anything your mind can make endurable, by treating it as in your interest to do so. In your interest, or in your nature.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "A gift consists not in what is done or given, but in the intention of the giver or doer.",
-      "author": "Seneca"
-    },
-    {
-      "text": "The soul becomes dyed with the colour of its thoughts.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "He is a wise man who does not grieve for the things which he has not, but rejoices for those which he has.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "A man must stand erect, not be kept erect by others.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "He who lives in harmony with himself lives in harmony with the universe",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "He who laughs at himself never runs out of things to laugh at.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "To win true freeedom you must be a slave to philosophy.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Nothing is more hostile to a firm grasp on knowledge than self-deception.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "If you accomplish something good with hard work, the labor passes quickly, but the good endures; if you do something shameful in pursuit of pleasure, the pleasure passes quickly, but the shame endures.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Observe always that everything is the result of change, and get used to thinking that there is nothing Nature loves so well as to change existing forms and make new ones like them.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "The goal of life is living in agreement with Nature.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "He who is brave is free.",
-      "author": "Seneca"
-    },
-    {
-      "text": "It’s not what happens to you, but how you react to it that matters.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "If you are distressed by anything external, the pain is not due to the thing itself, but to your estimate of it; and this you have the power to revoke at any moment.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Luck is what happens when preparation meets opportunity.",
-      "author": "Seneca"
-    },
-    {
-      "text": "If you would be a reader, read; if a writer, write.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "The universe is change; our life is what our thoughts make it.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "If you want to improve, be content to be thought foolish and stupid.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Waste no more time arguing what a good man should be. Be one",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Be like the cliff against which the waves continually break; but it stands firm and tames the fury of the water around it.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Any person capable of angering you becomes your master; he can anger you only when you permit yourself to be disturbed by him.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Better to trip with the feet than with the tongue.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "Very little is needed to make a happy life; it is all within yourself in your way of thinking.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "You act like mortals in all that you fear, and like immortals in all that you desire.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Withdraw into yourself, as far as you can. Associate with those who will make a better man of you. Welcome those whom you yourself can improve. The process is mutual; for men learn while they teach.",
-      "author": "Seneca"
-    },
-    {
-      "text": "All cruelty springs from weakness.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Begin each day by telling yourself: Today I shall be meeting with interference, ingratitude, insolence, disloyalty, ill-will, and selfishness – all of them due to the offenders’ ignorance of what is good or evil.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "There is only one way to happiness and that is to cease worrying about things which are beyond the power or our will.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Either God wants to abolish evil, and cannot; or he can, but does not want to.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "The greatest obstacle to living is expectancy, which hangs upon tomorrow and loses today. You are arranging what lies in Fortune’s control, and abandoning what lies in yours. What are you looking at? To what goal are you straining? The whole future lies in uncertainty: live immediately.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Remember, it is not enough to be hit or insulted to be harmed, you must believe that you are being harmed. If someone succeeds in provoking you, realize that your mind is complicit in the provocation. Which is why it is essential that we not respond impulsively to impressions; take a moment before reacting, and you will find it easier to maintain control.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Demand not that things happen as you wish, but wish them to happen as they do, and you will go on well.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "God has entrusted me with myself. No man is free who is not master of himself. A man should so live that his happiness shall depend as little as possible on external things. The world turns aside to let any man pass who knows where he is going.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Every new beginning comes from some other beginning’s end.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Man is not worried by real problems so much as by his imagined anxieties about real problems.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "How much time he gains who does not look to see what his neighbour says or does or thinks, but only at what he does himself, to make it just and holy.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Dwell on the beauty of life. Watch the stars, and see yourself running with them. Think constantly on the changes of the elements into each other, for such thoughts wash away the dust of earthly life.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "I have often wondered how it is that every man loves himself more than all the rest of men, but yet sets less value on his own opinion of himself than on the opinion of others.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "A person’s worth is measured by the worth of what he values.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Do not act as if you were going to live ten thousand years. Death hangs over you. While you live, while it is in your power, be good.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "You have power over your mind — not outside events. Realize this, and you will find strength.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "We have two ears and one mouth, so we should listen more than we say.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "Wealth consists not in having great possessions, but in having few wants.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "It is unrealistc to expect people to see you as you see yourself.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "If someone is able to show me that what I think or do is not right, I will happily change, for I seek the truth, by which no one was ever truly harmed. It is the person who continues in his self-deception and ignorance who is harmed.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "If any man despises me, that is his problem. My only concern is not doing or saying anything deserving of contempt.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Begin at once to live, and count each separate day as a separate life.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Anger, if not restrained, is frequently more hurtful to us than the injury that provokes it.",
-      "author": "Seneca"
-    },
-    {
-      "text": "There are more things that frighten us than injure us, and we suffer more in imagination than in reality.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Remember that you ought to behave in life as you would at a banquet. As something is being passed around it comes to you; stretch out your hand, take a portion of it politely. It passes on; do not detain it. Or it has not come to you yet; do not project your desire to meet it, but wait until it comes in front of you. So act toward children, so toward a wife, so toward office, so toward wealth.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Since every man dies, it is better to die with distinction than to live long.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Well-being is realized by small steps, but is truly no small thing.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "Everything we hear is an opinion, not a fact. Everything we see is a perspective, not the truth.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Enjoy present pleasures in such a way as not to injure future ones.",
-      "author": "Seneca"
-    },
-    {
-      "text": "The key is to keep company only with people who uplift you, whose presence calls forth your best.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "No loss should be more regrettable to us than losing our time, for it’s irretrievable.",
-      "author": "Zeno of Citium"
-    },
-    {
-      "text": "Only the educated are free.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "If a man knows not to which port he sails, no wind is favorable.",
-      "author": "Seneca"
-    },
-    {
-      "text": "Fire tests gold, suffering tests brave men.",
-      "author": "Seneca"
-    },
-    {
-      "text": "If anyone tells you that a certain person speaks ill of you, do not make excuses about what is said of you but answer, “He was ignorant of my other faults, else he would not have mentioned these alone.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Never let the future disturb you. You will meet it, if you have to, with the same weapons of reason which today arm you against the present.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "A ship should not ride on a single anchor, nor life on a single hope.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Perfection of character is this: to live each day as if it were your last, without frenzy, without apathy, without pretence.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "Don’t explain your philosophy. Embody it.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "Death smiles at us all, but all a man can do is smile back",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "The first rule is to keep an untroubled spirit. The second is to look things in the face and know them for what they are.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "The impediment to action advances action. What stands in the way becomes the way.",
-      "author": "Marcus Aurelius"
-    },
-    {
-      "text": "We will train both soul and body when we accustom ourselves to cold, heat, thirst, hunger, scarcity of food, hardness of bed, abstaining from pleasures, and enduring pains.",
-      "author": "Gaius Musonius Rufus"
-    },
-    {
-      "text": "Men are disturbed not by things, but by the view which they take of them.",
-      "author": "Epictetus"
-    },
-    {
-      "text": "It is not the man who has too little, but the man who craves more, that is poor.",
-      "author": "Seneca"
-    },
-    {
-      "text": "A room without books is like a body without a soul.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If you have a garden and a library, you have everything you need.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Six mistakes mankind keeps making century after century:",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To be ignorant of what occurred before you were born is to remain always a child. For what is the worth of human life, unless it is woven into the life of our ancestors by the records of history?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In times of war, the law falls silent.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Read at every wait; read at all hours; read within leisure; read in times of labor; read as one goes in; read as one goest out. The task of the educated mind is simply put: read to lead.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If we are not ashamed to think it, we should not be ashamed to say it.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Gratitude is not only the greatest of virtues, but the parent of all others.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Friendship improves happiness, and abates misery, by doubling our joys, and dividing our grief",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For there is but one essential justice which cements society, and one law which establishes this justice. This law is right reason, which is the true rule of all commandments and prohibitions. Whoever neglects this law, whether written or unwritten, is necessarily unjust and wicked.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Not to know what has been transacted in former times is to be always a child. If no use is made of the labours of past ages, the world must remain always in the infancy of knowledge.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The authority of those who teach is often an obstacle to those who want to learn.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "While there's life, there's hope.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For books are more than books, they are the life, the very heart and core of ages past, the reason why men worked and died, the essence and quintessence of their lives.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The life given us, by nature is short; but the memory of a well-spent life is eternal.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The life of the dead is set in the memory of the living.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Politicians are not born; they are excreted.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The face is a picture of the mind with the eyes as its interpreter.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To study philosophy is nothing but to prepare one's self to die.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The shifts of fortune test the reliability of friends.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The life of the dead is placed on the memories of the living. The love you gave in life keeps people alive beyond their time. Anyone who was given love will always live on in another's heart.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I criticize by creation, not by finding fault.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is not by muscle, speed, or physical dexterity that great things are achieved, but by reflection, force of character, and judgment.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What is morally wrong can never be advantageous, even when it enables you to make some gain that you believe to be to your advantage. The mere act of believing that some wrongful course of action constitutes an advantage is pernicious.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We must not say every mistake is a foolish one.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Life is nothing without friendship.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is foolish to tear one's hair in grief, as though sorrow would be made less by baldness.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is a great thing to know your vices.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I am not ashamed to confess I am ignorant of what I do not know.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A happy life consists in tranquility of mind.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Your enemies can kill you, but only your friends can hurt you.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "When you wish to instruct, be brief; that men's [children's] minds take in quickly what you say, learn its lesson, and retain it faithfully. Every word that is unnecessary only pours over the side of a brimming mind.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The enemy is within the gates; it is with our own luxury, our own folly, our own criminality that we have to contend.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Our span of life is brief, but is long enough for us to live well and honestly.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Law applied to its extreme is the greatest injustice",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Any man can make mistakes, but only an idiot persists in his error",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Freedom is participation in power.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The function of wisdom is to discriminate between good and evil.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Knowledge which is divorced from justice may be called cunning rather than wisdom.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The man who backbites an absent friend, nay, who does not stand up for him when another blames him, the man who angles for bursts of laughter and for the repute of a wit, who can invent what he never saw, who cannot keep a secret -- that man is black at heart: mark and avoid him.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Where is there dignity unless there is honesty?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nemo enim est tam senex qui se annum non putet posse vivere.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Though silence is not necessarily an admission, it is not a denial, either.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Never injure a friend, even in jest.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is the peculiar quality of a fool to perceive the faults of others and to forget his own.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nemo est qui tibi sapientius suadere possit te ipso: numquam labere, si te audies.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To be content with what we possess is the greatest and most secure of riches.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "God's law is 'right reason.' When perfectly understood it is called 'wisdom.' When applied by government in regulating human relations it is called 'justice.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "a friend is a second self",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Ability without honor is useless.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Time obliterates the fictions of opinion and confirms the decisions of nature.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What one has, one ought to use; and whatever he does, he should do with all his might.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What an ugly beast is the ape, and how like us.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A mind without instruction can no more bear fruit than can a field, however fertile, without cultivation.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We are bound by the law, so that we may be free.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Diseases of the soul are more dangerous and more numerous than those of the body.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Freedom is a possession of inestimable value.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We must not only obtain Wisdom: we must enjoy her.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“Few are those who wish to be endowed with virtue rather than to seem so.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is our own evil thoughts which madden us.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Hours and days and months and years go by; the past returns no more, and what is to be we cannot know; but whatever the time gives us in which we live, we should therefore be content.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nothing stands out so conspicuously, or remains so firmly fixed in the memory, as something which you have blundered.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Sed nescio quo modo nihil tam absurde dici potest quod non dicatur ab aliquo philosphorum. (There is nothing so absurd but some philosopher has said it.)",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Men decide far more problems by hate, love, lust, rage, sorrow, joy, hope, fear, illusion or some other inward emotion, than by reality, authority, any legal standard, judicial precedent, or statute.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Cultivation of the mind is as necessary as food to the body",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nature herself has imprinted on the minds of all the idea of God",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To teach is a necessity, to please is a sweetness, to persuade is a victory.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Natural ability without education has more often raised a man to glory and virtue than education without natural ability.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The closer the collapse of the Empire, the crazier its laws are.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I prefer the most unfair peace to the most righteous war.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Trust no one unless you have eaten much salt with him.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Endless money forms the sinews of war.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "He only employs his passion who can make no use of his reason.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Kindness is stronger than fear.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To be rather than to seem.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "True law is right reason in agreement with nature; it is of universal application, unchanging and everlasting; it summons to duty by its commands, and averts from wrongdoing by its prohibitions.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "They who say that we should love our fellow-citizens but not foreigners, destroy the universal brotherhood of mankind, with which benevolence and justice would perish forever",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To make a mistake is only human; to persist in a mistake is idiotic.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "History is the witness that testifies to the passing of time; it illumines reality, vitalizes memory, provides guidance in daily life and brings us tidings of antiquities.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Memory is the treasury and guardian of all things.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A man of faith is also full of courage",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I have always been of the opinion that unpopularity earned by doing what is right is not unpopularity at all, but glory.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In a republic this rule ought to be observed: that the majority should not have the predominant power.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“The welfare of the people is the highest law",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A mental stain can neither be blotted out by the passage of time nor washed away by any waters.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Everyone has the obligation to ponder well his own specific traits of character. He must also regulate them adequately and not wonder whether someone else's traits might suit him better. The more definitely his own a man's character is, the better it fits him.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The mind becomes accustomed to things by the habitual sight of them, and neither wonders nor inquires about the reasons for things it sees all the time.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Here is a man whose life and actions the world has already condemned - yet whose enormous fortune...has already brought him acquittal!",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Books: our unfailing companions",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If you have no confidence in self, you are twice defeated in the race of life. With confidence, you have won even before you have started.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There is, I assure you, a medical art for the soul. It is philosophy, whose aid need not be sought, as in bodily diseases, from outside ourselves. We must endeavor with all our resources and all our strength to become capable of doctoring ourselves.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Silence is one of the great arts of conversation.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If you would abolish covetousness, you must abolish its mother, profusion.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The reward of friendship is friendship itself.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Neither can embellishments of language be found without arrangement and expression of thoughts, nor can thoughts be made to shine without the light of language.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Liberty is rendered even more precious by the recollection of servitude.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Every man can tell how many goats or sheep he possesses, but not how many friends.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Vivere est Cogitare",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "So it may well be believed that when I found him taking a complete holiday, with a vast supply of books at command, he had the air of indulging in a literary debauch, if the term may be applied to so honorable an occupation.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What can be more delightful than to have some one to whom you can say everything with the same absolute confidence as to yourself? Is not prosperity robbed of half its value if you have no one to share your joy?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "When I notice how carefully arranged his hair is and when I watch him adjusting the parting with one finger, I cannot imagine that this man could conceive of such a wicked thing as to destroy the Roman constitution.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Thus nature has no love for solitude, and always leans, as it were, on some support; and the sweetest support is found in the most intimate friendship.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The wise are instructed by reason, average minds by experience, the stupid by necessity and the brute by instinct.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "No power on earth, if it labours beneath the burden of fear, can possibly be strong enough to survive.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For he (Cato) gives his opinion as if he were in Plato's Republic, not in Romulus' cesspool.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I would rather be wrong, by God, with Plato than be correct with those men.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Calamus fortior gladio.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The countenance is the portrait of the soul, and the eyes mark its intention.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What can be more delightful than to have some one to whom you can say everything with the same absolute confidence as to yourself?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Let arms give place to the robe, and the laurel of the warriors yield to the tongue of the orator.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Freedom will bite back more fiercely when suspended than when she remains undisturbed.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Those wars are unjust which are undertaken without provocation. For only a war waged for revenge or defense can be just.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "O, tempora! O, mores!",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "To be ignorant of what occurred before you were born is to remain always a child.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Esse quam videri - \"To be, rather than to seem (to be)",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Those who lack within themselves the means for living a blessed and happy life will find any age painful.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The good life is impossible without a good state; and there is no greater blessing than a well-ordered state.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Wisdom is the only thing which can banish sorrow from the breast .",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The essence of Ciceronian philosophy is a sense of wonder at the interconnectedness of human beings to one another and to the universe that encompasses them.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The fruit of too much liberty is slavery.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What is sweeter than lettered ease?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Times are bad. Children no longer obey their parents, and everyone is writing a book.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Quo usque tandem abutere, Catalina, patientia nostra?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I cannot find a faithful message-bearer,\" he wrote to his friend, the scholar Atticus. \"How few are they who are able to carry a rather weighty letter without lightening it by reading.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "When you are aspiring to the highest place, it is honorable to reach the second or even the third rank.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In communities and individuals alike, excessive freedom topples over into excessive slavery. Extreme freedom produces a tyrant, along with the extremely harsh and evil slavery that goes with him.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Wohl niemand tanzt, wenn er nüchtern ist, er müsste denn den Verstand verloren haben.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In all matters, before beginning, a diligent preparation should be made.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“It’s not by strength or speed or swiftness of body that great deeds are done, but by wisdom, character, and sober judgment.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "He must protect the lives and interests of the people, appeal to his fellow citizens' patriotic interests, and, in general, set the welfare of the community above his own",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What is dishonorably got, is dishonorably squandered.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There are no snares more dangerous than those which lurk under the guise of duty or the name of relationship.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Amicitiae nostrae memoriam spero sempiternam fore",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Instead let Virtue herself, by her own unaided allurements, summon you to a glory that is genuine and real.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We are all servants of the laws in order to be free",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "More is lost by indecision than wrong decision.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If you have a library in your garden, everything will be complete.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But I must at the very beginning lay down this principle—friendship can only exist between good men.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Love is the attempt to form a friendship inspired by beauty.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Mea mihi conscientia pluris est quam omnium sermo",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Be, rather than seem",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What is sweeter than to have someone with whom you may dare discuss anything as if you were communing with yourself? How could your enjoyment in times of prosperity be so great if you did not have someone whose joy in them would be equal to your own?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There is nothing so absurd that some philosopher has not already said it.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Old age: the crown of life, our play's last act.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "n the face of a true friend a man sees as it were a second self......",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Justice looks for no prize and no price; it is sought for itself, and is at once the cause and meaning of all the virtues. . . . The worst kind of injustice is to look for profit from injustice.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What then is freedom? The power to live as one wishes.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The causes of events are ever more interesting than the events themselves.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "An unjust peace is better than a just war.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Legum servi sumus ut liberi esse possimus",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For what I lack in experience I make up for in diligence.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Cannot people realize how large an income is thrift.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There is also a tradition about Socrates. He liked walking, it is recorded, until a late hour of the evening, and when someone asked him why he did this he said he was trying to work up an appetite for his dinner.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For as I like a man in whom there is something of the old, so I like a man in whom there is something of the young; and he who follows this maxim, in body will possibly be an old man but he will never be an old man in mind.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "This shows how a man who practices exercise and self-control can preserve some of his original vigor even when he grows old.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Is not prosperity robbed of half its value if you have no one to share your joy?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "atque illi artifices corporis simulacra ignotis nota faciebant; quae uel si nulla, nihilo sint tamen obscuriores clari uiri.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "nothing cruel is in fact beneficial; for cruelty is extremely hostile to the nature of man, which we ought to follow.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Cannot people realize how large an income is thrift.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For what I lack in experience I make up for in diligence.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "As I give thought to the matter, I find four causes for the apparent misery of old age; first it withdraws us from active accomplishments; second, it renders the body less powerful; third, it deprives us of almost all forms of enjoyment; fourth, it stands not far from death.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is useless to know what shall come to pass; it is a miserable thing to be tormented to no purpose.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The brief arc of our days,",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Il y a encore de certains devoirs à remplir envers même de qui nous avons reçu une injure; car la vengeance et la punition ont aussi leurs bornes. Je ne sais même si repentir de celui qui a fait l'injure ne suffirait pas et pour l'empêcher d'en faire une semblable à l'avenir et pour retenir les autres dans le devoir.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Honesty is the best policy",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There is no doubt that a person who is called generous and open-handed has duty in mind, not gain. So likewise justice looks for no prize and no price; it is sought for itself, and is at once the cause and meaning of all the virtues.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The purpose of education is to free the student from the tyranny of the present.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We don't practise generosity in order to secure gratitude, nor do we invest our gifts in the hope of a favourable return. Rather, it is nature that inclines us towards generosity. Just so, we don't seek friendship with an expectation of gain, but regard the feeling of love as its own reward.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Mine is the disaster, if disaster there be; and to be severely distressed at one's own misfortunes does not show that you love your friend, but that you love yourself.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Art is born of the observation and investigation of nature.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I have taken so kindly to idleness that I can't tear myself away from it. So either I amuse myself with books, of which I have a good stock at Antium, or I count the waves - the weather is unsuitable for mackerel fishing... And my sole form of political activity is to hate the rascals, and even that I do without anger.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Men think they may justly do that for which they have a precedent.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "As for you, my young friends, I urge you to strive for virtue, for without it friendship cannot exist. And friendship, aside from virtue, is the greatest thing we can find in life.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The course of life cannot change. Nature has but a single path and you travel it only once. Each stage of life has its own appropriate qualities—weakness in childhood, boldness in youth, seriousness in middle age, and maturity in old age. These are fruits that must be harvested in due season.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Once you have surrounded the entire place with the nets of your thought, at least if practical experience has sharpened your skill, nothing will escape you, and everything that is in the subject matter will run up to you and fall into your hands.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We should not be too confident in our belief of anything. (Cicero, Tusculan Disputations I.32)",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“We should not be too confident in our belief of anything. (Cicero, Tusculan Disputations I.32)",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "L'amicizia supera in questo la parentela: nella parentela l'affetto si può eliminare, nell'amicizia no; infatti, tolto l'affetto viene meno l'amicizia stessa, la parentela rimane.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Salus populi suprema est lex [the good of the people is the chief law].",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "No one can be a sound judge if he does not give due weight to convincing suspicions.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The greatest pleasures are only narrowly separated from disgust.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Quo usque tandem abutere, Catilina, patientia nostra? Quam diu etiam furor iste tuus nos eludet? Quem ad finem sese effrenata iactabit audacia?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "These people who govern us should not be so carried away by their own political power that they turn away from peace, but neither should they embrace a peace that is dishonorable.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "L'amico certo si vede nella sorte incerta.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nam eloquentiam quae admirationem non habet nullam iudico",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Did not he, then, who, if he had died at that time, would have died in all his glory, owe all the great and terrible misfortunes into which he subsequently fell to the prolongation of his life at that time?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For riches, fame, and power, without wisdom and a just method of regulating ourselves and commanding others, a government is full of discredit and insolent arrogance, nor is there any kind of government more deformed than that in which the wealthiest are regarded as the noblest.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "As for the person who is not impelled to give thanks for the procession of the stars, the alternation of day and night, the regular succession of the seasons, and the fruits which are produced for our enjoyment--how can such a person be counted as human at all?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Ein Raum ohne Bücher ist wie ein Körper ohne Seele.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Read at every wait; read at all hours; read within leisure; read in times of labor; read as one goes in; read as one goest out. The task of the educated mind is simply put: read to lead.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nothing is too absurd for some philosopher to have said it.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Thou shouldst eat to live; not live to eat.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But what is more foolish, when men are in the plenitude of resources, opportunities, and wealth, than to procure the other things which money provides — horses, slaves, splendid raiment, and costly plate — and not procure friends, who are, if I may say so, life's best and fairest furniture?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But if I am wrong in thinking the human soul immortal, I am glad to be wrong; nor will I allow the mistake which gives me so much pleasure to be wrested from me as long as I live.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Utinam tam facile vera invenire possim quam falsa convincere.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "El pasado es también el presente y el futuro. La nación que olvida está pérdida.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Angosciarsi profondamente per le proprie disgrazie non è proprio di chi ama l'amico ma se stesso.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "When conscience reigns, it allows no resting-place to lust, violence, and temerity.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is the function of justice not to do wrong to one's fellow-men; of considerateness , not to wound their feelings; and in this the essence of propriety is best seen.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We mean then by the \"good\" those whose actions and lives leave no question as to their honour, purity, equity, and liberality; who are free from greed, lust, and violence; and who have the courage of their convictions.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "La pobreza no curte el alma ni la favorece. La esclaviza.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If no use is made of the labours of past ages, the world must remain always in the infancy of knowledge.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is strong proof of men knowing things before birth, that when mere children they grasp innumerable facts with such speed as to show that they are not then taking them in for the first time, but are remembering and recalling them.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“La pobreza no curte el alma ni la favorece. La esclaviza.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The greatest pleasures are only narrowly separated from disgust.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Did not he, then, who, if he had died at that time, would have died in all his glory, owe all the great and terrible misfortunes into which he subsequently fell to the prolongation of his life at that time?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But if I am wrong in thinking the human soul immortal, I am glad to be wrong; nor will I allow the mistake which gives me so much pleasure to be wrested from me as long as I live.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "When conscience reigns, it allows no resting-place to lust, violence, and temerity.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For old age is respected only if it defends itself, maintains its rights, submits to no one, and rules over its domain until its last breath.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Todos los hombres pueden caer en un error; pero sólo los necios perseveran en él",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Thou shouldst eat to live; not live to eat.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Read at every wait; read at all hours; read within leisure; read in times of labor; read as one goes in; read as one goest out. The task of the educated mind is simply put: read to lead.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nam eloquentiam quae admirationem non habet nullam iudico",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "L'amico certo si vede nella sorte incerta.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is the function of justice not to do wrong to one's fellow-men; of considerateness , not to wound their feelings; and in this the essence of propriety is best seen.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Quo usque tandem abutere, Catilina, patientia nostra? Quam diu etiam furor iste tuus nos eludet? Quem ad finem sese effrenata iactabit audacia?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "As for the person who is not impelled to give thanks for the procession of the stars, the alternation of day and night, the regular succession of the seasons, and the fruits which are produced for our enjoyment--how can such a person be counted as human at all?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But what is more foolish, when men are in the plenitude of resources, opportunities, and wealth, than to procure the other things which money provides — horses, slaves, splendid raiment, and costly plate — and not procure friends, who are, if I may say so, life's best and fairest furniture?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Utinam tam facile vera invenire possim quam falsa convincere.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We mean then by the \"good\" those whose actions and lives leave no question as to their honour, purity, equity, and liberality; who are free from greed, lust, and violence; and who have the courage of their convictions.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is strong proof of men knowing things before birth, that when mere children they grasp innumerable facts with such speed as to show that they are not then taking them in for the first time, but are remembering and recalling them.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "It is not merriment and wantonness, nor laughter or jesting, the comrade of frivolity, that make men happy; those are happy, often in sadness, whose wills are strong and true.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Ein Raum ohne Bücher ist wie ein Körper ohne Seele.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nothing is more damaging to a state, nothing so contrary to justice and law, nothing less appropriate to a civilized community, than to force through a measure by violence where a country has a settled and established constitution.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But unfortunately, decent people are usually slow to act and ignore dangers until a crisis erupts. They are sluggish and willing to abide with peace without honor, but their own inaction causes them to lose both.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Res publica res est populi",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I worked with Diodotus the Stoic, who made his residence in my house, and after a life of long intimacy died there only a short time ago.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Често човек е най-злият враг на самия себе си",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "By this time I was thoroughly terrified, not so much fearing death as the treachery of my own kind.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Finally, an orator must have a keen mind capable of remembering a vast array of relevant precedents and examples from history, along with a thorough knowledge of the law and civil statutes.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“the rational treatment of any subject ought to take its start from definition, that readers may understand what the author is writing about.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Per aspera ad astra",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Thus, being ignorant of its nature, the masses suppose that men of wealth, influence, and important family connections are the best...as a result of this error on the part of the commons, the wealth rather than the excellence of a few men has come to control the state",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "That person then, whoever it may be, whose mind is quiet through consistency and self control, who finds contentment in himself, who neither breaks down in adversity nor crumbles in fright, nor burns with any thirsty need nor dissolves into wild and futile excitement, that person is the wise one we are seeking, and that person is happy",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Das also ist keine Freundschaft, dass, wenn der eine die Wahrheit nicht hören will, der andere zum Lügen bereit ist.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There is nothing so absurd that it has not been said by some philosopher.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Odiosa razza di uomini, quella che rinfaccia i favori, che dovrebbe ricordare chi li ha ricevuti, non chi li fece.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Hatreds not voiced, but which are concealed, is to be feared more than those openly declared.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "La conducta privada de un hombre no puede ser separada de su conducta pública; son dos caras de una misma moneda.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The extreme of right is the extreme of wrong.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "La cultura no garantiza el buen juicio, el escepticismo ni la sabiduría.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Una nación puede sobrevivir a sus locos y hasta a sus ambiciosos, pero no puede sobrevivir a la traición intestina",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In anger, nothing right nor judicious can be done.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "But of all the bonds of fellowship, there is none more noble, none more powerful than when good men of congenial character are joined in intimate friendship.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For is there anything so absurd as to delight in many inanimate things, like public office, fame, and stately buildings, or dress and personal adornment, and to take little or no delight in a sentient being endowed with virtue and capable of loving, and — if I may so term it — of loving back?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Cuanto más depravado se vuelve un pueblo, más se indigna públicamente contra la inmoralidad.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "No power is strong enough to be lasting if it labours under the weight of fear.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“En un mot, nos mains tâchent de faire dans la nature, pour ainsi dire, une autre nature.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "This is all that I had to say about friendship; but I exhort you both so to esteem virtue (without which friendship cannot exist), that, excepting virtue, you will think nothing more excellent than friendship.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "En política sólo puedes estar seguro de una cosa, de que jamás puedes estar seguro de nada",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "nothing is generous that is not at the same time just.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Предпочитам сдържаната разумност, пред бъбривата глупост.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If you have a garden in your library, nothing will fail",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Cuando un pueblo está decidido a ser esclavo y se halla degradado, es una locura tratar de animar de nuevo en él el espíritu de orgullo y honor, de libertad y amor a las leyes, pues abraza con entusiasmo sus cadenas con tal que lo alimenten sin ningún esfuerzo por su parte.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "As I gazed rather intently at the earth my grandfather said: How long will your thoughts continue to dwell upon the earth?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Justice is the mistress and queen of all the virtues.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Cum dignitate otium",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "the man to open his ears widest to flatterers is he who first flatters himself and is fondest of himself.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For other forms of relaxation are not so universally suited to all ages, times, and places; but these studies [of literature] sustain youth and entertain old age, they enhance prosperity, and offer a refuge and solace in adversity, they delight us when we are at home without hindering us in the wider world, and are with us at night, when we travel and when we visit the countryside.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A good country does not begin a war except to defend its honor or to protect itself. ... Wars are unjust if they are undertaken without cause. Only a war waged in retaliation or defense can be considered just. ... No war is honorable unless it is announced and declared or it is for the recovery of property.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Porque los que luchan contra el mal son los soldados de D•os.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Quamquam scripsit artem rhetorieam Cleanthes, Chrysippus etiam, sed sic, ut si quis obmutescere concupierit, nihil aliud legere debeat.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "IT is alledged, that Memory fails in Old Age. That it does so, I freely grant; but then it is principally, where it has not been properly exercised; or with those who naturally have no Strength of Brain: For such as have, will pretty well retain it.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "its underlying principles are in such close harmony with the absolute and eternal right that they can never become obsolete. At the same time, the division and arrangement of the treatise give it, so far as I know, the precedence over all other ethical treatises ancient or modern.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "he grew old learning many a fresh lesson every day.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In tragedy anything comic is a blemish and in comedy anything tragic is ugly",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "non deterret sapientem mors.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The more laws a society has, the less justice",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Il bene pubblico è la legge suprema",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Aquele que se ama a si próprio não tem rivais",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For when the soul is deprived of emotion, what difference is there — I do not say between man and the beasts of the field, but between man and a stock or a stone, or any such thing?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "And so—it can't be repeated often enough—you should love after you have judged, not judge after you have loved.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Años poderosos les gustan los sicofantes, los iguales les estaban agradecidos por su amabilidad y los inferiores no deseaban otra cosa que servir a personas mas nobles y excepcionales.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "I do not understand what the man who is happy wants in order to be happier.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Un hogar sin libros es como un cuerpo sin alma.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "for my own part I cannot cordially approve, I merely tolerate, a philosopher who talks of setting bounds to the desires. Is it possible for desire to be kept within bounds? It ought to be destroyed, uprooted altogether.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "that are divided by seven distinct intervals, which is generally the regulating number of all things.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "If people think that friendship springs from weakness and from a purpose to secure someone through whom we may obtain that which we lack, they assign her, if I may so express it, a lowly pedigree indeed, and an origin far from noble, and they would make her the daughter of poverty and want.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For friendship is nothing else than an accord in all things, human and divine, conjoined with mutual goodwill and affection, and I am inclined to think that, with the exception of wisdom, no better thing has been given to man by the immortal gods.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The beginnings of all things are small.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "O tempora! O mores!",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "See,\" says he, \"you who deny a providence, how many have been saved by their prayers to the Gods.\"",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Une maison sans livres est comme un corps sans âme.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nobody can give you wiser advice than yourself.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "However one defines man, the same definition applies to us all.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Epicurus however is a more troublesome opponent, because he is a combination of two different sorts of pleasure, and because besides himself and his friends there have been so many later champions of his theory, which somehow or other enlists the support of that least competent but most powerful adherent, the general public.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "What he sees often, he does not wonder at, even if he does not know why it is. If something happens which he has not seen before, he thinks it a prodigy.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Away with these old wives' tales, with this idea that it's terrible to die before one's time! What time? The time of nature? It made us a loan without a due date. Why complain if it seeks repayment at a time of its choosing? After all, you accepted the loan on these terms!",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Dacă ai o grădină și o bibliotecă, ai tot ce-ți trebuie.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Nimium boni est, cui nihil est mali.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "In omni disciplina informa est artis praeceptio sine summa assiduitate exercitationis.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A wise man’s life is all one preparation for death.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Denn wirklich tugendhaft wollen nicht so Viele&nbsp;sein&nbsp;als&nbsp;scheinen.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Suum Cuique",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Omnium Rerum Principia Parva Sunt – 'The beginnings of all things are small",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Gut ist, was den Guten gefällt.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "O noble philosophy! Why, they seem to take the sun out of the universe when they deprive life of friendship, than which we have from the immortal gods no better, no more delightful boon.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“Non nobis solum nati sumus.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The egoist loves himself without rivals.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Quid? Quod eadem mente res dissimillimas comprehendimus, ut colorem saporem, calorem, odorem, sonum? Quae numquam quinque nuntiis animus cognosceret, nisi ad eum omnia referrentur et is omnium iudex solus esset.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "More is lost by indecision than wrong decision. Indecision is the thief of opportunity. ​",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Angustus animus pecūniam amat\".",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "statuere enim qui sit sapiens vel maxime videtur esse sapientis",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Fieri autem potest ut recte quis sentiat et id, quod sentit, polite eloqui non possit; sed mandare quemquam litteris cogitationes suas, qui eas nec disponere nec illustrare possit nec delectatione aliqua adlicere lectorem, hominis est intemperanter abutentis et otio et litteris.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "primam esse historiae legem, ne quid falsi dicere audeat, n quid veri non audeat\" - \"Historiju trebamo poznavati kako ne bi govorili neistinu",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Il me semble que cette méditation anticipée des malheurs humains produit presque le même effet que la guérison obtenue avec le temps, sinon que, dans le premier cas, c'est le raisonnement qui guérit, et dans le second, la nature ; mais on comprend l'essentiel, à savoir que le mal tenu pour le plus grand de tous n'est jamais si grand qu'il puisse détruire la vie heureuse.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "277&nbsp;The Lætorian Law was a security for those under age against extortioners, etc. By this law all debts contracted under twenty-five years of age were void.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Die Menschen kommen durch nichts den Göttern näher, als wenn sie Menschen glücklich machen.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A hatred not shown and which remains concealed, is to be feared more than that which is openly voiced.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "all that I can do is to urge you to put friendship before all things human; for nothing is so conformable to nature and nothing so adaptable to our fortunes whether they be favourable or adverse.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Wat kan in de bezigheden der mensen van belang lijken voor een man die de eeuwigheid voor ogen houdt en zich bewust is van de uitgestrektheid van het universum?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The man who has a garden and a library has everything.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "room without books is like a body without a soul.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "There might be believed to exist one Universal Monarch in heaven [who] be accounted both king and father of all creatures.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Occupavi te, inquit, fortuna, atque cepi omnesque aditus tuos interclusi, ut ad me aspirare non posses.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For who is there who, shooting all day, will not sometimes hit the mark?",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A room without books is like a body without a soul: —",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "it is by no means surprising that though we are first commended to Wisdom by the primary natural instincts, afterwards Wisdom itself becomes dearer to us than are the instincts from which we came to her.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "“Read at every wait; read at all hours; read within leisure; read in times of labor; read as one goes in; read as one goes out. The task of the educated mind is simply put: Read to lead.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "qui denique, ut Africanum avum meum scribit Cato solitum esse dicere, possit idem de se praedicare, numquam se plus agere, quam nihil cum ageret, numquam minus solum esse, quam cum solus esset.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Itaque inter omnis omnium gentium summa constat; omnibus enim innatum est et in animo quasi insculptum esse deos.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The greatest states have been overthrown by the young and sustained and restored by the old. ... Rashness is the product of the budding-time of youth, prudence of the harvest-time of age.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "nature without learning has meant more than learning without nature.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "for in history there is nothing more pleasing than clear and brilliant brevity.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "For what youth longs for, old age has attained. A young person hopes to have a long life, but an old man has already had one.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Socrates used to pronounce a curse upon those who first drew a conceptual distinction between things naturally inseparable.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We forget our pleasures, we remember our sufferings",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The evils which were undermining the Republic bear so many striking resemblances to those which threaten the civic and national life of America to-day that the interest of the period is by no means merely historical.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Occupavi te, inquit, fortuna, atque cepi omnesque aditus tuos interclusi, ut ad me aspirare non posses.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "And the senate, O citizens, acted with such lenity, that, out of so great a conspiracy, and such a number and multitude of domestic enemies, it thought that since the republic was saved, the minds of the rest might be restored to a healthy state by the punishment of nine most abandoned men.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "We are not born for ourselves alone",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "A room without books is like a body without a soul.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "Not every mistake is a foolish one.",
-      "author": "Marcus Tullius Cicero"
-    },
-    {
-      "text": "The mind is not a vessel to be filled, but a fire to be kindled.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "I don't need a friend who changes when I change and who nods when I nod; my shadow does that much better.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Know how to listen, and you will profit even from those who talk badly.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "An imbalance between rich and poor is the oldest and most fatal ailment of all republics.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "To find fault is easy; to do better may be difficult.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "When Alexander saw the breadth of his domain, he wept for there were no more worlds to conquer. (Technically a misquote, but I like the misquote better)",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The poor go to war, to fight and die for the delights, riches, and superfluities of others.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "To make no mistakes is not in the power of man; but from their errors and mistakes the wise and good learn wisdom for the future.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Neither blame or praise yourself.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Character is simply habit long continued.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Adversity is the only balance to weigh friends.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The whole of life is but a moment of time. It is our duty, therefore to use it, not to misuse it.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Do not speak of your happiness to one less fortunate than yourself.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Books delight to the very marrow of one's bones. They speak to us, consult with us, and join with us in a living and intense intimacy.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "But for the sake of some little mouthful of flesh we deprive a soul of the sun and light, and of that proportion of life and time it had been born into the world to enjoy.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Of all the disorders in the soul, envy is the only one no one confesses to.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The Spartans do not ask how many are the enemy but where are they.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It is certainly desirable to be well descended, but the glory belongs to our ancestors.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "To be ignorant of the lives of the most celebrated men of antiquity is to continue in a state of childhood all our days",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Silence at the proper season is wisdom, and better than any speech.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It is part of a good man to do great and noble deeds, though he risk everything.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It is a thing of no great difficulty to raise objections against another man's oration, it is a very easy matter; but to produce a better in it's place is a work extremely troublesome.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Painting is silent poetry.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It does not follow, that because a particular work of art succeeds in charming us, its creator also deserves our admiration.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Music, to create harmony, must investigate discord.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "In words are seen the state of mind and character and disposition of the speaker.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Courage stands halfway between cowardice and rashness, one of which is a lack, the other an excess of courage.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Being conscious of having done a wicked action leaves stings of remorse behind it, which, like an ulcer in the flesh, makes the mind smart with perpetual wounds; for reason, which chases away all other pains, creates repentance, shames the soul with confusion, and punishes it with torment.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "All men whilst they are awake are in one common world: but each of them, when he is asleep, is in a world of his own.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Vultures are the most righteous of birds: they do not attack even the smallest living creature.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Painting is silent poetry, and poetry is painting that speaks",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Many things which cannot be overcome when they are together yield themselves up when taken little by little.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Evidence of trust begets trust, and love is reciprocated by love.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "In a certain faraway land the cold is so intense that words freeze as soon as they are uttered, and after some time then thaw and become audible so that words spoken in winter go unheard until the next summer.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Prosperity is no just scale; adversity is the only balance to weigh friends.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Courage consists not in hazarding without fear; but being resolutely minded in a just cause.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The process may seem strange and yet it is very true. I did not so much gain the knowledge of things by the words, as words by the experience I had of things.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "A few vices are sufficient to darken many virtues.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "I am all that hath been, and is, and shall be; and my veil no mortal has hitherto raised.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It is a true proverb, that if you live with a lame man, you will learn to limp.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "...To the Dolphin alone, beyond all other, nature has granted what the best philosophers seek: friendship for no advantage",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The fact is that men who know nothing of decency in their own lives are only too ready to launch foul slanders against their betters and to offer them up as victims to the evil deity of popular envy.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "And the most glorious exploits do not always furnish us with the clearest discoveries of virtue or vice in men; sometimes a matter of less moment, an expression or a jest, informs us better of their characters and inclinations, than the most famous sieges, the greatest armaments, or the bloodiest battles whatsoever. Therefore as portrait-painters are more exact in the lines and features of the face, in which the character is seen, than in the other parts of the body, so I must be allowed to give my more particular attention to the marks and indications of the souls of men, and while I endeavor by these to portray their lives, may be free to leave more weighty matters and great battles to be treated of by others.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "A mind is not a vessel to be filled, but a fire to be lighted.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "When someone blamed Hecataeus the sophist because that, being invited to the public table, he had not spoken one word all supper-time, Archidamidas answered in his vindication 'He who knows how to speak, knows also when'.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "When asked by a woman from Attica:'Why are you Spartan women the only ones who can rule men?', she said: 'Because we are the only ones who give birth to men.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Good fortune will elevate even petty minds, and gives them the appearance of a certain greatness and stateliness, as from their high place they look down upon the world; but the truly noble and resolved spirit raises itself, and becomes more conspicuous in times of disaster and ill fortune...",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The future bears down upon each one of us with all the hazards of the unknown. The only way out is through.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "No necesito amigos que cambien cuando yo cambio y asientan cuando yo asiento. Mi sombra lo hace mucho mejor.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "For though all persons are equally subject to the caprice of fortune, yet all good men have one advantage she cannot deny, which is this, to act reasonably under misfortunes.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "no beast is more savage than man when possessed with power answerable to his rage.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "For there is no virtue, the honor and credit for which procures a man more odium than that of justice; and this, because more than any other, it acquires a man power and authority among the common people.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Cæsar&nbsp;once, seeing some wealthy strangers at Rome, carrying up and down with them in their arms and bosoms young puppy-dogs and monkeys, embracing and making much of them, took occasion not unnaturally to ask whether the women in their country were not used to bear children; by that prince-like reprimand gravely reflecting upon persons who spend and lavish upon brute beasts that affection and kindness which nature has implanted in us to be bestowed on those of our own kind. With like reason may we blame those who misuse that love of inquiry and observation which nature has implanted in our souls, by expending it on objects unworthy of the attention either of their eyes or their ears, while they disregard such as are excellent in themselves, and would do them good.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "take care, in reading the writings of philosophers or hearing their speeches, that you do not attend to words more than things, nor get attracted more by what is difficult and curious than by what is serviceable and solid and useful.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "[Theseus] soon found himself involved in factions and troubles; those who long had hated him had now added to their hatred contempt; and the minds of the people were so generally corrupted, that, instead of obeying commands with silence, they expected to be flattered into their duty.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Education is not the filling of a pail, but the lighting of a fire. For the mind does not require filling like a bottle, but rather, like wood, it only requires kindling to create in it an impulse to think independently and an ardent desire for the truth.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "When a man's eyes are sore his friends do not let him finger them, however much he wishes to, nor do they themselves touch the inflammation: But a man sunk in grief suffers every chance comer to stir and augment his affliction like a running sore; and by reason of the fingering and consequent irritation it hardens into a serious and intractable evil.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Education is not the filling of a pail, but the lighting of a fire. For the mind does not require filling like a bottle, but rather, like wood, it only requires kindling to create in it an impulse to think independently and an ardent desire for the truth.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "But the Lacedaemonians, who make it their first principle of action to serve their country's interest, know not any thing to be just or unjust by any measure but that.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "when he was ædile, he provided such a number of gladiators, that he entertained the people with three hundred and twenty single combats, and by his great liberality and magnificence in theatrical shows, in processions, and public feastings, he threw into the shade all the attempts that had been made before him, and gained so much upon the people, that every one was eager to find out new offices and new honors for him in return for his munificence.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Rather I fear on the contrary that while we banish painful thoughts we may banish memory as well.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "if the Know thyself of the oracle were an easy thing for every man, it would not be held to be a divine injunction.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Such contentedness and change of view in regard to every kind of life does the infusion of reason bring about. When Alexander heard from Anaxarchus of the infinite number of worlds, he wept, and when his friends asked him what was the matter, he replied, \"Is it not a matter for tears that, when the number of worlds is infinite, I have not conquered one?",
-      "author": "Plutarch"
-    },
-    {
-      "text": "[The Spartans] ordered the maidens to exercise themselves with wrestling, running, throwing the quoit, and casting the dart, to the end that the fruit they conceived might, in strong and healthy bodies, take firmer root and find better growth, and withal that they, with this greater vigour, might be the more able to undergo the pains of childbearing.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The truly pious must negotiate a difficult course between the precipice of godlessness and the marsh of superstition.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It was natural for [Spartan women] to think and speak as Gorgo, the wife of Leonidas, is said to have done, when some foreign lady, as it would seem, told her that the women of Lacedaemon were the only women of the world who could rule men; 'With good reason,' she said, 'for we are the only women who bring forth men'.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Sertorius rose up and spoke to his army, You see, fellow soldiers, that perseverance is more prevailing than violence, and that many things which cannot be overcome when they are together, yield themselves up when taken little by little. Assiduity and persistence are irresistible, and in time overthrow and destroy the greatest powers whatever. Time being the favorable friend and assistant of those who use their judgment to await his occasions, and the destructive enemy of those who are unseasonably urging and pressing forward.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "To make an action honorable, it ought to be agreeable to the age, and other circumstances of the person; since it is circumstance and proper measure that give an action its character, and make it either good or bad.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Even so the more a vicious man denies his vice, the more does it insinuate itself and master him: as those people really poor who pretend to be rich get still more poor from their false display.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "It’s a thing of no great difficulty to raise objections against another man’s oration, it is a very easy matter; but to produce a better in its place is a work extremely troublesome.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "But virtue, by the bare statement of its actions, can so affect men's minds as to create at once both admiration of the things done and desire to imitate the doers of them. The goods of fortune we would possess and would enjoy; those of virtue we long to practise and exercise. We are content to receive the former from others, the latter we wish others to experience from us. Moral good is a practical stimulus; it is no sooner seen, than it inspires an impulse to practice, and influences the mind and character not by a mere imitation which we look at, but by the statement of the fact creates a moral purpose which we form.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "... man by nature is not a wild or unsocial creature, neither was he born so, but makes himself what he naturally is not, by vicious habit; and that again on the other side, he is civilized and grows gentle by a change of place, occupation, and manner of life, as beasts themselves that are wild by nature, become tame and tractable by housing and gentler usage...",
-      "author": "Plutarch"
-    },
-    {
-      "text": "For as we would wish that a painter who is to draw a beautiful face, in which there is yet some imperfection, should neither wholly leave out, nor yet too pointedly express what is defective, because this would deform it, and that spoil the resemblance; so since it is hard, or indeed perhaps impossible, to show the life of a man wholly free from blemish, in all that is excellent we must follow truth exactly, and give it fully; any lapses or faults that occur, through human passions or political necessities, we may regard rather as the shortcomings of some particular virtue, than as the natural effects of vice; and may be content without introducing them, curiously and officiously, into our narrative, if it be but out of tenderness to the weakness of nature, which has never succeeded in producing any human character so perfect in virtue as to be pure from all admixture and open to no criticism.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Cæsar is said to have been admirably fitted by nature to make a great statesman and orator, and to have taken such pains to improve his genius this way, that without dispute he might challenge the second place. More he did not aim at, as choosing to be first rather amongst men of arms and power, and, therefore, never rose to that height of eloquence to which nature would have carried him, his attention being diverted to those expeditions and designs, which at length gained him the empire. And he himself, in his answer to Cicero’s panegyric on Cato, desires his reader not to compare the plain discourse of a soldier with the harangues of an orator who had not only fine parts, but had employed his life in this study.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "The superstitious man wishes he did not believe in gods, as the atheist does not, but fears to disbelieve in them.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "What we achieve inwardly will change our outer reality.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "These things sensibly affected Theseus, who, thinking it but just not to disregard, but rather partake of, the sufferings of his fellow citizens, offered himself for one without any lot. All else were struck with admiration for the nobleness and with love for the goodness of the act.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "In this city [Tingis] the Libyans say that Antaeus is buried; and Sertorius had his tomb dug open, the great size of which made him disbelieve the Barbarians. But when he came upon the body and found it to be sixty cubits long, as they tell us, he was dumbfounded, and after performing a sacrifice filled up the tomb again, and joined in magnifying its traditions and honours. Now, the people of Tingis have a myth that after the death of Antaeus, his wife, Tinga, consorted with Heracles, and that Sophax was the fruit of this union, who became king of the country and named a city which he founded after his mother; also that Sophax had a son, Diodorus, to whom many of the Libyan peoples became subject, since he had a Greek army composed of the Olbians and Mycenaeans who were settled in those parts by Heracles. But this tale must be ascribed to a desire to gratify Juba, of all kings the most devoted to historical enquiry; for his ancestors are said to have been descendants of Sophax and Diodorus. [The Life of Sertorius]",
-      "author": "Plutarch"
-    },
-    {
-      "text": "And, to say truly, the greatest benefit that learning bringeth unto men is this: that it teacheth men that be rough and rude of nature, by compass and rule of reason, to be civil and courteous, and to like better the mean state than the higher.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Whereas stories are fit for every place, reach to all persons, serve for all times, teach the living, revive the dead, so far excelling all other books, as it is better to see learning in Noblemen’s lives, than to read it in Philosophers’ writings.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "By the aid of philosophy you will live not unpleasantly, for you will learn to extract pleasure from all places and things: wealth will make you happy, because it will enable you to benefit many; and poverty, as you will not then have many anxieties; and glory, for it will make you honoured; and obscurity, for you will then be safe from envy.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "I would rather excel in the knowledge of what is excellent than the extent of my power or possessions.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "He who least likes courting favour, ought also least to think of resenting neglect; to feel wounded at being refused a distinction can only arise from an overweening appetite to have it.",
-      "author": "Plutarch"
-    },
-    {
-      "text": "Knowing yourself is the beginning of all wisdom.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "What is a friend? A single soul dwelling in two bodies.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Educating the mind without educating the heart is no education at all.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Hope is a waking dream.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "No great mind has ever existed without a touch of madness.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Happiness depends upon ourselves.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Excellence is never an accident. It is always the result of high intention, sincere effort, and intelligent execution; it represents the wise choice of many alternatives - choice, not chance, determines your destiny.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Anybody can become angry — that is easy, but to be angry with the right person and to the right degree and at the right time and for the right purpose, and in the right way — that is not within everybody's power and is not easy.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "A friend to all is a friend to none.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Wishing to be friends is quick work, but friendship is a slow ripening fruit.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Happiness is the meaning and the purpose of life, the whole aim and end of human existence.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Those who educate children well are more to be honored than they who produce them; for these only gave them life, those the art of living well.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Patience is bitter, but its fruit is sweet.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "He who has overcome his fears will truly be free.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "To perceive is to suffer.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Those who know, do. Those that understand, teach.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The educated differ from the uneducated as much as the living differ from the dead.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Whosoever is delighted in solitude, is either a wild beast or a god.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "I count him braver who overcomes his desires than him who conquers his enemies, for the hardest victory is over self.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Poverty is the parent of revolution and crime.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The aim of art is to represent not the outward appearance of things, but their inward significance.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "It is not enough to win a war; it is more important to organize the peace.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The antidote for fifty enemies is one friend.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Pleasure in the job puts perfection in the work.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The high-minded man must care more for the truth than for what people think.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "To write well, express yourself like the common people, but think like a wise man.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "One swallow does not make a summer, neither does one fine day; similarly one day or brief time of happiness does not make a person entirely happy.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Learning is not child's play; we cannot learn without pain.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Man is by nature a social animal; an individual who is unsocial naturally and not accidentally is either beneath our notice or more than human. Society is something that precedes the individual. Anyone who either cannot lead the common life or is so self-sufficient as not to need to, and therefore does not partake of society, is either a beast or a god.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "For the things we have to learn before we can do them, we learn by doing them.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Happiness is a state of activity.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Through discipline comes freedom.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "All persons ought to endeavor to follow what is right, and not what is established.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The secret to humor is surprise.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Great men are always of a nature originally melancholy.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Character may almost be called the most effective means of persuasion.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "To lead an orchestra, you must turn your back on the crowd",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Fear is pain arising from the anticipation of evil.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "We make war that we may live in peace.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Philosophy can make people sick.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The only stable state is the one in which all men are equal before the law.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "A friend is a second self.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "youth is easily deceived because it is quick to hope.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The Law is Reason free from Passion.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Courage is the first of human qualities because it is the quality which guarantees the others.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Comedy aims at representing men as worse, Tragedy as better than in actual life.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Freedom is obedience to self-formulated rules.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The wise man does not expose himself needlessly to danger, since there are few things for which he cares sufficiently; but he is willing, in great crises, to give even his life--knowing that under certain conditions it is not worth while to live. He is of a disposition to do men service, though he is ashamed to have a service done to him. To confer a kindness is a mark of superiority; to receive one is a mark of subordination... He does not take part in public displays... He is open in his dislikes and preferences; he talks and acts frankly, because of his contempt for men and things... He is never fired with admiration, since there is nothing great in his eyes. He cannot live in complaisance with others, except it be a friend; complaisance is the characteristic of a slave... He never feels malice, and always forgets and passes over injuries... He is not fond of talking... It is no concern of his that he should be praised, or that others should be blamed. He does not speak evil of others, even of his enemies, unless it be to themselves. His carriage is sedate, his voice deep, his speech measured; he is not given to hurry, for he is concerned about only a few things; he is not prone to vehemence, for he thinks nothing very important. A shrill voice and hasty steps come to a man through care... He bears the accidents of life with dignity and grace, making the best of his circumstances, like a skillful general who marshals his limited forces with the strategy of war... He is his own best friend, and takes delight in privacy whereas the man of no virtue or ability is his own worst enemy, and is afraid of solitude.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "He is his own best friend and takes delight in privacy whereas the man of no virtue or ability is his own worst enemy and is afraid of solitude.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The roots of education are bitter, but the fruit is sweet.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Mothers are fonder than fathers of their children because they are more certain they are therir own",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Anyone who has no need of anybody but himself is either a beast or a God",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Men acquire a particular quality by constantly acting a particular way... you become just by performing just actions, temperate by performing temperate actions, brave by performing brave actions.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Give me a child until he is 7 and I will show you the man.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "He who is to be a good ruler must have first been ruled",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Educating the mind without educating the heart is no education at all\"&nbsp;",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Memory is the scribe of the soul",
-      "author": "Aristotle"
-    },
-    {
-      "text": "All Earthquakes and Disasters are warnings; there’s too much corruption in the world",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Time crumbles things; everything grows old under the power of Time and is forgotten through the lapse of Time.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The aim of the wise is not to secure pleasure, but to avoid pain.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Poetry is finer and more philosophical than history; for poetry expresses the universal, and history only the particular.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "It is of the nature of desire not to be satisfied, and most men live only for the gratification of it.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Whatever lies within our power to do lies also within our power not to do.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The weak are always anxious for justice and equality. The strong pay no heed to either.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "...happiness does not consist in amusement. In fact, it would be strange if our end were amusement, and if we were to labor and suffer hardships all our life long merely to amuse ourselves.... The happy life is regarded as a life in conformity with virtue. It is a life which involves effort and is not spent in amusement....",
-      "author": "Aristotle"
-    },
-    {
-      "text": "We must be neither cowardly nor rash but courageous.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "A tyrant must put on the appearance of uncommon devotion to religion. Subjects are less apprehensive of illegal treatment from a ruler whom they consider god-fearing and pious. On the other hand, they do less easily move against him, believing that he has the gods on his side.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "If things do not turn out as we wish, we should wish for them as they turn out.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Happiness belongs to the self-sufficient.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The soul never thinks without a mental picture.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Men create gods after their own image, not only with regard to their form, but with regard to their mode of life.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Love is composed of a single soul inhabiting two bodies.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "These virtues are formed in man by his doing the actions ... The good of man is a working of the soul in the way of excellence in a complete life.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Bad people...are in conflict with themselves; they desire one thing and will another, like the incontinent who choose harmful pleasures instead of what they themselves believe to be good.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "All who have meditated on the art of governing mankind have been convinced that the fate of empires depends on the education of youth.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Anger Is A Gift",
-      "author": "Aristotle"
-    },
-    {
-      "text": "With respect to the requirement of art, the probable impossible is always preferable to the improbable possible.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Man is a goal-seeking animal. His life only has meaning if he is reaching out and striving for his goals.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The gods too are fond of a joke.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Quality is not an act, it is a habit.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Moral excellence comes about as a result of habit. We become just by doing just acts, temperate by doing temperate acts, brave by doing brave acts.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Democracy arose from men's thinking that if they are equal in any respect, they are equal absolutely.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The pleasures arising from thinking and learning will make us think and learn all the more. 1153a 23",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Man is by nature a political animal.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The self-indulgent man craves for all pleasant things... and is led by his appetite to choose these at the cost of everything else.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "For man, when perfected, is the best of animals, but, when separated from law and justice, he is the worst of all; since armed injustice is the more dangerous, and he is equipped at birth with the arms of intelligence and with moral qualities which he may use for the worst ends. Wherefore, if he have not virtue, he is the most unholy and the most savage of animals, and the most full of lust and gluttony. But justice is the bond of men in states, and the administration of justice, which is the determination of what is just, is the principle of order in political society.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "The best friend is the man who in wishing me well wishes it for my sake.",
-      "author": "Aristotle"
-    },
-    {
-      "text": "Be kind, for everyone you meet is fighting a harder battle.",
-      "author": "Plato"
-    },
-    {
-      "text": "Every heart sings a song, incomplete, until another heart whispers back. Those who wish to sing always find a song. At the touch of a lover, everyone becomes a poet.",
-      "author": "Plato"
-    },
-    {
-      "text": "We can easily forgive a child who is afraid of the dark; the real tragedy of life is when men are afraid of the light.",
-      "author": "Plato"
-    },
-    {
-      "text": "Only the dead have seen the end of war.",
-      "author": "Plato"
-    },
-    {
-      "text": "The price good men pay for indifference to public affairs is to be ruled by evil men.",
-      "author": "Plato"
-    },
-    {
-      "text": "Do not train a child to learn by force or harshness; but direct them to it by what amuses their minds, so that you may be better able to discover with accuracy the peculiar bent of the genius of each.",
-      "author": "Plato"
-    },
-    {
-      "text": "According to Greek mythology, humans were originally created with four arms, four legs and a head with two faces. Fearing their power, Zeus split them into two separate parts, condemning them to spend their lives in search of their other halves.",
-      "author": "Plato"
-    },
-    {
-      "text": "The heaviest penalty for declining to rule is to be ruled by someone inferior to yourself.",
-      "author": "Plato"
-    },
-    {
-      "text": "I am the wisest man alive, for I know one thing, and that is that I know nothing.",
-      "author": "Plato"
-    },
-    {
-      "text": "Never discourage anyone...who continually makes progress, no matter how slow.",
-      "author": "Plato"
-    },
-    {
-      "text": "One of the penalties of refusing to participate in politics is that you end up being governed by your inferiors.",
-      "author": "Plato"
-    },
-    {
-      "text": "Love is a serious mental disease.",
-      "author": "Plato"
-    },
-    {
-      "text": "The measure of a man is what he does with power.",
-      "author": "Plato"
-    },
-    {
-      "text": "good people do not need laws to tell them to act responsibly, while bad people will find a way around the laws",
-      "author": "Plato"
-    },
-    {
-      "text": "If women are expected to do the same work as men, we must teach them the same things.",
-      "author": "Plato"
-    },
-    {
-      "text": "Ignorance, the root and stem of every evil.",
-      "author": "Plato"
-    },
-    {
-      "text": "I'm trying to think, don't confuse me with facts.",
-      "author": "Plato"
-    },
-    {
-      "text": "...and when one of them meets the other half, the actual half of himself, whether he be a lover of youth or a lover of another sort, the pair are lost in an amazement of love and friendship and intimacy and one will not be out of the other's sight, as I may say, even for a moment...",
-      "author": "Plato"
-    },
-    {
-      "text": "Those who tell the stories rule society.",
-      "author": "Plato"
-    },
-    {
-      "text": "There is truth in wine and children",
-      "author": "Plato"
-    },
-    {
-      "text": "Human behavior flows from three main sources: desire, emotion, and knowledge.",
-      "author": "Plato"
-    },
-    {
-      "text": "Education is teaching our children to desire the right things.",
-      "author": "Plato"
-    },
-    {
-      "text": "The madness of love is the greatest of heaven's blessings.",
-      "author": "Plato"
-    },
-    {
-      "text": "Courage is knowing what not to fear.",
-      "author": "Plato"
-    },
-    {
-      "text": "There are three classes of men; lovers of wisdom, lovers of honor, and lovers of gain.",
-      "author": "Plato"
-    },
-    {
-      "text": "In politics we presume that everyone who knows how to get votes knows how to administer a city or a state. When we are ill... we do not ask for the handsomest physician, or the most eloquent one.",
-      "author": "Plato"
-    },
-    {
-      "text": "You should not honor men more than truth.",
-      "author": "Plato"
-    },
-    {
-      "text": "There are two things a person should never be angry at, what they can help, and what they cannot.",
-      "author": "Plato"
-    },
-    {
-      "text": "The beginning is the most important part of the work.",
-      "author": "Plato"
-    },
-    {
-      "text": "When men speak ill of thee, live so as nobody may believe them.",
-      "author": "Plato"
-    },
-    {
-      "text": "The object of education is to teach us to love what is beautiful.",
-      "author": "Plato"
-    },
-    {
-      "text": "Those who are able to see beyond the shadows and lies of their culture will never be understood, let alone believed, by the masses.",
-      "author": "Plato"
-    },
-    {
-      "text": "A house that has a library in it has a soul.",
-      "author": "Plato"
-    },
-    {
-      "text": "Necessity is the mother of invention.",
-      "author": "Plato"
-    },
-    {
-      "text": "How can you prove whether at this moment we are sleeping, and all our thoughts are a dream; or whether we are awake, and talking to one another in the waking state?",
-      "author": "Plato"
-    },
-    {
-      "text": "Love is simply the name for the desire and pursuit of the whole.",
-      "author": "Plato"
-    },
-    {
-      "text": "The greatest wealth is to live content with little.",
-      "author": "Plato"
-    },
-    {
-      "text": "Bodily exercise, when compulsory, does no harm to the body; but knowledge which is acquired under compulsion obtains no hold on the mind.",
-      "author": "Plato"
-    },
-    {
-      "text": "Death is not the worst that can happen to men.",
-      "author": "Plato"
-    },
-    {
-      "text": "An empty vessel makes the loudest sound, so they that have the least wit are the greatest babblers.",
-      "author": "Plato"
-    },
-    {
-      "text": "Character is simply habit long continued.",
-      "author": "Plato"
-    },
-    {
-      "text": "Beauty lies in the eyes of the beholder",
-      "author": "Plato"
-    },
-    {
-      "text": "No man should bring children into the world who is unwilling to persevere to the end in their nature and education.",
-      "author": "Plato"
-    },
-    {
-      "text": "Musical innovation is full of danger to the State, for when modes of music change, the fundamental laws of the State always change with them.",
-      "author": "Plato"
-    },
-    {
-      "text": "People are like dirt. They can either nourish you and help you grow as a person or they can stunt your growth and make you wilt and die.",
-      "author": "Plato"
-    },
-    {
-      "text": "I thought to myself: I am wiser than this man; neither of us probably knows anything that is really good, but he thinks he has knowledge, when he has not, while I, having no knowledge, do not think I have.",
-      "author": "Plato"
-    },
-    {
-      "text": "Love is born into every human being; it calls back the halves of our original nature together; it tries to make one out of two and heal the wound of human nature.",
-      "author": "Plato"
-    },
-    {
-      "text": "The soul takes nothing with her to the next world but her education and her culture. At the beginning of the journey to the next world, one's education and culture can either provide the greatest assistance, or else act as the greatest burden, to the person who has just died.",
-      "author": "Plato"
-    },
-    {
-      "text": "There is in every one of us, even those who seem to be most moderate, a type of desire that is terrible, wild, and lawless.",
-      "author": "Plato"
-    },
-    {
-      "text": "Good actions give strength to ourselves and inspire good actions in others.",
-      "author": "Plato"
-    },
-    {
-      "text": "Writing is the geometry of the soul.",
-      "author": "Plato"
-    },
-    {
-      "text": "I would teach children music, physics, and philosophy; but most importantly music, for the patterns in music and all the arts are the keys to learning",
-      "author": "Plato"
-    },
-    {
-      "text": "Have you ever sensed that our soul is immortal and never dies?",
-      "author": "Plato"
-    },
-    {
-      "text": "A hero is born among a hundred, a wise man is found among a thousand, but an accomplished one might not be found even among a hundred thousand men.",
-      "author": "Plato"
-    },
-    {
-      "text": "For this feeling of wonder shows that you are a philosopher, since wonder is the only beginning of philosophy.",
-      "author": "Plato"
-    },
-    {
-      "text": "Poets utter great and wise things which they do not themselves understand.",
-      "author": "Plato"
-    },
-    {
-      "text": "Love is the pursuit of the whole.",
-      "author": "Plato"
-    },
-    {
-      "text": "…if a man can be properly said to love something, it must be clear that he feels affection for it as a whole, and does not love part of it to the exclusion of the rest.",
-      "author": "Plato"
-    },
-    {
-      "text": "For to fear death, my friends, is only to think ourselves wise without really being wise, for it is to think that we know what we do not know. For no one knows whether death may not be the greatest good that can happen to man.",
-      "author": "Plato"
-    },
-    {
-      "text": "Any man may easily do harm, but not every man can do good to another.",
-      "author": "Plato"
-    },
-    {
-      "text": "The first and best victory is to conquer self",
-      "author": "Plato"
-    },
-    {
-      "text": "And so, when a person meets the half that is his very own, whatever his orientation, whether it's to young men or not, then something wonderful happens: the two are struck from their senses by love, by a sense of belonging to one another, and by desire, and they don't want to be separated from one another, not even for a moment.",
-      "author": "Plato"
-    },
-    {
-      "text": "Love is the name for our pursuit of wholeness, for our desire to be complete.",
-      "author": "Plato"
-    },
-    {
-      "text": "True friendship can exist only between equals.",
-      "author": "Plato"
-    },
-    {
-      "text": "How could they see anything but the shadows if they were never allowed to move their heads?",
-      "author": "Plato"
-    },
-    {
-      "text": "To be afraid of death is only another form of thinking that one is wise when one is not; it is to think that one knows what one does not know. No one knows with regard to death wheather it is not really the greatest blessing that can happen to man; but people dread it as though they were certain it is the greatest evil.\" -The Last Days of Socrates",
-      "author": "Plato"
-    },
-    {
-      "text": "At the touch of love everyone becomes a poet.",
-      "author": "Plato"
-    },
-    {
-      "text": "Man is a being in search of meaning.",
-      "author": "Plato"
-    },
-    {
-      "text": "Either we shall find what it is we are seeking or at least we shall free ourselves from the persuasion that we know what we do not know.",
-      "author": "Plato"
-    },
-    {
-      "text": "Books are immortal sons defying their sires.",
-      "author": "Plato"
-    },
-    {
-      "text": "The soul takes flight to the world that is invisible but there arriving she is sure of bliss and forever dwells in paradise.",
-      "author": "Plato"
-    },
-    {
-      "text": "No one is more hated than he who speaks the truth.",
-      "author": "Plato"
-    },
-    {
-      "text": "Knowledge which is acquired under compulsion has no hold on the mind. Therefore do not use compulsion, but let early education be a sort of amusement; you will then be better able to discover the child's natural bent.",
-      "author": "Plato"
-    },
-    {
-      "text": "No wealth can ever make a bad man at peace with himself",
-      "author": "Plato"
-    },
-    {
-      "text": "The society we have described can never grow into a reality or see the light of day, and there will be no end to the troubles of states, or indeed, my dear Glaucon, of humanity itself, till philosophers become rulers in this world, or till those we now call kings and rulers really and truly become philosophers, and political power and philosophy thus come into the same hands.",
-      "author": "Plato"
-    },
-    {
-      "text": "No human thing is of serious importance.",
-      "author": "Plato"
-    },
-    {
-      "text": "False words are not only evil in themselves, but they infect the soul with evil.",
-      "author": "Plato"
-    },
-    {
-      "text": "The difficulty, my friends, is not in avoiding death, but in avoiding unrighteousness; for that runs faster than death.",
-      "author": "Plato"
-    },
-    {
-      "text": "The price of apathy towards public affairs is to be ruled by evil men.",
-      "author": "Plato"
-    },
-    {
-      "text": "He whom loves touches not walks in darkness.",
-      "author": "Plato"
-    },
-    {
-      "text": "That's what education should be,\" I said, \"the art of orientation. Educators should devise the simplest and most effective methods of turning minds around. It shouldn't be the art of implanting sight in the organ, but should proceed on the understanding that the organ already has the capacity, but is improperly aligned and isn't facing the right way.",
-      "author": "Plato"
-    },
-    {
-      "text": "A dog has the soul of a philosopher.",
-      "author": "Plato"
-    },
-    {
-      "text": "In practice people who study philosophy too long become very odd birds, not to say thoroughly vicious; while even those who are the best of them are reduced by...[philosophy] to complete uselessness as members of society.",
-      "author": "Plato"
-    },
-    {
-      "text": "He was a wise man who invented God.",
-      "author": "Plato"
-    },
-    {
-      "text": "All I really know is the extent of my own ignorance",
-      "author": "Plato"
-    },
-    {
-      "text": "what if the man could see Beauty Itself, pure, unalloyed, stripped of mortality, and all its pollution, stains, and vanities, unchanging, divine,...the man becoming in that communion, the friend of God, himself immortal;...would that be a life to disregard?",
-      "author": "Plato"
-    },
-    {
-      "text": "Excess of liberty, whether it lies in state or individuals, seems only to pass into excess of slavery.",
-      "author": "Plato"
-    },
-    {
-      "text": "Poetry is nearer to vital truth than history.",
-      "author": "Plato"
-    },
-    {
-      "text": "Knowledge is the food of the soul.",
-      "author": "Plato"
-    },
-    {
-      "text": "The man who finds that in the course of his life he has done a lot of wrong often wakes up at night in terror, like a child with a nightmare, and his life is full of foreboding: but the man who is conscious of no wrongdoing is filled with cheerfulness and with the comfort of old age.",
-      "author": "Plato"
-    },
-    {
-      "text": "Money-makers are tiresome company, as they have no standard but cash value.",
-      "author": "Plato"
-    },
-    {
-      "text": "Everything that deceives may be said to enchant.",
-      "author": "Plato"
-    },
-    {
-      "text": "Of all the animals, the boy is the most unmanageable.",
-      "author": "Plato"
-    },
-    {
-      "text": "Ideas are the source of all things",
-      "author": "Plato"
-    },
-    {
-      "text": "the unexamined life is not worth living",
-      "author": "Plato"
-    },
-    {
-      "text": "Wise men talk because they have something to say; Fools, because they have to say something.",
-      "author": "Plato"
-    },
-    {
-      "text": "Men of Athens, I honor and love you; but I shall obey God rather than you, and while I have life and strength I shall never cease from the practice and teaching of philosophy... Understand that I shall never alter my ways, not even if I have to die many times.",
-      "author": "Plato"
-    },
-    {
-      "text": "...when he looks at Beauty in the only way that Beauty can be seen - only then will it become possible for him to give birth not to images of virtue (because he's in touch with no images), but to true virtue [arete] (because he is in touch with true Beauty). The love of the gods belongs to anyone who has given to true virtue and nourished it, and if any human being could become immortal, it would be he.",
-      "author": "Plato"
-    },
-    {
-      "text": "The direction in which education starts a man will determine his future life",
-      "author": "Plato"
-    },
-    {
-      "text": "Philosophy is the highest music.",
-      "author": "Plato"
-    },
-    {
-      "text": "Those who don't know must learn from those who do.",
-      "author": "Plato"
-    },
-    {
-      "text": "Evil is the vulgar lover who loves the body rather than the soul, inasmuch as he is not even stable, because he loves a thing which is in itself unstable, and therefore when the bloom of youth which he was desiring is over, he takes wing and flies away, in spite of all his words and promises; whereas the love of the noble disposition is life-long, for it becomes one with the everlasting.",
-      "author": "Plato"
-    },
-    {
-      "text": "According to Diotima, Love is not a god at all, but is rather a spirit that mediates between people and the objects of their desire. Love is neither wise nor beautiful, but is rather the desire for wisdom and beauty.",
-      "author": "Plato"
-    },
-    {
-      "text": "The man who makes everything that leads to happiness depends upon himself, and not upon other men, has adopted the very best plan for living happily. This is the man of moderation, the man of manly character and of wisdom.",
-      "author": "Plato"
-    },
-    {
-      "text": "Come then, and let us pass a leisure hour in storytelling, and our story shall be the education of our heroes.",
-      "author": "Plato"
-    },
-    {
-      "text": "In order for man to succeed in life, God provided him with two means, education and physical activity. Not separately, one for the soul and the other for the body, but for the two together. With these means, man can attain perfection.",
-      "author": "Plato"
-    },
-    {
-      "text": "Time is the moving image of reality",
-      "author": "Plato"
-    },
-    {
-      "text": "At the touch of love everyone becomes a poet",
-      "author": "Plato"
-    },
-    {
-      "text": "Lack of activity destroys the good condition of every human being",
-      "author": "Plato"
-    },
-    {
-      "text": "The most effective kind of education is that a child should play amongst lovely things.",
-      "author": "Plato"
-    },
-    {
-      "text": "Beauty of style and harmony and grace and good rhythm depend on simplicity",
-      "author": "Plato"
-    },
-    {
-      "text": "Pulvis et umbra sumus. (We are but dust and shadow.)",
-      "author": "Horatius"
-    },
-    {
-      "text": "Carpe diem.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Begin, be bold, and venture to be wise.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Ut haec ipsa qui non sentiat deorum vim habere is nihil omnino sensurus esse videatur.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Rule your mind or it will rule you.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Pactum serva - Keep the faith",
-      "author": "Horatius"
-    },
-    {
-      "text": "Live as brave men; and if fortune is adverse, front its blows with brave hearts",
-      "author": "Horatius"
-    },
-    {
-      "text": "Dimidium facti qui coepit habet: sapere aude (He who has begun is half done: dare to know!).",
-      "author": "Horatius"
-    },
-    {
-      "text": "he who is greedy is always in want",
-      "author": "Horatius"
-    },
-    {
-      "text": "Anger is a brief madness.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Adversity has the effect of eliciting talents which, in prosperous circumstances, would have lain dormant.",
-      "author": "Horatius"
-    },
-    {
-      "text": "wisdom is not wisdom when it is derived from books alone",
-      "author": "Horatius"
-    },
-    {
-      "text": "A picture is a poem without words.",
-      "author": "Horatius"
-    },
-    {
-      "text": "In love there are two evils: war and peace.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Whatever advice you give, be brief.",
-      "author": "Horatius"
-    },
-    {
-      "text": "He who postpones the hour of living rightly is like the rustic who waits for the river to run out before he crosses.",
-      "author": "Horatius"
-    },
-    {
-      "text": "The aim of the poet is to inform or delight, or to combine together, in what he says, both pleasure and applicability to life. In instructing, be brief in what you say in order that your readers may grasp it quickly and retain it faithfully. Superfluous words simply spill out when the mind is already full. Fiction invented in order to please should remain close to reality.",
-      "author": "Horatius"
-    },
-    {
-      "text": "He will always be a slave who does not know how to live upon a little.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Once a word has been allowed to escape, it cannot be recalled.",
-      "author": "Horatius"
-    },
-    {
-      "text": "He who feared that he would not succeed sat still.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Without love and laughter there is no joy; live amid love and laughter.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Quid rides? Mutato nomine et de te fabula narrator. [Why do you laugh ? Change only the name and this story is about you.]",
-      "author": "Horatius"
-    },
-    {
-      "text": "He who has begun has half done. Dare to be wise; begin!",
-      "author": "Horatius"
-    },
-    {
-      "text": "Mingle a little folly with your wisdom; a little nonsense now and then is pleasant.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Even as we speak, time speeds swiftly away.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Non omnis moriar",
-      "author": "Horatius"
-    },
-    {
-      "text": "How slight and insignificant is the thing which casts down or restores a mind greedy for praise.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Fortune makes a fool of those she favors too much.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Subdue your passion or it will subdue you.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Let him live under the open sky, and dangerously.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Make money, money by fair means if you can, if not, but any means money.",
-      "author": "Horatius"
-    },
-    {
-      "text": "The man who is tenacious of purpose in a rightful cause is not shaken from his firm resolve by the frenzy of his fellow citizens clamoring for what is wrong, or by the tyrant's threatening countenance.",
-      "author": "Horatius"
-    },
-    {
-      "text": "I shall not wholly die and a great part of me will escape the grave",
-      "author": "Horatius"
-    },
-    {
-      "text": "Humour is often stronger and more effective than sharpness in cutting knotty issues.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Captive Greece took captive her savage conquerer and brought the arts to rustic Latium",
-      "author": "Horatius"
-    },
-    {
-      "text": "Clogged with yesterday's excess, the body drags the mind down with it.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Mix a little foolishness with your serious plans. It is lovely to be silly at the right moment.",
-      "author": "Horatius"
-    },
-    {
-      "text": "It is not enough for poems to be beautiful; they must be affecting, and must lead the heart of the hearer as they will.",
-      "author": "Horatius"
-    },
-    {
-      "text": "What you have not published, you can destroy. The word once sent forth can never be recalled.",
-      "author": "Horatius"
-    },
-    {
-      "text": "A cultivated wit, one that badgers less, can persuade all the more. Artful ridicule can address contentious issues more competently and vigorously than can severity alone.",
-      "author": "Horatius"
-    },
-    {
-      "text": "There are words and accents by which this grief can be assuaged, and the disease in a great measure removed.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Not him with great possessions should you in truth call blest; with better right does he claim the name of happy man who realizes how to make use of the gods' gifts wisely, is skilled to meet harsh poverty and endure, as one who dreads dishonor far more than death; a man like that for friends beloved, or for his country fears not to perish.",
-      "author": "Horatius"
-    },
-    {
-      "text": "It is courage, courage, courage, that raises the blood of life to crimson splendor. Live bravely and present a brave front to adversity.",
-      "author": "Horatius"
-    },
-    {
-      "text": "He gets every vote who combines the useful with the pleasant, and who, at the same time he pleases the reader, also instructs him.",
-      "author": "Horatius"
-    },
-    {
-      "text": "A shoe that is too large is apt to trip one, and when too small, to pinch the feet. So it is with those whose fortune does not suit them.",
-      "author": "Horatius"
-    },
-    {
-      "text": "He will through life be master of himself and a happy man who from day to day can have said, I have lived: tomorrow the Father may fill the sky with black clouds or with cloudless sunshine.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Either stick to tradition or see that your inventions be consistent.",
-      "author": "Horatius"
-    },
-    {
-      "text": "We are just statistics, born to consume resources.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Force without wisdom falls of its own weight",
-      "author": "Horatius"
-    },
-    {
-      "text": "He has half the deed done who has made a beginning.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Brevis esse laboro, obscurus fio.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Dulce est desipere in loco",
-      "author": "Horatius"
-    },
-    {
-      "text": "I had rather seem mad and a sluggard, so that my defects are agreeable to myself, or that I am not pinfully conscious of them, than be wise, and chaptious.",
-      "author": "Horatius"
-    },
-    {
-      "text": "Be wise, decant the wine, and since our space is brief, cut back your far-reaching hope. Even while we talk, envious time has fled away: seize the day, put little trust in what is to come.",
-      "author": "Horatius"
-    },
-    {
-      "text": "This is a fault common to singers that among their friends they were never inclined to sing when they were asked, unasked they never desist.",
-      "author": "Horatius"
-    },
-    {
-      "text": "He who combines the useful and the pleasing wins out by both instructing and delighting the reader. That is the sort of book that will make money for the publisher, cross the seas, and extend the fame of the author.",
-      "author": "Horatius"
-    },
-    {
-      "text": "You must often make erasures if you mean to write what is worthy of being read a second time; and don't labor for the admiration of the crowd, but be content with a few choice readers",
-      "author": "Horatius"
-    },
-    {
-      "text": "Why do you laugh? Change the name and the story is about you",
-      "author": "Horatius"
-    },
-    {
-      "text": "Surely a Man may speak Truth with a smiling countenance.",
-      "author": "Horatius"
-    },
-    {
-      "text": "The more corrupt the state, the more numerous the laws.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Men are more ready to repay an injury than a benefit, because gratitude is a burden and revenge a pleasure",
-      "author": "Tacitus"
-    },
-    {
-      "text": "If you would know who controls you see who you may not criticise.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "They have plundered the world, stripping naked the land in their hunger… they are driven by greed, if their enemy be rich; by ambition, if poor… They ravage, they slaughter, they seize by false pretenses, and all of this they hail as the construction of empire. And when in their wake nothing remains but a desert, they call that peace.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Viewed from a distance, everything is beautiful.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "To show resentment at a reproach is to acknowledge that one may have deserved it.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The desire for safety stands against every great and noble enterprise.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "They make a desolation and call it peace.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Great empires are not maintained by timidity.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "It is the rare fortune of these days that one may think what one likes and say what one thinks.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Truth is confirmed by inspection and delay; falsehood by haste and uncertainty.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "A bad peace is worse than war.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "It is a principle of nature to hate those whom you have injured.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Crime, once exposed, has no refuge but in audacity.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "To ravage, to slaughter, to steal, this they give the false name of empire; and where they create a desert, they call it peace.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Greater things are believed of those who are absent.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Rarely will two or three tribes confer to repulse a common danger. Accordingly they fight individually and are collectively conquered.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "There was more courage in bearing trouble than in escaping from it; the brave and the energetic cling to hope, even in spite of fortune; the cowardly and the indolent are hurried by their fears,' said Plotius Firmus, Roman Praetorian Guard.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "All ancient history was written with a moral object; the ethical interest predominates almost to the exclusion of all others.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Step by step they were led to things which dispose to vice, the lounge, the bath, the elegant banquet. All this in their ignorance they called civilisation, when it was but a part of their servitude.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Think of it. Fifteen whole years-no small part of a mans life.-taken from us-all the most energetic have fallen to the cruelty of the emperor. And the few that survive are no longer what we once were. Yet I find some small satisfaction in acknowledging the bondage we once suffered.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "So obscure are the greatest events, as some take for granted any hearsay, whatever its source, others turn truth into falsehood, and both errors find encouragement with posterity.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "He realized that monarchy was essential to peace, and that the price of freedom was violence and disorder.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "When perfect sincerity is expected, perfect freedom must be allowed.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "fortes et strenuos etiam contra fortunam insistere, timidos et ignoros ad desperationem formidine properare - the brave and bold persist even against fortune; the timid and cowardly rush to despair through fear alone",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Secure against the designs of men, secure against the malignity of the Gods, they have accomplished a thing of infinite difficulty; that to them nothing remains even to be wished.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "So by slow degrees the Britons were seduced by pleasant pastimes... until finally the gullible natives came to call their slavery \"culture\".",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The majority merely disagreed with other people's proposals, and, as so often happens in these disasters, the best course always seemed the one for which it was now too late.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Who, to say nothing about the perils of an awful and unknown sea, would have left Asia or Africa or Italy to look for Germany?",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Forbidden things have a secret charm",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The more numerous the laws, the more corrupt the state.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Good turns are pleasing only in so far as they seem repayable; much beyond that we repay with hatred, not gratitude.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The worst crimes were dared by a few, willed by more and tolerated by all.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Fear is not in the habit of speaking truth; when perfect sincerity is expected, perfect freedom must be allowed; nor has anyone who is apt to be angry when he hears the truth any cause to wonder that he does not hear it.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "At length they gradually deviated into a taste for those luxuries which stimulate to vice; porticos, and baths, and the elegancies of the table; and this, from their inexperience, they termed politeness, whilst, in reality, it constituted a part of their slavery.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "But the more I reflect on events recent and past, the more I am struck by the element of the absurd in everything humans do.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "To be rich or well-born was a crime: men were prosecuted for holding or for refusing office: merit of any kind meant certain ruin. Nor were the Informers more hated for their crimes than for their prizes: some carried off a priesthood or the consulship as their spoil, others won offices and influence in the imperial household: the hatred and fear they inspired worked universal havoc. Slaves were bribed against their masters, freedmen against their patrons, and, if a man had no enemies, he was ruined by his friends.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "When a woman has lost her chastity she will shrink from nothing.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "When [Servius Galba] was a commoner he seemed too big for his station, and had he never been emperor, no one would have doubted his ability to reign.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The hatred of relatives is the most violent.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "We have indeed left an impressive example of subservience. Just as Rome of old explored the limits of freedom, so have we plumbed the depths of slavery, robbed by informers even of the interchange of speech. We would have lost our memories as well as our tongues had it been as easy to forget as to be silent.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "in peace alone reason was heard and merit distinguished; but in the rage of war the blind steel spared the innocent no more than the guilty.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "To robbery, butchery, and rapine, they give the lying name of \"government;\" they create a desolation and call it peace.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The practices of the Jews are malevolent and despicable, and have entrenched themselves by their very degeneracy. Deviants of the most depraved kind who had no use for the religion of their predecessors, they took to collecting dues and contributions in order to swell the Jewish treasury; and other reasons for their increasing wealth may be found in their unrelenting loyalty and eager nepotism towards fellow Jews. But all the rest of the world they hold in contempt with the hatred reserved for enemies. They will not feed or intermarry with gentiles. Despite being overtly lustful as a race, the Jews shun carnal dealings with women foreign to their tribe. Among their own kind however, nothing is forbidden. They have adopted the practice of circumcision to show that they are different from others. Those seeking to convert to Judaism adopt the same practices, and the very first lesson they are taught is to despise the gods, shed all feelings of patriotism, and consider parents, children and brothers as readily expendable. However, the Jews make certain that their population increases.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "in disturbed times uncivilized communities trust and prefer leaders who take risks.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "They lived in rare accord, maintained by mutual affection and unselfishness; in such a partnership, however, a good wife deserves more than half the praise, just as a bad one deserves more than half the blame.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "You have not tasted servitude. There is no land beyond us and even the sea is no safe refuge when we are threatened by the Roman fleet. We are the last people on earth, and the last to be free: our very remoteness in a land known only to rumour has protected us up till this day. Today the furthest bounds of Britain lie open—and everything unknown is given an inflated worth. But now there is no people beyond us, nothing but tides and rocks and, more deadly than these, the Romans. It is no use trying to escape their arrogance by submission or good behaviour. They have pillaged the world: when the land has nothing left for men who ravage everything, they scour the sea. If an enemy is rich, they are greedy, if he is poor, they crave glory. Neither East nor West can sate their appetite. They are the only people on earth to covet wealth and poverty with equal craving. They plunder, they butcher, they ravish, and call it by the lying name of 'empire'. They make a desolation and call it 'peace",
-      "author": "Tacitus"
-    },
-    {
-      "text": "…that nothing is so weak and unstable as a reputation for power which is not based on one's own strength.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "It is part of human nature to hate the ones you have hurt",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Omne ignotum pro magnifico",
-      "author": "Tacitus"
-    },
-    {
-      "text": "It belongs to human nature to hate those you have injured.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The derivation of German is Wehr mann, a warrior, or man of war.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "The following winter passed without disturbance, and was employed in salutary measures. For, to accustom to rest and repose through the charms of luxury a population scattered and barbarous and therefore inclined to war, Agricola gave private encouragement and public aid to the building of temples, courts of justice and dwelling-houses, praising the energetic, and reproving the indolent. Thus an honourable rivalry took the place of compulsion. He likewise provided a liberal education for the sons of the chiefs, and showed such a preference for the natural powers of the Britons over the industry of the Gauls that they who lately disdained the tongue of Rome now coveted its eloquence. Hence, too, a liking sprang up for our style of dress, and the \"toga\" became fashionable. Step by step they were led to things which dispose to vice, the lounge, the bath, the elegant banquet. All this in their ignorance, they called civilization, when it was but a part of their servitude.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "I concur in opinion with those who deem the Germans never to have intermarried with other nations; but to be a race, pure, unmixed, and stamped with a distinct character.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Consequently, to get rid of the report, Nero fastened the guilt and inflicted the most exquisite tortures on a class hated for their abominations, called Christians by the populace. Christus, from whom the name had its origin, suffered the extreme penalty during the reign of Tiberius at the hands of one of our procurators, Pontius Pilatus, and a most mischievous superstition, thus checked for the moment, again broke out not only in Judæa, the first source of the evil, but even in Rome, where all things hideous and shameful from every part of the world find their centre and become popular",
-      "author": "Tacitus"
-    },
-    {
-      "text": "This is an unfair thing about war: victory is claimed by all, failure to one alone.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "When men are full of envy they disparage everything, whether it be good or bad.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "Pigrum quin immo et iners videtur sudore adquirere quod possis sanguine parare.",
-      "author": "Tacitus"
-    },
-    {
-      "text": "He was a strange mixture of good and bad, of luxury and industry, courtesy and arrogance. In leisure he was self-indulgent, but full of vigour on service. His outward behaviour was praiseworthy, though ill was spoken of his private life.",
-      "author": "Tacitus"
-    }
-  ]
+    "userId": 148654904,
+    "habits": [{
+        "id": "1765816187141-t04h48sjk",
+        "userId": 148654904,
+        "name": "no smoke",
+        "streak": 261,
+        "createdAt": "2025-12-15T00:00:00.000Z",
+        "lastCheckedDate": "2026-09-01",
+        "skipped": [],
+        "dropped": [],
+        "checked": [],
+        "reminderSchedule": {
+            "type": "daily",
+            "hour": 22,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "disabled": false,
+        "badges": [{
+            "type": 5,
+            "earnedAt": "2026-02-06T21:00:13.744Z"
+        }, {
+            "type": 10,
+            "earnedAt": "2026-02-06T21:00:13.744Z"
+        }, {
+            "type": 30,
+            "earnedAt": "2026-02-06T21:00:13.744Z"
+        }, {
+            "type": 90,
+            "earnedAt": "2026-03-15T21:00:36.532Z"
+        }],
+        "imgIndex": 1,
+        "missedReminderCount": 0,
+        "lastReminderDate": "2026-09-01"
+    }, {
+        "id": "1769549612937-rz10hcctz",
+        "userId": 148654904,
+        "name": "Eat healthy",
+        "streak": 1,
+        "createdAt": "2026-01-27T21:33:32.937Z",
+        "lastCheckedDate": "2026-09-01",
+        "skipped": [],
+        "checked": [],
+        "dropped": [{
+            "streakBeforeDrop": 7,
+            "date": "2026-02-04"
+        }, {
+            "streakBeforeDrop": 7,
+            "date": "2026-02-14"
+        }, {
+            "streakBeforeDrop": 7,
+            "date": "2026-02-15"
+        }, {
+            "streakBeforeDrop": 7,
+            "date": "2026-03-08"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-09"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-10"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-11"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-12"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-13"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-14"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-15"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-16"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-17"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-03-20"
+        }, {
+            "streakBeforeDrop": 3,
+            "date": "2026-03-24"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-25"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-26"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-03-28"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-29"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-30"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-31"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-01"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-02"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-03"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-04"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-06"
+        }, {
+            "streakBeforeDrop": 16,
+            "date": "2026-04-23"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-24"
+        }, {
+            "streakBeforeDrop": 12,
+            "date": "2026-05-07"
+        }, {
+            "streakBeforeDrop": 10,
+            "date": "2026-05-18"
+        }, {
+            "streakBeforeDrop": 18,
+            "date": "2026-06-06"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-07"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-08"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-09"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-10"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-11"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-12"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-13"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-14"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-15"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-16"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-17"
+        }, {
+            "streakBeforeDrop": 3,
+            "date": "2026-06-21"
+        }, {
+            "streakBeforeDrop": 4,
+            "date": "2026-06-26"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-27"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-28"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-07-11"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-07-20"
+        }, {
+            "streakBeforeDrop": 9,
+            "date": "2026-07-30"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-07-31"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-01",
+            "note": "Withdom tooth"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-02",
+            "note": "Wisdom tooth"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-03"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-04"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-05"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-06"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-07"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-08"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-09"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-10"
+        }, {
+            "streakBeforeDrop": 5,
+            "date": "2026-08-16"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-17"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-18"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-19"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-20"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-21"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-22"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-23"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-24"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-25"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-26"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-27"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-28"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-29"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-30"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-31"
+        }],
+        "reminderSchedule": {
+            "type": "daily",
+            "hour": 22,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "disabled": false,
+        "badges": [{
+            "type": 5,
+            "earnedAt": "2026-02-09T21:04:23.123Z"
+        }, {
+            "type": 10,
+            "earnedAt": "2026-02-14T21:02:14.680Z"
+        }],
+        "imgIndex": 1,
+        "missedReminderCount": 0,
+        "lastReminderDate": "2026-09-01"
+    }, {
+        "id": "1769549636591-uwcwh2d9t",
+        "userId": 148654904,
+        "name": "Gym",
+        "streak": 2,
+        "createdAt": "2026-01-27T21:33:56.591Z",
+        "lastCheckedDate": "2026-09-01",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 1,
+            "date": "2026-03-07"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-03-10"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-12"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-14"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-15"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-17"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-19"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-21"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-22"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-24"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-26"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-28"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-29"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-03-31"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-02"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-04"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-05"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-04-07"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-04-12"
+        }, {
+            "streakBeforeDrop": 3,
+            "date": "2026-04-23"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-04-25"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-05-03"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-05"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-07"
+        }, {
+            "streakBeforeDrop": 3,
+            "date": "2026-05-17"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-19"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-21"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-24"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-05-30"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-31"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-06-04"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-06"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-07"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-09"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-11"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-13"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-14"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-16"
+        }, {
+            "streakBeforeDrop": 3,
+            "date": "2026-06-28"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-07-07"
+        }, {
+            "streakBeforeDrop": 4,
+            "date": "2026-07-30",
+            "note": "Gym"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-02",
+            "note": "Wisdom tooth"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-04"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-06"
+        }, {
+            "streakBeforeDrop": 4,
+            "date": "2026-08-18"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-20"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-23"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-25"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-27"
+        }],
+        "checked": [{
+            "date": "2026-01-27"
+        }, {
+            "date": "2026-01-29"
+        }, {
+            "date": "2026-02-01"
+        }, {
+            "date": "2026-02-03"
+        }, {
+            "date": "2026-02-05"
+        }, {
+            "date": "2026-02-08"
+        }, {
+            "date": "2026-02-10"
+        }, {
+            "date": "2026-02-12"
+        }, {
+            "date": "2026-02-14"
+        }, {
+            "date": "2026-02-15"
+        }, {
+            "date": "2026-02-17"
+        }, {
+            "date": "2026-02-19"
+        }, {
+            "date": "2026-02-24"
+        }, {
+            "date": "2026-02-26"
+        }, {
+            "date": "2026-03-01"
+        }, {
+            "date": "2026-03-03"
+        }, {
+            "date": "2026-03-05"
+        }, {
+            "date": "2026-03-08"
+        }, {
+            "date": "2026-04-09"
+        }, {
+            "date": "2026-04-14"
+        }, {
+            "date": "2026-04-16"
+        }, {
+            "date": "2026-04-19"
+        }, {
+            "date": "2026-04-21"
+        }, {
+            "date": "2026-04-28"
+        }, {
+            "date": "2026-04-30"
+        }, {
+            "date": "2026-05-10"
+        }, {
+            "date": "2026-05-12"
+        }, {
+            "date": "2026-05-14"
+        }, {
+            "date": "2026-05-26"
+        }, {
+            "date": "2026-05-28"
+        }, {
+            "date": "2026-06-02"
+        }, {
+            "date": "2026-06-21"
+        }, {
+            "date": "2026-06-23"
+        }, {
+            "date": "2026-06-25"
+        }, {
+            "date": "2026-06-30"
+        }, {
+            "date": "2026-07-02"
+        }, {
+            "date": "2026-07-12"
+        }, {
+            "date": "2026-07-14"
+        }, {
+            "date": "2026-07-16"
+        }, {
+            "date": "2026-07-21"
+        }, {
+            "date": "2026-07-23"
+        }, {
+            "date": "2026-07-26"
+        }, {
+            "date": "2026-07-28"
+        }, {
+            "date": "2026-08-09"
+        }, {
+            "date": "2026-08-11"
+        }, {
+            "date": "2026-08-13"
+        }, {
+            "date": "2026-08-16"
+        }, {
+            "date": "2026-08-30"
+        }, {
+            "date": "2026-09-01"
+        }],
+        "reminderSchedule": {
+            "type": "weekly",
+            "daysOfWeek": [0, 2, 4],
+            "hour": 22,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "disabled": false,
+        "badges": [],
+        "imgIndex": 1,
+        "missedReminderCount": 0
+    }, {
+        "id": "1770491276363-h1hw35po8",
+        "userId": 148654904,
+        "name": "Cleaning🧼 🧹",
+        "streak": 1,
+        "createdAt": "2026-02-07T19:07:56.363Z",
+        "lastCheckedDate": "2026-08-29",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 1,
+            "date": "2026-03-07"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-03-21"
+        }, {
+            "streakBeforeDrop": 4,
+            "date": "2026-05-02"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-05-16"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-06-06"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-13"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-27"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-07-18"
+        }, {
+            "streakBeforeDrop": 4,
+            "date": "2026-08-22"
+        }],
+        "checked": [{
+            "date": "2026-02-14"
+        }, {
+            "date": "2026-02-21"
+        }, {
+            "date": "2026-02-28"
+        }, {
+            "date": "2026-03-14"
+        }, {
+            "date": "2026-03-28"
+        }, {
+            "date": "2026-04-04"
+        }, {
+            "date": "2026-04-11"
+        }, {
+            "date": "2026-04-18"
+        }, {
+            "date": "2026-05-09"
+        }, {
+            "date": "2026-05-23"
+        }, {
+            "date": "2026-05-30"
+        }, {
+            "date": "2026-07-04"
+        }, {
+            "date": "2026-07-11"
+        }, {
+            "date": "2026-07-25"
+        }, {
+            "date": "2026-08-01"
+        }, {
+            "date": "2026-08-08"
+        }, {
+            "date": "2026-08-15"
+        }, {
+            "date": "2026-08-29"
+        }],
+        "reminderSchedule": {
+            "type": "weekly",
+            "daysOfWeek": [6],
+            "hour": 15,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "badges": [],
+        "disabled": false,
+        "imgIndex": 1,
+        "missedReminderCount": 0
+    }, {
+        "id": "1772538671201-dl47c1v99",
+        "userId": 148654904,
+        "name": "job: time report",
+        "streak": 1,
+        "createdAt": "2026-03-03T11:51:11.201Z",
+        "lastCheckedDate": "2026-08-27",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 6,
+            "date": "2026-08-20"
+        }],
+        "checked": [{
+            "date": "2026-03-05"
+        }, {
+            "date": "2026-03-12"
+        }, {
+            "date": "2026-03-19"
+        }, {
+            "date": "2026-03-26"
+        }, {
+            "date": "2026-04-02"
+        }, {
+            "date": "2026-04-09"
+        }, {
+            "date": "2026-04-16"
+        }, {
+            "date": "2026-04-23"
+        }, {
+            "date": "2026-04-30"
+        }, {
+            "date": "2026-05-07"
+        }, {
+            "date": "2026-05-14"
+        }, {
+            "date": "2026-05-21"
+        }, {
+            "date": "2026-05-28"
+        }, {
+            "date": "2026-06-04"
+        }, {
+            "date": "2026-06-11"
+        }, {
+            "date": "2026-06-25"
+        }, {
+            "date": "2026-07-09"
+        }, {
+            "date": "2026-07-16"
+        }, {
+            "date": "2026-07-23"
+        }, {
+            "date": "2026-07-30"
+        }, {
+            "date": "2026-08-06"
+        }, {
+            "date": "2026-08-13"
+        }, {
+            "date": "2026-08-27"
+        }],
+        "reminderSchedule": {
+            "type": "weekly",
+            "daysOfWeek": [4],
+            "hour": 17,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "badges": [{
+            "type": 5,
+            "earnedAt": "2026-04-02T15:38:01.177Z"
+        }, {
+            "type": 10,
+            "earnedAt": "2026-05-07T20:12:28.783Z"
+        }],
+        "disabled": false,
+        "imgIndex": 1,
+        "missedReminderCount": 0
+    }, {
+        "id": "1778143326851-ae45ijghk",
+        "userId": 148654904,
+        "name": "Minox",
+        "streak": 66,
+        "createdAt": "2026-05-07T08:42:06.851Z",
+        "lastCheckedDate": "2026-09-02",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 9,
+            "date": "2026-05-16"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-17"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-18"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-19"
+        }, {
+            "streakBeforeDrop": 38,
+            "date": "2026-06-27"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-28"
+        }],
+        "checked": [],
+        "reminderSchedule": {
+            "type": "daily",
+            "hour": 10,
+            "minute": 50,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "badges": [{
+            "type": 5,
+            "earnedAt": "2026-05-11T10:00:36.829Z"
+        }, {
+            "type": 10,
+            "earnedAt": "2026-05-29T10:33:37.061Z"
+        }, {
+            "type": 30,
+            "earnedAt": "2026-06-18T09:19:10.869Z"
+        }],
+        "disabled": false,
+        "imgIndex": 1,
+        "missedReminderCount": 0,
+        "lastReminderDate": "2026-09-02"
+    }, {
+        "id": "1778143379970-jyst7w2ci",
+        "userId": 148654904,
+        "name": "Minox evening",
+        "streak": 14,
+        "createdAt": "2026-05-07T08:42:59.970Z",
+        "lastCheckedDate": "2026-09-01",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 6,
+            "date": "2026-05-13"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-05-15"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-16"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-05-17"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-05-19"
+        }, {
+            "streakBeforeDrop": 16,
+            "date": "2026-06-05"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-06"
+        }, {
+            "streakBeforeDrop": 8,
+            "date": "2026-06-15"
+        }, {
+            "streakBeforeDrop": 10,
+            "date": "2026-06-26"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-06-27"
+        }, {
+            "streakBeforeDrop": 8,
+            "date": "2026-07-06"
+        }, {
+            "streakBeforeDrop": 6,
+            "date": "2026-07-13"
+        }, {
+            "streakBeforeDrop": 4,
+            "date": "2026-07-18"
+        }, {
+            "streakBeforeDrop": 30,
+            "date": "2026-08-18"
+        }],
+        "checked": [],
+        "reminderSchedule": {
+            "type": "daily",
+            "hour": 23,
+            "minute": 55,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "badges": [{
+            "type": 5,
+            "earnedAt": "2026-05-11T21:59:06.203Z"
+        }, {
+            "type": 10,
+            "earnedAt": "2026-05-29T22:39:27.394Z"
+        }, {
+            "type": 30,
+            "earnedAt": "2026-08-17T22:08:06.022Z"
+        }],
+        "disabled": false,
+        "imgIndex": 1,
+        "missedReminderCount": 0,
+        "lastReminderDate": "2026-09-01"
+    }, {
+        "id": "1784305847270-qssjhbxsx",
+        "userId": 148654904,
+        "name": "roller",
+        "streak": 0,
+        "createdAt": "2026-07-17T16:30:47.270Z",
+        "lastCheckedDate": "2026-08-27",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 4,
+            "date": "2026-08-20"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-27"
+        }],
+        "checked": [{
+            "date": "2026-07-23"
+        }, {
+            "date": "2026-07-30"
+        }, {
+            "date": "2026-08-06"
+        }, {
+            "date": "2026-08-13"
+        }],
+        "reminderSchedule": {
+            "type": "weekly",
+            "daysOfWeek": [4],
+            "hour": 22,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "imgIndex": 1,
+        "badges": [],
+        "disabled": false,
+        "missedReminderCount": 0
+    }, {
+        "id": "1785091234852-83k9yts1y",
+        "userId": 148654904,
+        "name": "Creatine",
+        "streak": 0,
+        "createdAt": "2026-07-26T18:40:34.852Z",
+        "lastCheckedDate": "2026-09-01",
+        "skipped": [],
+        "dropped": [{
+            "streakBeforeDrop": 9,
+            "date": "2026-08-04"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-05"
+        }, {
+            "streakBeforeDrop": 1,
+            "date": "2026-08-07"
+        }, {
+            "streakBeforeDrop": 11,
+            "date": "2026-08-19"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-20"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-21"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-22"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-23"
+        }, {
+            "streakBeforeDrop": 2,
+            "date": "2026-08-26"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-27"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-28"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-29"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-30"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-08-31"
+        }, {
+            "streakBeforeDrop": 0,
+            "date": "2026-09-01"
+        }],
+        "checked": [],
+        "reminderSchedule": {
+            "type": "daily",
+            "hour": 22,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "imgIndex": 1,
+        "badges": [{
+            "type": 5,
+            "earnedAt": "2026-07-31T13:40:28.361Z"
+        }, {
+            "type": 10,
+            "earnedAt": "2026-08-17T20:26:47.325Z"
+        }],
+        "disabled": false,
+        "missedReminderCount": 0,
+        "lastReminderDate": "2026-09-01"
+    }, {
+        "id": "1788276272565-seqvxxozp",
+        "userId": 148654904,
+        "name": "fuck weed❌🌿",
+        "streak": 1,
+        "createdAt": "2026-09-01T15:24:32.565Z",
+        "lastCheckedDate": "2026-09-01",
+        "skipped": [],
+        "dropped": [],
+        "checked": [],
+        "reminderSchedule": {
+            "type": "daily",
+            "hour": 22,
+            "minute": 0,
+            "timezone": "Europe/Paris"
+        },
+        "reminderEnabled": true,
+        "imgIndex": 1,
+        "badges": [],
+        "disabled": false,
+        "missedReminderCount": 0,
+        "lastReminderDate": "2026-09-01"
+    }]
 }
