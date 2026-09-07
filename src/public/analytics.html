@@ -247,6 +247,8 @@
             padding: 1.5rem;
             border-radius: 14px;
             border: 1px solid var(--hb-border);
+            display: flex;
+            flex-direction: column;
         }
 
         .heatmap-container {
@@ -257,10 +259,28 @@
             border: 1px solid var(--hb-border);
         }
 
-        .heatmap-container h3 {
+        .heatmap-container h3,
+        .chart-container h3 {
             font-family: var(--hb-font-display);
             font-size: 1.25rem;
             margin-bottom: 0.75rem;
+        }
+
+        /* A long history is far wider than a phone. The streak chart keeps a fixed
+           slot per point and scrolls sideways, like the heatmap above it; the <h3>
+           sits outside .chart-scroll so it stays put while scrolling. Charts that
+           fit (the doughnut) use the same wrapper and simply never overflow. */
+        .chart-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .chart-canvas-wrap {
+            height: 100%;
+            /* Short histories stay full-bleed; JS only ever widens this. */
+            min-width: 100%;
         }
 
         /* A year is ~700px wide; on a phone it scrolls sideways. */
@@ -590,6 +610,7 @@
         let charts = {};
         let timelinePage = 1;
         const TIMELINE_ITEMS_PER_PAGE = 10;
+        const STREAK_PX_PER_POINT = 18;
         let insightsData = {};
         let isPremium = false;
         let insightsLoading = false;
@@ -1260,11 +1281,13 @@
                 </div>
 
                 <div class="chart-container">
-                    <canvas id="streakChart"></canvas>
+                    <h3>Streak Over Time</h3>
+                    <div class="chart-scroll"><div class="chart-canvas-wrap"><canvas id="streakChart"></canvas></div></div>
                 </div>
 
                 <div class="chart-container">
-                    <canvas id="activityChart"></canvas>
+                    <h3>Activity Breakdown</h3>
+                    <div class="chart-scroll"><div class="chart-canvas-wrap"><canvas id="activityChart"></canvas></div></div>
                 </div>
 
                 <div class="timeline">
@@ -1449,6 +1472,11 @@
             const streaks = checkHistory.map(h => h.streak);
             const originalDates = checkHistory.map(h => h.date); // Store original dates for tooltip
 
+            // Give every entry a fixed slot so a year of history stays readable.
+            // The wrap's CSS min-width clamps short histories back to full width,
+            // and .chart-scroll handles the overflow (same approach as the heatmap).
+            streakCtx.canvas.parentElement.style.width = dates.length * STREAK_PX_PER_POINT + 'px';
+
             charts.streak = new Chart(streakCtx, {
                 type: 'line',
                 data: {
@@ -1469,11 +1497,8 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Streak Over Time',
-                            font: { size: 18, weight: 'bold' }
-                        },
+                        // Title lives in the <h3> outside .chart-scroll so it
+                        // stays visible however far the canvas is scrolled.
                         legend: {
                             display: false
                         },
@@ -1544,11 +1569,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Activity Breakdown',
-                            font: { size: 18, weight: 'bold' }
-                        },
+                        // Title lives in the <h3>, matching the streak block.
                         legend: {
                             position: 'bottom'
                         }

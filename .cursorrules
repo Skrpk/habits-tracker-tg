@@ -374,6 +374,7 @@ interface UserPreferences {
    - `buildHabitActivity` mirrors `computeCheckHistory`'s local-midnight → `toISOString()` transform so window and entries always agree (prod is UTC; local dev is off by one day).
    - Disabled / reminders-off habits get no inferred completions, so the grid is empty by design — the card carries a note.
    - The analytics MiniApp shows the same `activity` per habit, but drawn with the Chart.js `matrix` controller (`chartjs-chart-matrix`, ~1.7KB gz) instead of ECharts (~369KB gz) — that page already loads Chart.js and is user-facing. Registered as `charts.heatmap` so `showHabitsList()` disposes it; axes pin ticks via `afterBuildTicks`.
+   - Both analytics chart blocks (`Streak Over Time`, `Activity Breakdown`) share one shell: `<h3>` + `.chart-scroll > .chart-canvas-wrap > canvas`. Keep titles in the `<h3>`, not Chart.js `plugins.title` — an in-canvas title scrolls off. Streak width = `points × STREAK_PX_PER_POINT`; `.chart-canvas-wrap { min-width: 100% }` handles short histories, so don't measure `clientWidth` (it's 0 before layout).
 
 ## Build Process
 
