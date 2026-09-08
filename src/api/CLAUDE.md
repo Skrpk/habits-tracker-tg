@@ -24,6 +24,8 @@ Filter semantics (query string and JSON body share them):
 - `userId` → exact numeric Telegram id (validated `> 0`, safe integer).
 - `consentDateFrom` / `consentDateTo` → inclusive `YYYY-MM-DD` range on `UserPreferences.consentDate` (from ≤ to enforced).
 
+`runAdminUsersList` returns rows **newest lead first** — the admin panel paginates client-side over whatever order the API gives, so page 1 must be the recent signups. The key is `consentDate` (onboarding), falling back to the earliest habit `createdAt` for users who predate that field, then `userId` descending to break same-day ties. Don't drop the sort and rely on `getAllActiveUserIds()`: Redis set iteration order is not a contract.
+
 `send-message`: with `id`, DMs one active user; without `id`, broadcasts to all users matching the filters via Telegram `sendMessage` (`fetch`), batched 1000 at a time with `Promise.allSettled`. Its serverless `maxDuration` is 300s in `vercel.json` — keep long-running broadcast work within that budget.
 
 ## Testing

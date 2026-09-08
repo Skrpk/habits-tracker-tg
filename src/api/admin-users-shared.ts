@@ -248,6 +248,31 @@ function serializeHabit(h: Habit) {
   };
 }
 
+/**
+ * When a lead arrived, in ms. The consent stamp is onboarding, so it wins; users
+ * who predate that field fall back to their earliest habit. Neither available →
+ * sort oldest, so an unknown date never masquerades as a fresh lead.
+ */
+function leadArrivedAt(row: {
+  userId: number;
+  preferences: ReturnType<typeof serializePreferences>;
+  habits: ReturnType<typeof serializeHabit>[];
+}): number {
+  const consent = row.preferences.consentDate
+    ? Date.parse(`${row.preferences.consentDate}T00:00:00Z`)
+    : NaN;
+  if (Number.isFinite(consent)) return consent;
+
+  let earliest = Number.POSITIVE_INFINITY;
+  for (const h of row.habits) {
+    const created = Date.parse(h.createdAt);
+    if (Number.isFinite(created) && created < earliest) earliest = created;
+  }
+  // A finite sentinel, not -Infinity: two unknowns must subtract to 0 so the
+  // comparator falls through to the userId tiebreak instead of yielding NaN.
+  return earliest === Number.POSITIVE_INFINITY ? Number.MIN_SAFE_INTEGER : earliest;
+}
+
 function serializePreferences(p: UserPreferences | null, userId: number) {
   if (!p) {
     return {
@@ -330,6 +355,12 @@ export async function runAdminUsersList(
       habits: habits.map(serializeHabit),
     });
   }
+
+  // Newest leads first — page 1 of the admin panel should show who just arrived,
+  // not who signed up a year ago. `consentDate` is day-granular, so same-day ties
+  // fall back to the Telegram id (it grows with account age) to keep the order
+  // stable across requests rather than left to the Redis set's iteration order.
+  rows.sort((a, b) => leadArrivedAt(b) - leadArrivedAt(a) || b.userId - a.userId);
 
   return { status: 200, body: { users: rows } };
 }

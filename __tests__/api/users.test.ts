@@ -297,4 +297,93 @@ describe('api/users', () => {
     expect(body.users).toHaveLength(1);
     expect(body.users[0].userId).toBe(100);
   });
+  it('returns newest leads first, by consent date', async () => {
+    mockGetAllActiveUserIds.mockResolvedValue([100, 200, 300]);
+    const consentByUser: Record<number, string> = {
+      100: '2025-03-15',
+      200: '2025-08-01',
+      300: '2025-05-20',
+    };
+    mockGetUserPreferences.mockImplementation(async (uid: number) => ({
+      userId: uid,
+      timezone: 'Europe/London',
+      consentAccepted: true,
+      consentDate: consentByUser[uid],
+    }));
+    const handler = (await import('../../api/users')).default;
+    const req = {
+      method: 'POST',
+      query: {},
+      body: { initData: 'signed' },
+    } as VercelRequest;
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    const body = res.body as { users: Array<{ userId: number }> };
+    expect(body.users.map((u) => u.userId)).toEqual([200, 300, 100]);
+  });
+
+  it('falls back to the earliest habit when a legacy user has no consent date', async () => {
+    mockGetAllActiveUserIds.mockResolvedValue([100, 200]);
+    mockGetUserPreferences.mockImplementation(async (uid: number) => {
+      // 100 predates the consent stamp but created a habit long after 200 signed up.
+      if (uid === 100) return { userId: 100, timezone: 'Europe/London' };
+      return {
+        userId: 200,
+        timezone: 'Europe/London',
+        consentAccepted: true,
+        consentDate: '2025-01-05',
+      };
+    });
+    mockGetUserHabits.mockImplementation(async (uid: number) => ({
+      habits: [
+        {
+          id: `h-${uid}`,
+          userId: uid,
+          name: 'Run',
+          streak: 1,
+          createdAt: uid === 100 ? new Date('2025-09-01') : new Date('2025-01-06'),
+          lastCheckedDate: '2025-09-01',
+          skipped: [],
+          dropped: [],
+          checked: [],
+        },
+      ],
+    }));
+    const handler = (await import('../../api/users')).default;
+    const req = {
+      method: 'POST',
+      query: {},
+      body: { initData: 'signed' },
+    } as VercelRequest;
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    const body = res.body as { users: Array<{ userId: number }> };
+    expect(body.users.map((u) => u.userId)).toEqual([100, 200]);
+  });
+
+  it('breaks same-day ties on the Telegram id so paging is stable', async () => {
+    mockGetAllActiveUserIds.mockResolvedValue([100, 300, 200]);
+    mockGetUserPreferences.mockImplementation(async (uid: number) => ({
+      userId: uid,
+      timezone: 'Europe/London',
+      consentAccepted: true,
+      consentDate: '2025-04-04',
+    }));
+    const handler = (await import('../../api/users')).default;
+    const req = {
+      method: 'POST',
+      query: {},
+      body: { initData: 'signed' },
+    } as VercelRequest;
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    const body = res.body as { users: Array<{ userId: number }> };
+    expect(body.users.map((u) => u.userId)).toEqual([300, 200, 100]);
+  });
 });
