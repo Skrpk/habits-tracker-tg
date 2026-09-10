@@ -51,23 +51,70 @@ export class SetUserPreferencesUseCase {
 
     // Get existing preferences to preserve user object and other fields
     const existingPreferences = await this.habitRepository.getUserPreferences(userId);
+    const newTimezone = timezone.trim();
+    const previousTimezone = existingPreferences?.timezone;
 
     const preferences: UserPreferences = {
       userId,
       user: user || existingPreferences?.user, // Preserve existing user object if new one not provided
-      timezone: timezone.trim(),
+      timezone: newTimezone,
       consentAccepted: existingPreferences?.consentAccepted,
       consentDate: existingPreferences?.consentDate,
     };
 
     await this.habitRepository.saveUserPreferences(preferences);
 
+    // Keep existing habits' reminder schedules on the user's new zone, preserving
+    // the wall-clock time they picked ("my 21:00 habit stays 21:00 after I move").
+    // Without this, a schedule keeps the zone it was created in forever and the
+    // reminder silently arrives at the wrong local hour.
+    //
+    // Every schedule is migrated, not just those still matching the old
+    // preference: there is no per-habit timezone picker (schedules are always
+    // stamped with the preference at creation), so a divergent value is stale
+    // data, not intent — and migrating all of them self-heals rows that already
+    // drifted. Revisit if a per-habit timezone is ever exposed.
+    const migrated = await this.migrateHabitScheduleTimezones(userId, newTimezone);
+
     Logger.info('User timezone set', {
       userId,
-      timezone,
+      timezone: newTimezone,
+      previousTimezone,
+      migratedSchedules: migrated,
     });
 
     return preferences;
+  }
+
+  /**
+   * Rewrite every habit's `reminderSchedule.timezone` to `timezone`, leaving the
+   * scheduled hour/minute untouched. Returns how many habits were changed.
+   * Best-effort: a failure here must not fail the timezone change itself.
+   */
+  private async migrateHabitScheduleTimezones(userId: number, timezone: string): Promise<number> {
+    try {
+      const userHabits = await this.habitRepository.getUserHabits(userId);
+      if (!userHabits) return 0;
+
+      let migrated = 0;
+      for (const habit of userHabits.habits) {
+        const schedule = habit.reminderSchedule;
+        if (!schedule || schedule.timezone === timezone) continue;
+
+        await this.habitRepository.updateHabit(userId, habit.id, {
+          reminderSchedule: { ...schedule, timezone },
+        });
+        migrated++;
+      }
+      return migrated;
+    } catch (error) {
+      Logger.error('Failed to migrate habit schedule timezones', {
+        userId,
+        timezone,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return 0;
+    }
   }
 
   async getPreferences(userId: number): Promise<UserPreferences | null> {

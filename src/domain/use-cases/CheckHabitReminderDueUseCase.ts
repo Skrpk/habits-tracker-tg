@@ -1,11 +1,20 @@
 import { Habit, ReminderSchedule } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
+import { toZonedDate } from '../utils/timezone';
 
 export class CheckHabitReminderDueUseCase {
   /**
-   * Check if a habit is due for a reminder at the given date/time
+   * Check if a habit is due for a reminder at the instant `now`.
+   *
+   * `now` MUST be the true instant (the cron's `new Date()`), never a date that
+   * has already been converted into some zone's wall clock — this method does
+   * the conversion itself, and converting twice applies the offset twice (it
+   * fired reminders `userOffset` hours early whenever a habit's schedule
+   * timezone differed from the user's preference timezone).
+   *
+   * `timezone` is only the fallback for schedules that carry no timezone.
    */
-  isDue(habit: Habit, checkDate: Date, checkHour: number, checkMinute: number, timezone: string = 'UTC'): boolean {
+  isDue(habit: Habit, now: Date, timezone: string = 'UTC'): boolean {
     // If reminders disabled, not due
     if (habit.reminderEnabled === false) {
       return false;
@@ -19,17 +28,14 @@ export class CheckHabitReminderDueUseCase {
       timezone: 'UTC',
     };
 
-    // Convert check time to schedule's timezone if needed
-    let effectiveHour = checkHour;
-    let effectiveMinute = checkMinute;
-    let effectiveDate = checkDate;
-
-    if (schedule.timezone && schedule.timezone !== timezone) {
-      const scheduleTime = new Date(checkDate.toLocaleString('en-US', { timeZone: schedule.timezone }));
-      effectiveHour = scheduleTime.getHours();
-      effectiveMinute = scheduleTime.getMinutes();
-      effectiveDate = scheduleTime;
-    }
+    // Resolve the schedule's local time from the true instant. Done
+    // unconditionally: a `schedule.timezone !== timezone` guard also skipped
+    // conversion for equivalent-but-differently-spelled ids (Europe/Kiev vs
+    // Europe/Kyiv), and made correctness depend on the caller pre-converting.
+    const scheduleTimezone = schedule.timezone || timezone;
+    const effectiveDate = toZonedDate(now, scheduleTimezone);
+    const effectiveHour = effectiveDate.getHours();
+    const effectiveMinute = effectiveDate.getMinutes();
 
     // Check time matches
     if (effectiveHour !== schedule.hour || effectiveMinute !== schedule.minute) {
@@ -57,13 +63,13 @@ export class CheckHabitReminderDueUseCase {
         }
         
         // Compare dates (YYYY-MM-DD strings) to avoid timezone issues
-        const checkDateStr = effectiveDate.toISOString().split('T')[0];
+        const effectiveDateStr = effectiveDate.toISOString().split('T')[0];
         const startDateStr = schedule.startDate;
         
         // Parse dates and calculate difference in days
         const startDate = new Date(startDateStr + 'T00:00:00Z');
-        const checkDate = new Date(checkDateStr + 'T00:00:00Z');
-        const daysDiff = Math.floor((checkDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const compareDate = new Date(effectiveDateStr + 'T00:00:00Z');
+        const daysDiff = Math.floor((compareDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         
         // Check if days difference is a multiple of interval
         return daysDiff >= 0 && daysDiff % schedule.intervalDays === 0;

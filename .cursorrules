@@ -321,6 +321,8 @@ interface UserPreferences {
    - All habit schedules are stored with user's timezone
    - Reminder checking converts server UTC time to each user's timezone
    - Schedule descriptions display times in user's timezone
+   - **Convert from the true instant, once.** `toZonedDate()` (`src/domain/utils/timezone.ts`) returns a *shifted* Date whose server-local wall clock reads the target zone; it is not a real instant. `CheckHabitReminderDueUseCase.isDue(habit, now, timezone)` takes the true instant and converts internally — never hand it an already-converted date. Doing so applied the offset twice and fired reminders `userOffset` hours early whenever `reminderSchedule.timezone` differed from `preferences.timezone`.
+   - **`setTimezone` migrates existing habits.** Changing the timezone rewrites every habit's `reminderSchedule.timezone` (hour/minute preserved), best-effort. Without it a schedule keeps its creation zone forever and reminders land at the wrong local hour. All schedules are migrated, not just matching ones — there is no per-habit timezone picker, so a divergent value is stale data.
 
 4. **Schedule Configuration**:
    - During habit creation, users configure schedule immediately after naming
@@ -398,6 +400,7 @@ interface UserPreferences {
 - **API tests** (`__tests__/api/`): reminders, analytics, analytics-insights, webhook, **users**, **send-message**, and related routes. Mock repository, `fetch`, auth helpers, `ADMIN_USERS` as needed.
 - **Reminders-server tests** (`__tests__/reminders-server/`): `handleRemindersEndpoint`, analytics endpoints, and related handlers (align env mocks with current auth if tests fail).
 - **Domain use case tests** (`__tests__/domain/use-cases/`): `CheckHabitReminderDueUseCase`, `RecordHabitCheckUseCase`, `CreateHabitUseCase`, `GetUserHabitsUseCase`, `SubscriptionUseCase`, and others as added.
+- **Timezone is pinned to UTC** in `vitest.config.ts` (`test.env.TZ`) to match production. Several date helpers are server-TZ dependent, so an unpinned local zone can mask real bugs (a `Europe/Prague` machine silently cancelled the double-conversion bug above).
 - Tests for **currently-disabled features** are `it.skip` with a `// DISABLED:` comment (habit-cap enforcement, AI analytics insights, local reminders-server CRON/initData checks). Re-enable the test when the feature is re-enabled.
 
 ## Security Considerations

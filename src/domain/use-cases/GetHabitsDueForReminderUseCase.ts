@@ -2,6 +2,7 @@ import { IHabitRepository } from '../repositories/IHabitRepository';
 import { Habit } from '../entities/Habit';
 import { CheckHabitReminderDueUseCase } from './CheckHabitReminderDueUseCase';
 import { isPostponeDue } from '../utils/postpone';
+import { toZonedDate } from '../utils/timezone';
 import { Logger } from '../../infrastructure/logger/Logger';
 
 export class GetHabitsDueForReminderUseCase {
@@ -29,7 +30,7 @@ export class GetHabitsDueForReminderUseCase {
       let userMinute = currentMinute;
 
       if (userTimezone !== serverTimezone) {
-        const userTime = new Date(currentDate.toLocaleString('en-US', { timeZone: userTimezone }));
+        const userTime = toZonedDate(currentDate, userTimezone);
         userDate = userTime;
         userHour = userTime.getHours();
         userMinute = userTime.getMinutes();
@@ -59,7 +60,10 @@ export class GetHabitsDueForReminderUseCase {
         // cron cadence catches it). reminderEnabled is honored for both paths.
         const remindersOn = habit.reminderEnabled !== false;
         const postponeDue = remindersOn && isPostponeDue(habit.postponedUntil, currentDate, userTimezone);
-        const scheduleDue = this.checkReminderDue.isDue(habit, userDate, userHour, userMinute, userTimezone);
+        // Pass the TRUE instant, not `userDate` (already shifted into the user's
+        // wall clock for the `today` string above) — isDue converts internally,
+        // and feeding it a converted date applied the offset twice.
+        const scheduleDue = this.checkReminderDue.isDue(habit, currentDate, userTimezone);
 
         if (postponeDue || scheduleDue) {
           habitsDueForReminder.push(habit);

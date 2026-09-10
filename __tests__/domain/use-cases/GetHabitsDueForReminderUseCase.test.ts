@@ -125,3 +125,51 @@ describe('GetHabitsDueForReminderUseCase — postpone path', () => {
     expect(due).toHaveLength(0);
   });
 });
+
+/**
+ * Regression: the reminder fired `userOffset` hours early whenever a habit's
+ * `reminderSchedule.timezone` differed from the user's preference timezone —
+ * the state every user lands in after changing their timezone in Settings,
+ * since that never rewrote existing schedules.
+ *
+ * This only reproduces end-to-end: this use case converted `now` into the
+ * user's zone, then handed that already-shifted date to `isDue`, which
+ * converted it a second time. Unit-testing `isDue` with a true instant misses
+ * it entirely, which is why it survived.
+ *
+ * Real report: 21:00 Europe/Kyiv schedule, Europe/Rome preference, September
+ * (Kyiv UTC+3, Rome UTC+2). Correct fire is 18:00 UTC; the bug fired at
+ * 16:00 UTC (18:00 Rome) because 16 + 2 + 3 = 21.
+ */
+describe('GetHabitsDueForReminderUseCase — schedule timezone vs user timezone', () => {
+  function runAt(nowIso: string) {
+    const habit = createHabit({
+      reminderSchedule: { type: 'daily', hour: 21, minute: 0, timezone: 'Europe/Kyiv' },
+      postponedUntil: undefined,
+    });
+    const mockRepo = {
+      getAllActiveUserIds: vi.fn().mockResolvedValue([100]),
+      getUserHabits: vi.fn().mockResolvedValue({ userId: 100, habits: [habit] }),
+      getUserPreferences: vi.fn().mockResolvedValue({ userId: 100, timezone: 'Europe/Rome' }),
+    };
+    const now = new Date(nowIso);
+    const useCase = new GetHabitsDueForReminderUseCase(mockRepo as unknown as IHabitRepository);
+    return useCase.execute(now, now.getUTCHours(), now.getUTCMinutes(), 'UTC');
+  }
+
+  it('fires at 21:00 in the schedule timezone', async () => {
+    expect(await runAt('2026-09-10T18:00:00Z')).toHaveLength(1);
+  });
+
+  it('does not fire at the double-converted hour', async () => {
+    expect(await runAt('2026-09-10T16:00:00Z')).toHaveLength(0);
+  });
+
+  it('does not fire at any other hour of the day', async () => {
+    for (let h = 0; h < 24; h++) {
+      if (h === 18) continue;
+      const iso = `2026-09-10T${String(h).padStart(2, '0')}:00:00Z`;
+      expect(await runAt(iso), `unexpected reminder at ${iso}`).toHaveLength(0);
+    }
+  });
+});
