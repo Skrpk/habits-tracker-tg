@@ -34,7 +34,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         reminderSchedule: { type: 'daily', hour: 22, minute: 0 },
       });
       const date = new Date('2025-02-15T22:00:00Z');
-      expect(useCase.isDue(habit, date, 22, 0, 'UTC')).toBe(false);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(false);
     });
 
     it('returns true for daily schedule when hour and minute match', () => {
@@ -42,22 +42,21 @@ describe('CheckHabitReminderDueUseCase', () => {
         reminderSchedule: { type: 'daily', hour: 22, minute: 0 },
       });
       const date = new Date('2025-02-15T22:00:00Z');
-      expect(useCase.isDue(habit, date, 22, 0, 'UTC')).toBe(true);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(true);
     });
 
     it('returns false for daily schedule when time does not match', () => {
       const habit = createMinimalHabit({
         reminderSchedule: { type: 'daily', hour: 22, minute: 0 },
       });
-      const date = new Date('2025-02-15T22:00:00Z');
-      expect(useCase.isDue(habit, date, 21, 0, 'UTC')).toBe(false);
-      expect(useCase.isDue(habit, date, 22, 30, 'UTC')).toBe(false);
+      expect(useCase.isDue(habit, new Date('2025-02-15T21:00:00Z'), 'UTC')).toBe(false);
+      expect(useCase.isDue(habit, new Date('2025-02-15T22:30:00Z'), 'UTC')).toBe(false);
     });
 
     it('defaults to daily 22:00 when no schedule', () => {
       const habit = createMinimalHabit({ reminderSchedule: undefined });
       const date = new Date('2025-02-15T22:00:00Z');
-      expect(useCase.isDue(habit, date, 22, 0, 'UTC')).toBe(true);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(true);
     });
 
     it('returns true for weekly when day of week is in daysOfWeek and time matches', () => {
@@ -65,7 +64,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         reminderSchedule: { type: 'weekly', daysOfWeek: [1, 3, 5], hour: 9, minute: 0 },
       });
       const wednesday = new Date('2025-02-19T09:00:00Z'); // 3 = Wednesday
-      expect(useCase.isDue(habit, wednesday, 9, 0, 'UTC')).toBe(true);
+      expect(useCase.isDue(habit, wednesday, 'UTC')).toBe(true);
     });
 
     it('returns false for weekly when day of week is not in daysOfWeek', () => {
@@ -73,7 +72,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         reminderSchedule: { type: 'weekly', daysOfWeek: [1, 3, 5], hour: 9, minute: 0 },
       });
       const sunday = new Date('2025-02-16T09:00:00Z'); // 0 = Sunday
-      expect(useCase.isDue(habit, sunday, 9, 0, 'UTC')).toBe(false);
+      expect(useCase.isDue(habit, sunday, 'UTC')).toBe(false);
     });
 
     it('returns true for monthly when day of month is in daysOfMonth and time matches', () => {
@@ -81,7 +80,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         reminderSchedule: { type: 'monthly', daysOfMonth: [1, 15, 30], hour: 10, minute: 0 },
       });
       const date = new Date('2025-02-15T10:00:00Z');
-      expect(useCase.isDue(habit, date, 10, 0, 'UTC')).toBe(true);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(true);
     });
 
     it('returns false for monthly when day of month is not in daysOfMonth', () => {
@@ -89,7 +88,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         reminderSchedule: { type: 'monthly', daysOfMonth: [1, 15], hour: 10, minute: 0 },
       });
       const date = new Date('2025-02-20T10:00:00Z');
-      expect(useCase.isDue(habit, date, 10, 0, 'UTC')).toBe(false);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(false);
     });
 
     it('returns true for interval when days since start is multiple of intervalDays', () => {
@@ -104,7 +103,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         },
       });
       const date = new Date('2025-02-14T08:00:00Z'); // 4 days later, 4 % 2 === 0
-      expect(useCase.isDue(habit, date, 8, 0, 'UTC')).toBe(true);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(true);
     });
 
     it('returns false for interval when days since start is not multiple of intervalDays', () => {
@@ -118,7 +117,54 @@ describe('CheckHabitReminderDueUseCase', () => {
         },
       });
       const date = new Date('2025-02-13T08:00:00Z'); // 3 days later, 3 % 2 !== 0
-      expect(useCase.isDue(habit, date, 8, 0, 'UTC')).toBe(false);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(false);
+    });
+
+    // Regression: a habit whose reminderSchedule.timezone differs from the
+    // user's preference timezone (user changed timezone in Settings after
+    // creating the habit) used to fire `userOffset` hours early, because the
+    // caller pre-converted the date into the user's zone and isDue converted
+    // that shifted date again. Real report: 21:00 Europe/Kyiv schedule on a
+    // Europe/Rome user fired at 18:00 Rome instead of 20:00 Rome.
+    describe('schedule timezone differing from the user timezone', () => {
+      const habit = createMinimalHabit({
+        reminderSchedule: { type: 'daily', hour: 21, minute: 0, timezone: 'Europe/Kyiv' },
+      });
+
+      it('fires at 21:00 in the schedule timezone, not offset by the user timezone', () => {
+        // 2026-09-10: Kyiv is UTC+3, Rome is UTC+2.
+        // 21:00 Kyiv === 18:00 UTC.
+        expect(useCase.isDue(habit, new Date('2026-09-10T18:00:00Z'), 'Europe/Rome')).toBe(true);
+      });
+
+      it('does not fire early at the double-converted hour', () => {
+        // The bug matched at 16:00 UTC (18:00 Rome): 16 + 2 (Rome) + 3 (Kyiv) = 21.
+        expect(useCase.isDue(habit, new Date('2026-09-10T16:00:00Z'), 'Europe/Rome')).toBe(false);
+      });
+
+      it('is unaffected by which timezone the caller passes as the fallback', () => {
+        const instant = new Date('2026-09-10T18:00:00Z');
+        expect(useCase.isDue(habit, instant, 'Europe/Rome')).toBe(true);
+        expect(useCase.isDue(habit, instant, 'Europe/Kyiv')).toBe(true);
+        expect(useCase.isDue(habit, instant, 'UTC')).toBe(true);
+      });
+
+      it('falls back to the user timezone when the schedule carries none', () => {
+        const noTz = createMinimalHabit({
+          reminderSchedule: { type: 'daily', hour: 21, minute: 0 },
+        });
+        // 21:00 Rome === 19:00 UTC in September.
+        expect(useCase.isDue(noTz, new Date('2026-09-10T19:00:00Z'), 'Europe/Rome')).toBe(true);
+        expect(useCase.isDue(noTz, new Date('2026-09-10T21:00:00Z'), 'Europe/Rome')).toBe(false);
+      });
+
+      it('resolves weekly day-of-week in the schedule timezone', () => {
+        // 2026-09-10T22:30:00Z is Thursday in UTC but already Friday (01:30) in Kyiv.
+        const weekly = createMinimalHabit({
+          reminderSchedule: { type: 'weekly', daysOfWeek: [5], hour: 1, minute: 30, timezone: 'Europe/Kyiv' },
+        });
+        expect(useCase.isDue(weekly, new Date('2026-09-10T22:30:00Z'), 'Europe/Rome')).toBe(true);
+      });
     });
 
     it('returns true for interval on start date (day 0)', () => {
@@ -132,7 +178,7 @@ describe('CheckHabitReminderDueUseCase', () => {
         },
       });
       const date = new Date('2025-02-10T12:00:00Z');
-      expect(useCase.isDue(habit, date, 12, 0, 'UTC')).toBe(true);
+      expect(useCase.isDue(habit, date, 'UTC')).toBe(true);
     });
   });
 
