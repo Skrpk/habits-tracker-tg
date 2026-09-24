@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RecordHabitCheckUseCase } from '../../../src/domain/use-cases/RecordHabitCheckUseCase';
 import type { IHabitRepository } from '../../../src/domain/repositories/IHabitRepository';
 import type { Habit, ReminderSchedule } from '../../../src/domain/entities/Habit';
@@ -544,5 +544,53 @@ describe('RecordHabitCheckUseCase', () => {
     function useCaseFor() {
       return new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
     }
+  });
+
+  describe('checkDate resolution — no targetDate uses the user LOCAL day, not server UTC', () => {
+    // 21:00Z on Feb 14 is already 02:00 on Feb 15 in Karachi (UTC+5): the UTC day
+    // and the user's local day disagree, which is exactly when the old UTC fallback
+    // misattributed the check and broke the consecutive-day streak comparison.
+    const INSTANT = new Date('2025-02-14T21:00:00Z');
+
+    function repoWith(prefs: unknown, habit: Habit) {
+      return {
+        getUserHabits: vi.fn().mockResolvedValue({ habits: [habit] }),
+        updateHabit: vi.fn().mockResolvedValue(undefined),
+        getUserPreferences: vi.fn().mockResolvedValue(prefs),
+      };
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(INSTANT);
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('execute: records the user local day (Asia/Karachi → Feb 15, not UTC Feb 14)', async () => {
+      const repo = repoWith({ userId: 100, timezone: 'Asia/Karachi' }, createHabit({ streak: 0, lastCheckedDate: '' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-15' }));
+    });
+
+    it('execute: falls back to server UTC day when the user has no timezone', async () => {
+      const repo = repoWith(null, createHabit({ streak: 0, lastCheckedDate: '' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-14' }));
+    });
+
+    it('skipHabit: records the user local day too', async () => {
+      const repo = repoWith({ timezone: 'Asia/Karachi' }, createHabit({ streak: 3, lastCheckedDate: '2025-02-14' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).skipHabit(100, 'habit-1', 'user');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-15' }));
+    });
+
+    it('an explicit targetDate is honored verbatim (reminder path, no preferences read)', async () => {
+      const repo = repoWith({ timezone: 'Asia/Karachi' }, createHabit({ streak: 0, lastCheckedDate: '' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-10');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-10' }));
+      expect(repo.getUserPreferences).not.toHaveBeenCalled();
+    });
   });
 });

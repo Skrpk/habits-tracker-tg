@@ -358,6 +358,7 @@ interface UserPreferences {
 
 10. **Reminder Target Date**:
    - Reminders send buttons with optional targetDate in callback_data: `habit_check:{id}:yes`, `habit_check:{id}:yes:{YYYY-MM-DD}`. When present, `RecordHabitCheckUseCase.execute(..., targetDate)` and `skipHabit(..., targetDate)` use that as the check date (not server "today"), so late responses count for the reminder's day. Streak continuity uses `dayBefore(checkDate)`.
+   - **No targetDate (manual chat check / MiniApp) → `resolveCheckDate` computes the check day in the user's timezone (`preferences.timezone` via `localDay`), UTC only as last resort — never a raw `new Date().toISOString()`.** A UTC fallback misdates checks for non-UTC users (a UTC+N user checking in their early morning is UTC "yesterday"), breaking the consecutive-day streak comparison. `api/check.ts` passes the client `targetDate` through (or `undefined`) and lets the use case resolve. Note `GetHabitsToCheckUseCase` still uses UTC "today" as a read-only filter (harmless to stored data, unfixed).
 
 11. **Blocked Users**:
    - If sending a message fails with "bot was blocked by the user", the user is marked `blocked: true` in preferences. Reminder cron and reminders-server skip users with `preferences.blocked === true`. When the user sends `/start` again, `blocked` is set to false so they receive reminders again.

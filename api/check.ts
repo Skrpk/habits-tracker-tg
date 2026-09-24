@@ -109,9 +109,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid action. Use complete, skip, or drop.' });
     }
 
-    const checkDate = typeof targetDate === 'string' && targetDate.trim()
+    // Pass the client's targetDate through when present; otherwise let the use case
+    // resolve "today" in the user's timezone (never server UTC — see resolveCheckDate).
+    const normalizedTargetDate = typeof targetDate === 'string' && targetDate.trim()
       ? targetDate.trim()
-      : new Date().toISOString().split('T')[0];
+      : undefined;
 
     const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
 
@@ -119,11 +121,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let updatedHabit;
     if (action === 'complete') {
-      updatedHabit = await recordHabitCheckUseCase.execute(userId, habitId, true, username, checkDate);
+      updatedHabit = await recordHabitCheckUseCase.execute(userId, habitId, true, username, normalizedTargetDate);
     } else if (action === 'drop') {
-      updatedHabit = await recordHabitCheckUseCase.execute(userId, habitId, false, username, checkDate, noteStr);
+      updatedHabit = await recordHabitCheckUseCase.execute(userId, habitId, false, username, normalizedTargetDate, noteStr);
     } else {
-      updatedHabit = await recordHabitCheckUseCase.skipHabit(userId, habitId, username, checkDate, noteStr);
+      updatedHabit = await recordHabitCheckUseCase.skipHabit(userId, habitId, username, normalizedTargetDate, noteStr);
     }
 
     Logger.info('Habit check via MiniApp', {
@@ -131,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       habitId,
       habitName: habit.name,
       action,
-      checkDate,
+      checkDate: updatedHabit.lastCheckedDate,
     });
 
     const chatIdNum = chatId != null && msgId != null

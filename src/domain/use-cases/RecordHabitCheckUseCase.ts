@@ -2,6 +2,7 @@ import { IHabitRepository } from '../repositories/IHabitRepository';
 import { Habit, SkippedDay, DroppedDay, CheckedDay, ReminderSchedule } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { checkForNewBadges, awardBadges } from '../utils/HabitBadges';
+import { localDay } from '../utils/postpone';
 
 /** Returns YYYY-MM-DD for the day before the given date string. */
 function dayBefore(dateStr: string): string {
@@ -76,21 +77,26 @@ export class RecordHabitCheckUseCase {
   constructor(private habitRepository: IHabitRepository) {}
 
   /**
+   * The calendar day a check applies to. A reminder passes an explicit `targetDate`
+   * (already computed as the user's local day). For a manual/MiniApp check with no
+   * `targetDate`, "today" must be the user's LOCAL day — never server UTC: a UTC+N
+   * user checking in their early morning (00:00–offset local) is UTC "yesterday", so
+   * a UTC fallback misattributes the check and breaks the consecutive-day streak
+   * comparison (`lastCheckedDate === dayBefore(checkDate)`). Falls back to UTC only
+   * when the user has no stored timezone.
+   */
+  private async resolveCheckDate(userId: number, targetDate?: string): Promise<string> {
+    if (targetDate) return targetDate;
+    const prefs = await this.habitRepository.getUserPreferences(userId);
+    return localDay(new Date(), prefs?.timezone || 'UTC');
+  }
+
+  /**
    * Records a habit check (complete or drop).
    * @param targetDate - Optional. The day this check applies to (e.g. reminder's target date). If omitted, uses server today.
    * @param note - Optional. Note for this drop (premium only); stored with the dropped entry.
    */
   async execute(userId: number, habitId: string, completed: boolean, username?: string, targetDate?: string, note?: string): Promise<Habit> {
-    const checkDate = targetDate || new Date().toISOString().split('T')[0];
-
-    Logger.info('Recording habit check', {
-      userId,
-      username: username || 'unknown',
-      habitId,
-      completed,
-      checkDate,
-    });
-
     const userHabits = await this.habitRepository.getUserHabits(userId);
 
     if (!userHabits) {
@@ -103,6 +109,16 @@ export class RecordHabitCheckUseCase {
       Logger.error('Habit not found', { userId, habitId });
       throw new Error('Habit not found');
     }
+
+    const checkDate = await this.resolveCheckDate(userId, targetDate);
+
+    Logger.info('Recording habit check', {
+      userId,
+      username: username || 'unknown',
+      habitId,
+      completed,
+      checkDate,
+    });
 
     const lastCheckedDate = habit.lastCheckedDate;
 
@@ -221,15 +237,6 @@ export class RecordHabitCheckUseCase {
    * @param note - Optional. Note for this skip (premium only); stored with the skipped entry.
    */
   async skipHabit(userId: number, habitId: string, username?: string, targetDate?: string, note?: string): Promise<Habit> {
-    const checkDate = targetDate || new Date().toISOString().split('T')[0];
-
-    Logger.info('Skipping habit', {
-      userId,
-      username: username || 'unknown',
-      habitId,
-      checkDate,
-    });
-
     const userHabits = await this.habitRepository.getUserHabits(userId);
 
     if (!userHabits) {
@@ -242,6 +249,15 @@ export class RecordHabitCheckUseCase {
       Logger.error('Habit not found', { userId, habitId });
       throw new Error('Habit not found');
     }
+
+    const checkDate = await this.resolveCheckDate(userId, targetDate);
+
+    Logger.info('Skipping habit', {
+      userId,
+      username: username || 'unknown',
+      habitId,
+      checkDate,
+    });
 
     const lastCheckedDate = habit.lastCheckedDate;
 
