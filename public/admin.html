@@ -424,6 +424,56 @@
             transform: rotate(90deg);
         }
 
+        /* Raw JSON viewer — same pill toggle as the heatmap, collapsed by default. */
+        .raw-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.3rem;
+            padding: 0.2rem 0.5rem;
+            font-family: inherit;
+            font-size: 0.76rem;
+            color: var(--hb-text-secondary);
+            background: var(--hb-card-bg);
+            border: 1px solid var(--hb-border);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .raw-toggle:hover {
+            color: var(--hb-accent-dark);
+            border-color: var(--hb-accent);
+        }
+
+        .raw-toggle .raw-caret {
+            font-size: 0.65rem;
+            line-height: 1;
+            transition: transform 0.15s ease;
+        }
+
+        .raw-toggle[aria-expanded="true"] .raw-caret {
+            transform: rotate(90deg);
+        }
+
+        .raw-json {
+            margin: 0.4rem 0 0.2rem;
+        }
+
+        .raw-pre {
+            margin: 0;
+            padding: 0.6rem 0.7rem;
+            background: #f6f8fa;
+            color: #1f2328;
+            border: 1px solid var(--hb-border);
+            border-radius: 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.72rem;
+            line-height: 1.45;
+            max-height: 360px;
+            overflow: auto;
+            white-space: pre;
+        }
+
         /* The calendar is ~670px wide; cards are narrower, so it scrolls. */
         .hm-scroll {
             overflow-x: auto;
@@ -849,6 +899,34 @@
                 }
             }
 
+            /* Raw JSON viewer: collapsed by default, its <pre> filled on first
+               expand from the already-loaded row (habits + preferences, verbatim). */
+            function toggleRaw(button) {
+                var wrap = button.nextElementSibling;
+                if (!wrap || !wrap.classList.contains('raw-json')) return;
+
+                var expanded = button.getAttribute('aria-expanded') === 'true';
+                if (expanded) {
+                    wrap.hidden = true;
+                    button.setAttribute('aria-expanded', 'false');
+                    return;
+                }
+
+                wrap.hidden = false;
+                button.setAttribute('aria-expanded', 'true');
+
+                var pre = wrap.querySelector('.raw-pre');
+                if (pre && pre.getAttribute('data-raw-ready') !== '1') {
+                    pre.setAttribute('data-raw-ready', '1');
+                    var user = hmPageUsers[Number(button.getAttribute('data-u'))];
+                    var raw = user && user.raw
+                        ? user.raw
+                        : { preferences: (user && user.preferences) || null, habits: (user && user.habits) || [] };
+                    // textContent (not innerHTML) keeps the JSON inert — no HTML injection.
+                    pre.textContent = JSON.stringify(raw, null, 2);
+                }
+            }
+
             function renderUserCard(u, userIndex) {
                 var p = u.preferences || {};
                 var habits = u.habits || [];
@@ -895,6 +973,10 @@
                 //     (p.isLifetimePremium ? 'Revoke lifetime' : 'Grant lifetime') + '</button>';
                 html += '<button type="button" class="btn-card-send" data-user-id="' + u.userId + '">Send message</button>';
                 html += '</div>';
+                // Raw stored data (habits + preferences), formatted, filled lazily on first expand.
+                html += '<button type="button" class="raw-toggle" aria-expanded="false" data-u="' + userIndex + '">' +
+                            '<span class="raw-caret">▶</span>Raw JSON</button>';
+                html += '<div class="raw-json" hidden><pre class="raw-pre" data-u="' + userIndex + '" data-raw-ready="0"></pre></div>';
                 html += '</article>';
                 return html;
             }
@@ -1016,6 +1098,11 @@
                 if (t.classList && t.classList.contains('btn-card-send')) {
                     var uid = parseInt(t.getAttribute('data-user-id'), 10);
                     if (!isNaN(uid)) openSendModal(uid);
+                    return;
+                }
+                var rawToggle = t.closest && t.closest('.raw-toggle');
+                if (rawToggle) {
+                    toggleRaw(rawToggle);
                     return;
                 }
                 var toggle = t.closest && t.closest('.hm-toggle');

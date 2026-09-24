@@ -341,6 +341,8 @@ export async function runAdminUsersList(
     userId: number;
     preferences: ReturnType<typeof serializePreferences>;
     habits: ReturnType<typeof serializeHabit>[];
+    // Full stored objects, verbatim, for the admin "Raw JSON" viewer.
+    raw: { preferences: UserPreferences | null; habits: Habit[] };
   }> = [];
 
   console.log('filteredIds', filteredIds);
@@ -353,6 +355,7 @@ export async function runAdminUsersList(
       userId: uid,
       preferences: serializePreferences(prefs, uid),
       habits: habits.map(serializeHabit),
+      raw: { preferences: prefs, habits },
     });
   }
 
