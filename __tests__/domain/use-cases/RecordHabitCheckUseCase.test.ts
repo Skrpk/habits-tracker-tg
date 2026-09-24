@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RecordHabitCheckUseCase } from '../../../src/domain/use-cases/RecordHabitCheckUseCase';
 import type { IHabitRepository } from '../../../src/domain/repositories/IHabitRepository';
 import type { Habit, ReminderSchedule } from '../../../src/domain/entities/Habit';
@@ -544,5 +544,143 @@ describe('RecordHabitCheckUseCase', () => {
     function useCaseFor() {
       return new RecordHabitCheckUseCase(mockRepo as unknown as IHabitRepository);
     }
+  });
+
+  describe('checkDate resolution — no targetDate uses the user LOCAL day, not server UTC', () => {
+    // 21:00Z on Feb 14 is already 02:00 on Feb 15 in Karachi (UTC+5): the UTC day
+    // and the user's local day disagree, which is exactly when the old UTC fallback
+    // misattributed the check and broke the consecutive-day streak comparison.
+    const INSTANT = new Date('2025-02-14T21:00:00Z');
+
+    function repoWith(prefs: unknown, habit: Habit) {
+      return {
+        getUserHabits: vi.fn().mockResolvedValue({ habits: [habit] }),
+        updateHabit: vi.fn().mockResolvedValue(undefined),
+        getUserPreferences: vi.fn().mockResolvedValue(prefs),
+      };
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(INSTANT);
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('execute: records the user local day (Asia/Karachi → Feb 15, not UTC Feb 14)', async () => {
+      const repo = repoWith({ userId: 100, timezone: 'Asia/Karachi' }, createHabit({ streak: 0, lastCheckedDate: '' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-15' }));
+    });
+
+    it('execute: falls back to server UTC day when the user has no timezone', async () => {
+      const repo = repoWith(null, createHabit({ streak: 0, lastCheckedDate: '' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-14' }));
+    });
+
+    it('skipHabit: records the user local day too', async () => {
+      const repo = repoWith({ timezone: 'Asia/Karachi' }, createHabit({ streak: 3, lastCheckedDate: '2025-02-14' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).skipHabit(100, 'habit-1', 'user');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-15' }));
+    });
+
+    it('an explicit targetDate is honored verbatim (reminder path, no preferences read)', async () => {
+      const repo = repoWith({ timezone: 'Asia/Karachi' }, createHabit({ streak: 0, lastCheckedDate: '' }));
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-10');
+      expect(repo.updateHabit).toHaveBeenCalledWith(100, 'habit-1', expect.objectContaining({ lastCheckedDate: '2025-02-10' }));
+      expect(repo.getUserPreferences).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Variant A — daily silent-miss recording, back-fill & recompute', () => {
+    // A daily habit whose run is days 11–13 (created 02-11) so recompute never
+    // reaches back past a genuine first check.
+    function dailyRepo(habit: Habit) {
+      return {
+        getUserHabits: vi.fn().mockResolvedValue({ habits: [habit] }),
+        updateHabit: vi.fn().mockResolvedValue(undefined),
+        getUserPreferences: vi.fn().mockResolvedValue({ timezone: 'UTC' }),
+      };
+    }
+    const call = (repo: { updateHabit: ReturnType<typeof vi.fn> }) => repo.updateHabit.mock.calls[0][2];
+
+    it('forward jump over a missed day records it as a drop and resets streak to 1', async () => {
+      const habit = createHabit({ streak: 3, lastCheckedDate: '2025-02-13', createdAt: new Date('2025-02-11') });
+      const repo = dailyRepo(habit);
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-15');
+      const c = call(repo);
+      expect(c.streak).toBe(1);
+      expect(c.lastCheckedDate).toBe('2025-02-15');
+      expect(c.dropped).toEqual([{ date: '2025-02-14', streakBeforeDrop: 3 }]);
+    });
+
+    it('multi-day gap records every missed day; only the first carries streakBeforeDrop', async () => {
+      const habit = createHabit({ streak: 2, lastCheckedDate: '2025-02-12', createdAt: new Date('2025-02-11') });
+      const repo = dailyRepo(habit);
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-15');
+      const c = call(repo);
+      expect(c.streak).toBe(1);
+      // newest-first: 02-14, 02-13 (the break) with streakBeforeDrop 2
+      expect(c.dropped).toEqual([
+        { date: '2025-02-14', streakBeforeDrop: 0 },
+        { date: '2025-02-13', streakBeforeDrop: 2 },
+      ]);
+    });
+
+    it('back-fill of the missed day un-marks the drop, keeps lastCheckedDate, and recomputes the bridged streak', async () => {
+      // Post-forward state: 11-13 done, 14 recorded as a miss, 15 done (streak 1).
+      const habit = createHabit({
+        streak: 1,
+        lastCheckedDate: '2025-02-15',
+        createdAt: new Date('2025-02-11'),
+        dropped: [{ date: '2025-02-14', streakBeforeDrop: 3 }],
+      });
+      const repo = dailyRepo(habit);
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-14');
+      const c = call(repo);
+      expect(c.dropped).toEqual([]);              // day 14 un-marked → turns green
+      expect(c.lastCheckedDate).toBe('2025-02-15'); // monotonic: never moves backward
+      expect(c.streak).toBe(5);                    // 11,12,13,14,15 bridged
+    });
+
+    it('back-fill never awards a badge even when the recomputed streak reaches a threshold', async () => {
+      const habit = createHabit({
+        streak: 1,
+        lastCheckedDate: '2025-02-15',
+        createdAt: new Date('2025-02-11'),
+        dropped: [{ date: '2025-02-14', streakBeforeDrop: 3 }],
+        badges: [],
+      });
+      const repo = dailyRepo(habit);
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-14');
+      const c = call(repo);
+      expect(c.streak).toBe(5);
+      expect(c.badges).toEqual([]); // a forward check to 5 would award the 5-day badge; a back-fill must not
+    });
+
+    it('completing a previously-skipped day un-marks the skip', async () => {
+      const habit = createHabit({
+        streak: 1,
+        lastCheckedDate: '2025-02-15',
+        createdAt: new Date('2025-02-11'),
+        skipped: [{ skippedDay: 3, date: '2025-02-14' }],
+      });
+      const repo = dailyRepo(habit);
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-14');
+      const c = call(repo);
+      expect(c.skipped).toEqual([]);   // 02-14 no longer a skip
+      expect(c.streak).toBe(5);        // now a completion, run bridges 11–15
+    });
+
+    it('a consecutive forward check still increments and records no drops', async () => {
+      const habit = createHabit({ streak: 3, lastCheckedDate: '2025-02-14', createdAt: new Date('2025-02-11') });
+      const repo = dailyRepo(habit);
+      await new RecordHabitCheckUseCase(repo as unknown as IHabitRepository).execute(100, 'habit-1', true, 'user', '2025-02-15');
+      const c = call(repo);
+      expect(c.streak).toBe(4);
+      expect(c.dropped).toEqual([]);
+    });
   });
 });
