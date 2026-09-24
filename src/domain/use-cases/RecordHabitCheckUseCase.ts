@@ -73,6 +73,78 @@ function getPreviousScheduledDate(checkDate: string, schedule?: ReminderSchedule
   }
 }
 
+/** Returns YYYY-MM-DD for the day after the given date string. */
+function dayAfter(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+/** The habit's creation calendar day (YYYY-MM-DD). */
+function createdDay(habit: Habit): string {
+  return new Date(habit.createdAt).toISOString().split('T')[0];
+}
+
+/**
+ * Upper bound on how many missed days a single forward check will record, so a
+ * comeback after a very long absence can't write an unbounded `dropped[]` array.
+ * 366 covers any realistic gap; older misses simply stay unrecorded.
+ */
+const MAX_RECORDED_GAP_DAYS = 366;
+
+/**
+ * Silent-miss days to record as drops when a daily completion jumps forward over
+ * untouched days (a plainly-missed day, or an ignored/auto-paused run): every day
+ * strictly between `prevLastChecked` and `checkDate` that isn't already skipped or
+ * dropped. Newest-first, capped at MAX_RECORDED_GAP_DAYS. Only the first missed day
+ * — where the streak actually broke — carries `streakBeforeDrop`; the rest are 0.
+ */
+function gapDrops(
+  prevLastChecked: string,
+  checkDate: string,
+  streakBeforeBreak: number,
+  droppedSet: Set<string>,
+  skippedSet: Set<string>,
+): DroppedDay[] {
+  const firstMissed = dayAfter(prevLastChecked);
+  const out: DroppedDay[] = [];
+  let cursor = dayBefore(checkDate); // newest missed day first
+  while (cursor >= firstMissed && out.length < MAX_RECORDED_GAP_DAYS) {
+    if (!droppedSet.has(cursor) && !skippedSet.has(cursor)) {
+      out.push({ date: cursor, streakBeforeDrop: cursor === firstMissed ? streakBeforeBreak : 0 });
+    }
+    cursor = dayBefore(cursor);
+  }
+  return out;
+}
+
+/**
+ * Recompute a daily habit's current streak: the run of completed days ending at
+ * `endDate`. Walk backward — a dropped day breaks the run; a skipped day passes
+ * through (preserves the streak without adding); every other day counts as a
+ * completion. Reliable for a back-fill because Variant A records every interior
+ * miss as a drop, so the first drop encountered is the true break. Caveat: the
+ * creation→first-check gap is never recorded, so a run that reaches back to a
+ * long-delayed first check over-counts those idle days.
+ */
+function recomputeDailyStreak(
+  endDate: string,
+  createdStr: string,
+  droppedSet: Set<string>,
+  skippedSet: Set<string>,
+): number {
+  if (!endDate) return 0;
+  let streak = 0;
+  let cursor = endDate;
+  let guard = 0;
+  while (cursor >= createdStr && guard++ < 100000) {
+    if (droppedSet.has(cursor)) break;
+    if (!skippedSet.has(cursor)) streak++;
+    cursor = dayBefore(cursor);
+  }
+  return streak;
+}
+
 export class RecordHabitCheckUseCase {
   constructor(private habitRepository: IHabitRepository) {}
 
@@ -139,29 +211,83 @@ export class RecordHabitCheckUseCase {
     }
 
     let newStreak = habit.streak;
-    let updatedDropped = habit.dropped || [];
-    const previousScheduledDate = getPreviousScheduledDate(checkDate, habit.reminderSchedule);
+    const schedule = habit.reminderSchedule;
+    const isDaily = !schedule || schedule.type === 'daily';
 
-    if (completed) {
+    if (completed && isDaily) {
+      // ---- Variant A: daily completion ----
+      const prevLastChecked = lastCheckedDate || '';
+      const isForward = checkDate > prevLastChecked;
+
+      // Completing a day means it is neither a silent miss nor a skip: un-mark it.
+      let dropped = (habit.dropped || []).filter(d => d.date !== checkDate);
+      const skipped = (habit.skipped || []).filter(s => s.date !== checkDate);
+
+      if (isForward) {
+        // A forward jump past untouched days = silent misses (an ignored/auto-paused
+        // run): record them as drops so analytics shows them red, not inferred green.
+        if (prevLastChecked) {
+          const droppedSet = new Set(dropped.map(d => d.date));
+          const skippedSet = new Set(skipped.map(s => s.date));
+          dropped = [...dropped, ...gapDrops(prevLastChecked, checkDate, habit.streak, droppedSet, skippedSet)];
+        }
+        // Honest incremental streak (matches historical behavior): +1 only when the
+        // previous check was exactly the day before; any gap resets to 1.
+        if (!prevLastChecked) newStreak = 1;
+        else if (prevLastChecked === dayBefore(checkDate)) newStreak = habit.streak + 1;
+        else newStreak = 1;
+      } else {
+        // Back-fill of an earlier day: leave lastCheckedDate where it is (never move
+        // backward) and recompute the run ending there — bridging any gap this fill
+        // just closed. May raise or lower the streak; never awards badges.
+        newStreak = recomputeDailyStreak(
+          prevLastChecked,
+          createdDay(habit),
+          new Set(dropped.map(d => d.date)),
+          new Set(skipped.map(s => s.date)),
+        );
+      }
+
+      const newLastChecked = isForward ? checkDate : prevLastChecked;
+
+      let updatedBadges = habit.badges || [];
+      if (isForward) {
+        const newBadgeTypes = checkForNewBadges(newStreak, updatedBadges);
+        if (newBadgeTypes.length > 0) {
+          updatedBadges = awardBadges(newBadgeTypes, updatedBadges);
+          Logger.info('Badges awarded', {
+            userId, username: username || 'unknown', habitId, habitName: habit.name,
+            badgeTypes: newBadgeTypes, streak: newStreak,
+          });
+        }
+      }
+
+      await this.habitRepository.updateHabit(userId, habitId, {
+        streak: newStreak,
+        lastCheckedDate: newLastChecked,
+        skipped,
+        dropped,
+        checked: habit.checked || [],
+        badges: updatedBadges,
+        imgIndex: habit.imgIndex,
+        // Any response re-engages the habit: reset auto-pause miss tracking.
+        missedReminderCount: 0,
+        remindersPausedUntil: undefined,
+      });
+    } else if (completed) {
+      // ---- non-daily completion: explicit checked[] dates, unchanged ----
+      const previousScheduledDate = getPreviousScheduledDate(checkDate, schedule);
       if (!lastCheckedDate || lastCheckedDate === '') {
         newStreak = 1;
       } else if (lastCheckedDate === previousScheduledDate) {
         newStreak = habit.streak + 1;
-      } else if (lastCheckedDate === checkDate) {
-        return habit;
       } else {
         newStreak = 1;
       }
 
       let updatedChecked = habit.checked || [];
-      const schedule = habit.reminderSchedule;
-      const isDaily = !schedule || schedule.type === 'daily';
-
-      if (!isDaily) {
-        const alreadyChecked = updatedChecked.some(c => c.date === checkDate);
-        if (!alreadyChecked) {
-          updatedChecked = [...updatedChecked, { date: checkDate }];
-        }
+      if (!updatedChecked.some(c => c.date === checkDate)) {
+        updatedChecked = [...updatedChecked, { date: checkDate }];
       }
 
       let updatedBadges = habit.badges || [];
@@ -169,12 +295,8 @@ export class RecordHabitCheckUseCase {
       if (newBadgeTypes.length > 0) {
         updatedBadges = awardBadges(newBadgeTypes, updatedBadges);
         Logger.info('Badges awarded', {
-          userId,
-          username: username || 'unknown',
-          habitId,
-          habitName: habit.name,
-          badgeTypes: newBadgeTypes,
-          streak: newStreak,
+          userId, username: username || 'unknown', habitId, habitName: habit.name,
+          badgeTypes: newBadgeTypes, streak: newStreak,
         });
       }
 
@@ -185,17 +307,17 @@ export class RecordHabitCheckUseCase {
         checked: updatedChecked,
         badges: updatedBadges,
         imgIndex: habit.imgIndex,
-        // Any response re-engages the habit: reset auto-pause miss tracking.
         missedReminderCount: 0,
         remindersPausedUntil: undefined,
       });
     } else {
+      // ---- drop (explicit "No, I broke it") — unchanged ----
       newStreak = 0;
 
       const dropNote = typeof note === 'string' && note.trim().length > 0
         ? note.trim().slice(0, 500)
         : undefined;
-      updatedDropped = [...(habit.dropped || []), {
+      const updatedDropped = [...(habit.dropped || []), {
         streakBeforeDrop: habit.streak,
         date: checkDate,
         ...(dropNote && { note: dropNote }),
