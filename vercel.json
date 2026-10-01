@@ -75,6 +75,9 @@
     "api/users.ts": {
       "maxDuration": 30
     },
+    "api/reminder-stats.ts": {
+      "maxDuration": 30
+    },
     "api/send-message.ts": {
       "maxDuration": 300
     },

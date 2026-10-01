@@ -519,6 +519,161 @@
             color: var(--hb-text-muted);
             padding: 1.5rem;
         }
+
+        /* Reminder delivery stats — collapsed section above the filters. */
+        .rem-stats {
+            background: var(--hb-surface);
+            border: 1px solid var(--hb-border);
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .rem-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            width: 100%;
+            padding: 0.25rem 0;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--hb-text);
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .rem-toggle .rem-caret {
+            font-size: 0.7rem;
+            color: var(--hb-text-muted);
+            transition: transform 0.15s ease;
+        }
+
+        .rem-toggle[aria-expanded="true"] .rem-caret {
+            transform: rotate(90deg);
+        }
+
+        .rem-body {
+            margin-top: 0.6rem;
+        }
+
+        .rem-note {
+            font-size: 0.78rem;
+            color: var(--hb-text-muted);
+            margin-bottom: 0.6rem;
+        }
+
+        .rem-totals {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem 1.1rem;
+            font-size: 0.88rem;
+            color: var(--hb-text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .rem-totals b {
+            color: var(--hb-text);
+        }
+
+        .rem-chart {
+            height: 200px;
+            margin-bottom: 0.6rem;
+        }
+
+        .rem-table-wrap {
+            overflow-x: auto;
+        }
+
+        .rem-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .rem-table th,
+        .rem-table td {
+            padding: 0.4rem 0.45rem;
+            text-align: right;
+            border-bottom: 1px solid var(--hb-border);
+            white-space: nowrap;
+        }
+
+        .rem-table th:first-child,
+        .rem-table td:first-child {
+            text-align: left;
+        }
+
+        .rem-table th {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--hb-text-muted);
+        }
+
+        .rem-row {
+            cursor: pointer;
+        }
+
+        .rem-row:hover td {
+            background: var(--hb-card-bg);
+        }
+
+        .rem-row .rem-caret {
+            display: inline-block;
+            font-size: 0.6rem;
+            color: var(--hb-text-muted);
+            margin-right: 0.3rem;
+            transition: transform 0.15s ease;
+        }
+
+        .rem-row.open .rem-caret {
+            transform: rotate(90deg);
+        }
+
+        .rem-row.empty-day td {
+            color: var(--hb-text-muted);
+        }
+
+        .rem-detail td {
+            text-align: left;
+            white-space: normal;
+            background: var(--hb-bg);
+        }
+
+        .rem-list {
+            list-style: none;
+            margin: 0;
+            padding: 0.2rem 0;
+        }
+
+        .rem-list li {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.15rem 0.5rem;
+            padding: 0.25rem 0;
+        }
+
+        .rem-list .rem-meta {
+            font-size: 0.76rem;
+            color: var(--hb-text-muted);
+        }
+
+        .rem-status {
+            display: inline-block;
+            min-width: 5.2rem;
+            padding: 0.05rem 0.45rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-align: center;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -526,6 +681,13 @@
         <header class="header">
             <h1>Admin panel</h1>
         </header>
+
+        <section class="rem-stats" id="remStats">
+            <button type="button" class="rem-toggle" id="remToggle" aria-expanded="false">
+                <span class="rem-caret">▶</span>Reminders sent &amp; answered
+            </button>
+            <div class="rem-body" id="remBody" hidden></div>
+        </section>
 
         <section class="filters" id="filters">
             <div class="filters-grid">
@@ -1110,6 +1272,159 @@
                     toggleHeatmap(toggle);
                 }
             });
+            // ---- Reminder delivery stats (lazy: nothing is fetched until expanded) ----
+            var REM_KEYS = ['complete', 'skip', 'drop', 'noAnswer'];
+            var REM_COLORS = { complete: HM_COLORS[3], skip: HM_COLORS[2], drop: HM_COLORS[1], noAnswer: '#B8B8B0', pause: '#7C8DB5' };
+            var REM_LABELS = { complete: 'Done', skip: 'Skipped', drop: 'Dropped', noAnswer: 'No answer', pause: 'Paused' };
+            var remLoaded = false;
+            var remChart = null;
+
+            async function postAdminJson(path) {
+                var initData = getInitData();
+                if (!initData) throw new Error('Open this page from Telegram (initData missing).');
+                var res = await fetch(path, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData: initData })
+                });
+                var body = await res.json().catch(function () { return {}; });
+                if (res.status === 403) throw new Error('Access denied.');
+                if (!res.ok) throw new Error(body.error || ('Error ' + res.status));
+                return body;
+            }
+
+            function remPct(n, d) {
+                return d ? Math.round(n * 100 / d) + '%' : '—';
+            }
+
+            function renderRemDays(days) {
+                var t = { sent: 0, complete: 0, skip: 0, drop: 0, noAnswer: 0, paused: 0 };
+                days.forEach(function (d) {
+                    Object.keys(t).forEach(function (k) { t[k] += d[k] || 0; });
+                });
+                var answered = t.complete + t.skip + t.drop;
+
+                var html = '<p class="rem-note">Last ' + days.length + ' days. Days are each user\'s local date; ' +
+                    'only answers to a sent reminder count. Tap a day to see who got what.</p>';
+                html += '<div class="rem-totals">' +
+                    '<span>Sent <b>' + t.sent + '</b></span>' +
+                    '<span>Answered <b>' + answered + '</b> (' + remPct(answered, t.sent) + ')</span>' +
+                    '<span>Done <b>' + t.complete + '</b></span>' +
+                    '<span>Skipped <b>' + t.skip + '</b></span>' +
+                    '<span>Dropped <b>' + t.drop + '</b></span>' +
+                    '<span>No answer <b>' + t.noAnswer + '</b></span>' +
+                    '<span>Auto-paused <b>' + t.paused + '</b></span>' +
+                    '</div>';
+                if (t.sent + t.paused > 0) html += '<div class="rem-chart" id="remChart"></div>';
+
+                html += '<div class="rem-table-wrap"><table class="rem-table"><thead><tr>' +
+                    '<th>Date</th><th>Sent</th><th>Done</th><th>Skip</th><th>Drop</th><th>No ans.</th><th>Rate</th><th>Paused</th><th>Users</th>' +
+                    '</tr></thead><tbody>';
+                days.forEach(function (d) {
+                    var empty = d.sent + d.paused === 0;
+                    var answeredDay = d.complete + d.skip + d.drop;
+                    html += '<tr class="rem-row' + (empty ? ' empty-day' : '') + '" data-date="' + d.date + '">' +
+                        '<td><span class="rem-caret">▶</span>' + d.date + '</td>' +
+                        '<td>' + d.sent + (d.sends > d.sent ? ' <span class="rem-meta" title="incl. Check later re-asks">(' + d.sends + ')</span>' : '') + '</td>' +
+                        '<td>' + d.complete + '</td><td>' + d.skip + '</td><td>' + d.drop + '</td><td>' + d.noAnswer + '</td>' +
+                        '<td>' + remPct(answeredDay, d.sent) + '</td><td>' + d.paused + '</td><td>' + d.users + '</td></tr>' +
+                        '<tr class="rem-detail" data-date="' + d.date + '" hidden><td colspan="9"></td></tr>';
+                });
+                html += '</tbody></table></div>';
+                document.getElementById('remBody').innerHTML = html;
+
+                var chartEl = document.getElementById('remChart');
+                if (chartEl && typeof echarts !== 'undefined') {
+                    var asc = days.slice().reverse();
+                    var series = REM_KEYS.map(function (k) {
+                        return {
+                            name: REM_LABELS[k], type: 'bar', stack: 'reminders', barMaxWidth: 18,
+                            itemStyle: { color: REM_COLORS[k] },
+                            data: asc.map(function (d) { return d[k]; })
+                        };
+                    });
+                    series.push({
+                        name: REM_LABELS.pause, type: 'line', symbolSize: 4,
+                        itemStyle: { color: REM_COLORS.pause },
+                        data: asc.map(function (d) { return d.paused; })
+                    });
+                    remChart = echarts.init(chartEl, null, { renderer: 'canvas' });
+                    remChart.setOption({
+                        animation: false,
+                        grid: { left: 30, right: 8, top: 30, bottom: 22 },
+                        legend: { top: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                        xAxis: { type: 'category', data: asc.map(function (d) { return d.date.slice(5); }), axisLabel: { fontSize: 10 } },
+                        yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 10 } },
+                        series: series
+                    });
+                }
+            }
+
+            function renderRemEntries(entries) {
+                if (!entries.length) return '<p class="rem-meta">Nothing sent this day.</p>';
+                return '<ul class="rem-list">' + entries.map(function (e) {
+                    var key = e.kind === 'pause' ? 'pause' : (e.response || 'noAnswer');
+                    var who = e.username ? escapeHtml(e.username) : 'User';
+                    var meta = 'id ' + e.userId + ' · sent ' + String(e.sentAt || '').slice(11, 16) + ' UTC';
+                    if (e.sends > 1) meta += ' · asked ' + e.sends + '×';
+                    if (e.respondedAt) meta += ' · answered ' + String(e.respondedAt).slice(0, 16).replace('T', ' ') + ' UTC';
+                    return '<li><span class="rem-status" style="background:' + REM_COLORS[key] + '">' + REM_LABELS[key] + '</span>' +
+                        '<b>' + who + '</b><span>' + escapeHtml(e.habitName || '') + '</span>' +
+                        '<span class="rem-meta">' + meta + '</span></li>';
+                }).join('') + '</ul>';
+            }
+
+            async function toggleRemDay(row) {
+                var date = row.getAttribute('data-date');
+                var detail = row.nextElementSibling;
+                if (!detail || !detail.classList.contains('rem-detail')) return;
+                var opening = detail.hidden;
+                detail.hidden = !opening;
+                row.classList.toggle('open', opening);
+                if (!opening || detail.getAttribute('data-loaded') === '1') return;
+
+                var cell = detail.firstElementChild;
+                cell.innerHTML = '<p class="rem-meta">Loading…</p>';
+                try {
+                    var body = await postAdminJson('/api/reminder-stats?date=' + encodeURIComponent(date));
+                    cell.innerHTML = renderRemEntries(body.entries || []);
+                    detail.setAttribute('data-loaded', '1');
+                } catch (err) {
+                    cell.innerHTML = '<p class="error">' + escapeHtml(err.message || 'Network error.') + '</p>';
+                }
+            }
+
+            async function toggleRemStats() {
+                var btn = document.getElementById('remToggle');
+                var bodyEl = document.getElementById('remBody');
+                var opening = bodyEl.hidden;
+                bodyEl.hidden = !opening;
+                btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+                if (!opening) return;
+                if (remLoaded) {
+                    if (remChart) remChart.resize();
+                    return;
+                }
+                bodyEl.innerHTML = '<p class="loading">Loading…</p>';
+                try {
+                    var body = await postAdminJson('/api/reminder-stats?days=30');
+                    renderRemDays(body.days || []);
+                    remLoaded = true;
+                } catch (err) {
+                    bodyEl.innerHTML = '<p class="error">' + escapeHtml(err.message || 'Network error.') + '</p>';
+                }
+            }
+
+            document.getElementById('remToggle').addEventListener('click', toggleRemStats);
+            document.getElementById('remBody').addEventListener('click', function (e) {
+                var row = e.target.closest && e.target.closest('.rem-row');
+                if (row) toggleRemDay(row);
+            });
+            window.addEventListener('resize', function () {
+                if (remChart) remChart.resize();
+            });
+
             load();
         })();
     </script>

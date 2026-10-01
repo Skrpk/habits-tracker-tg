@@ -1,4 +1,6 @@
 import { IHabitRepository } from '../repositories/IHabitRepository';
+import { IReminderLogRepository } from '../repositories/IReminderLogRepository';
+import { ReminderResponse } from '../entities/ReminderLog';
 import { Habit, SkippedDay, DroppedDay, CheckedDay, ReminderSchedule } from '../entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { checkForNewBadges, awardBadges } from '../utils/HabitBadges';
@@ -146,7 +148,26 @@ function recomputeDailyStreak(
 }
 
 export class RecordHabitCheckUseCase {
-  constructor(private habitRepository: IHabitRepository) {}
+  constructor(
+    private habitRepository: IHabitRepository,
+    private reminderLog?: IReminderLogRepository,
+  ) {}
+
+  /**
+   * Admin reminder stats: attach this answer to the day's sent reminder, if any.
+   * Best-effort — stats must never fail a check.
+   */
+  private async logReminderResponse(checkDate: string, userId: number, habitId: string, response: ReminderResponse): Promise<void> {
+    if (!this.reminderLog) return;
+    try {
+      await this.reminderLog.recordResponse(checkDate, userId, habitId, response);
+    } catch (error) {
+      Logger.warn('Failed to log reminder response', {
+        userId, habitId, checkDate, response,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
 
   /**
    * The calendar day a check applies to. A reminder passes an explicit `targetDate`
@@ -336,6 +357,8 @@ export class RecordHabitCheckUseCase {
       });
     }
 
+    await this.logReminderResponse(checkDate, userId, habitId, completed ? 'complete' : 'drop');
+
     const updatedHabits = await this.habitRepository.getUserHabits(userId);
     const updatedHabit = updatedHabits!.habits.find(h => h.id === habitId)!;
 
@@ -414,6 +437,8 @@ export class RecordHabitCheckUseCase {
       missedReminderCount: 0,
       remindersPausedUntil: undefined,
     });
+
+    await this.logReminderResponse(checkDate, userId, habitId, 'skip');
 
     const updatedHabits = await this.habitRepository.getUserHabits(userId);
     const updatedHabit = updatedHabits!.habits.find(h => h.id === habitId)!;

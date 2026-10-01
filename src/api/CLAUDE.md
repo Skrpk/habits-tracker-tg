@@ -2,14 +2,14 @@
 
 This directory holds code shared by the Vercel serverless entrypoints in the top-level `api/` and the local dev server — not the entrypoints themselves. Read the root `CLAUDE.md` first.
 
-- `admin-users-shared.ts` — auth + filtering behind the admin `POST /api/users` and `POST /api/send-message`.
+- `admin-users-shared.ts` — auth + filtering behind the admin `POST /api/users`, `POST /api/send-message`, `POST /api/grant-lifetime-premium`, and `POST /api/reminder-stats` (`runAdminReminderStats`; see root gotcha #16).
 - `analytics-shared.ts` — analytics computation; `getAnalyticsInsights` currently **early-returns `{}`** (OpenAI disabled).
 - `reminders-server.ts` — local HTTP server: serves `public/` static files and mirrors the production POST routes.
 - `webhook.ts` — shared webhook handling.
 
 ## Prod ↔ local parity (important)
 
-Each production route in the top-level `api/*.ts` has a counterpart the local `reminders-server.ts` must mirror: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`, `/api/grant-lifetime-premium`. When you add or change a route's contract, update **both** the serverless entrypoint and the local server, or local dev silently diverges from production.
+Each production route in the top-level `api/*.ts` has a counterpart the local `reminders-server.ts` must mirror: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`, `/api/grant-lifetime-premium`, `/api/reminder-stats`. When you add or change a route's contract, update **both** the serverless entrypoint and the local server, or local dev silently diverges from production.
 
 The local server matches routes on URL `pathname` (ignoring the query string) so `?filter=…` requests work. Keep that pattern.
 

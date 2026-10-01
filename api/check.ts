@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { VercelKVHabitRepository } from '../src/infrastructure/repositories/VercelKVHabitRepository';
+import { RedisReminderLogRepository } from '../src/infrastructure/repositories/RedisReminderLogRepository';
 import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCase';
 import { SetUserPreferencesUseCase } from '../src/domain/use-cases/SetUserPreferencesUseCase';
 import { RecordHabitCheckUseCase } from '../src/domain/use-cases/RecordHabitCheckUseCase';
@@ -115,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? targetDate.trim()
       : undefined;
 
-    const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+    const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository, new RedisReminderLogRepository());
 
     const noteStr = typeof note === 'string' && note.trim().length > 0 ? note.trim().slice(0, 500) : undefined;
 

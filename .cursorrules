@@ -101,7 +101,8 @@ The project follows **Clean Architecture** principles with clear separation of c
    - **POST `/api/users`**: `initData` + query filters `isAdmin` (maps to **premium**), `isBlocked`, `Timezone` (must be in `ALLOWED_TIMEZONE_IDS`), optional `userId` (exact Telegram id), optional `consentDateFrom` / `consentDateTo` (inclusive `YYYY-MM-DD` on `consentDate`). Returns active users with habits (admin-only)
    - **POST `/api/send-message`**: same auth; body `{ initData, message, id?, isAdmin?, isBlocked?, Timezone? }`. With `id`, send one DM to that active user; without `id`, broadcast to all users matching filters; Telegram `sendMessage` via `fetch`, batches of 1000 with `Promise.allSettled`; `vercel.json` sets `api/send-message.ts` `maxDuration` 300
    - **POST `/api/grant-lifetime-premium`**: same auth; body `{ initData, targetUserId, grant: boolean }` — set or clear `isLifetimePremium` (grant `true` also sets `premium: true`)
-   - Shared logic: `src/api/admin-users-shared.ts`; local dev: `reminders-server` exposes `POST /api/users`, `POST /api/send-message`, and `POST /api/grant-lifetime-premium` (match `pathname` so query strings work)
+   - **POST `/api/reminder-stats`**: same auth; `?days=N` (1–90, default 30) → per-day summaries newest first, or `?date=YYYY-MM-DD` → that day's entries (see §15 Reminder delivery log)
+   - Shared logic: `src/api/admin-users-shared.ts`; local dev: `reminders-server` exposes `POST /api/users`, `POST /api/send-message`, `POST /api/grant-lifetime-premium`, and `POST /api/reminder-stats` (match `pathname` so query strings work)
 
 8. **Ops notifications channel**
    - When `NOTIFICATION_CHANNEL_ID` is set, the bot posts to that channel for new users, analytics events, habit reactions, etc.
@@ -122,6 +123,7 @@ habits-tracker/
 │   ├── users.ts                 # Admin: list users (POST + initData)
 │   ├── send-message.ts          # Admin: broadcast / DM (POST + initData)
 │   ├── grant-lifetime-premium.ts # Admin: grant/revoke lifetime premium (POST + initData)
+│   ├── reminder-stats.ts        # Admin: reminder delivery/answer stats (POST + initData)
 │   └── setup-webhook.ts         # Manual webhook setup endpoint
 ├── src/
 │   ├── constants/               # e.g. allowedTimezones.ts
@@ -210,7 +212,7 @@ habits-tracker/
    - Handles updates via long polling
 
 3. **Reminders Server**: `src/api/reminders-server.ts`
-   - Serves static files from `public/` and mirrors production POST routes where needed: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`, `/api/grant-lifetime-premium`
+   - Serves static files from `public/` and mirrors production POST routes where needed: `/api/reminders`, `/api/analytics`, `/api/analytics-insights`, `/api/check`, `/api/users`, `/api/send-message`, `/api/grant-lifetime-premium`, `/api/reminder-stats`
    - API path matching uses URL `pathname` (ignores query string) so `?filters` works
    - Called by Docker cron container for reminders
 
@@ -286,6 +288,7 @@ interface UserPreferences {
 - Redis keys: `user:{userId}:preferences` for user preferences (timezone)
 - Redis keys: `active_users` for tracking users with habits
 - Redis keys: `conversation_state:{userId}` for multi-step conversations
+- Redis keys: `reminders:log:{YYYY-MM-DD}` — hash, reminder delivery log per user-local day (expires 90 days after that day; see Important Patterns §15)
 
 ## Environment Variables
 
@@ -370,7 +373,7 @@ interface UserPreferences {
 
 13. **`vercel.json`**:
    - `rewrites` for `/admin`, `/check`, `/schedule`, analytics routes, etc.
-   - `functions` includes per-route `maxDuration` (e.g. `api/users.ts` 30s, `api/send-message.ts` 300s, `api/reminders.ts` 60s)
+   - `functions` includes per-route `maxDuration` (e.g. `api/users.ts` 30s, `api/reminder-stats.ts` 30s, `api/send-message.ts` 300s, `api/reminders.ts` 60s)
 
 14. **Admin Activity Heatmap**:
    - `/api/users` returns `habit.activity = { start, end, days }`; `days` is one char per day (`0` none, `1` dropped, `2` skipped, `3` completed), built by `buildHabitActivity()` in `src/domain/utils/HabitHeatmap.ts` over a trailing 365-day window clamped to `createdAt`. Compact on purpose — a page of 25 users can hold hundreds of habits.
@@ -379,6 +382,14 @@ interface UserPreferences {
    - Disabled / reminders-off habits get no inferred completions, so the grid is empty by design — the card carries a note.
    - The analytics MiniApp shows the same `activity` per habit, but drawn with the Chart.js `matrix` controller (`chartjs-chart-matrix`, ~1.7KB gz) instead of ECharts (~369KB gz) — that page already loads Chart.js and is user-facing. Registered as `charts.heatmap` so `showHabitsList()` disposes it; axes pin ticks via `afterBuildTicks`.
    - Both analytics chart blocks (`Streak Over Time`, `Activity Breakdown`) share one shell: `<h3>` + `.chart-scroll > .chart-canvas-wrap > canvas`. Keep titles in the `<h3>`, not Chart.js `plugins.title` — an in-canvas title scrolls off. Streak width = `points × STREAK_PX_PER_POINT`; `.chart-canvas-wrap { min-width: 100% }` handles short histories, so don't measure `clientWidth` (it's 0 before layout).
+
+15. **Reminder Delivery Log (admin stats)**:
+   - One Redis hash per **user-local** day, `reminders:log:{targetDate}`, field `{kind}:{userId}:{habitId}` → JSON `ReminderLogEntry` (`src/domain/entities/ReminderLog.ts`). `kind` is `reminder` or `pause` (auto-pause notice). `EXPIREAT` = targetDate + 91 days (`REMINDER_LOG_RETENTION_DAYS` = 90). Implemented by `RedisReminderLogRepository` behind `IReminderLogRepository`; `kv.ts` gained `hGet`/`hSet`/`hGetAll`/`expireAt`.
+   - **Writes on send:** both cron loops (`api/reminders.ts`, `reminders-server.ts` — keep in parity) call `logRemindersSentBestEffort` for `pausedNow` notices and for `toSend` habits **in `sentIds` only** (same persist-after-send rule as auto-pause). A same-day "Check later" re-ask bumps `sends` on the existing entry. Logging never throws into the cron.
+   - **Writes on answer:** `RecordHabitCheckUseCase` takes an optional `IReminderLogRepository` and, after a real complete/drop/skip (not the "already checked" no-op), calls `recordResponse(checkDate, …)` best-effort. It only updates an existing `reminder` entry — **proactive checks with no reminder that day are deliberately not counted**. Latest answer wins (drop → later complete shows complete). Every construction site passes `new RedisReminderLogRepository()` (webhook ×2, reminders cron, check API, local server ×2, `src/index.ts`).
+   - **Read:** `runAdminReminderStats` (`admin-users-shared.ts`) behind `POST /api/reminder-stats`. Looks one day past UTC today (users east of UTC) and keeps that day only if it has entries. Summaries via `summarizeReminderDay` (`src/domain/utils/ReminderStats.ts`): `sent` counts each habit-reminder once, `sends` includes re-asks, `noAnswer` = sent with no response yet.
+   - **UI:** collapsed "Reminders sent & answered" section at the top of `admin.html` (both copies); fetched only on first expand. ECharts stacked bars (done/skipped/dropped/no answer) + paused line, a per-day table, and a click-to-expand per-day list of user · habit · status (fetched lazily per day).
+   - History starts from deploy — there is no backfill.
 
 ## Build Process
 

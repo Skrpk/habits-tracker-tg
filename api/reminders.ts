@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { VercelKVHabitRepository } from '../src/infrastructure/repositories/VercelKVHabitRepository';
+import { RedisReminderLogRepository, logRemindersSentBestEffort } from '../src/infrastructure/repositories/RedisReminderLogRepository';
 import { TelegramBotService } from '../src/presentation/telegram/TelegramBot';
 import { CreateHabitUseCase } from '../src/domain/use-cases/CreateHabitUseCase';
 import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCase';
@@ -27,7 +28,7 @@ function getBotService(): TelegramBotService {
       const habitRepository = new VercelKVHabitRepository();
       const createHabitUseCase = new CreateHabitUseCase(habitRepository);
       const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
-      const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+      const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository, new RedisReminderLogRepository());
       const deleteHabitUseCase = new DeleteHabitUseCase(habitRepository);
       const getHabitsToCheckUseCase = new GetHabitsToCheckUseCase(habitRepository);
       const setHabitReminderScheduleUseCase = new SetHabitReminderScheduleUseCase(habitRepository);
@@ -167,6 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Send reminders grouped by user (targetDate = user's "today" in their timezone)
     const evaluateReminderPauseUseCase = new EvaluateReminderPauseUseCase();
+    const reminderLog = new RedisReminderLogRepository();
     for (const [userId, habits] of usersToNotify) {
       try {
         const prefs = await habitRepository.getUserPreferences(userId);
@@ -187,7 +189,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await botService.sendPauseNotice(userId, habit.name, habit.id);
         }
 
+        // Admin reminder stats (best-effort, after delivery — see RedisReminderLogRepository).
+        const username = prefs?.user?.username || prefs?.user?.first_name;
+        const logBase = { userId, username, targetDate };
+        await logRemindersSentBestEffort(reminderLog, pausedNow.map(({ habit }) => (
+          { ...logBase, kind: 'pause' as const, habitId: habit.id, habitName: habit.name }
+        )));
+
         const sentIds = await botService.sendHabitReminders(userId, toSend.map(t => t.habit), targetDate);
+        await logRemindersSentBestEffort(reminderLog, toSend
+          .filter(({ habit }) => sentIds.includes(habit.id))
+          .map(({ habit }) => ({ ...logBase, kind: 'reminder' as const, habitId: habit.id, habitName: habit.name })));
         for (const { habit, update } of toSend) {
           if (Object.keys(update).length > 0 && sentIds.includes(habit.id)) {
             await habitRepository.updateHabit(userId, habit.id, update); // persist only what shipped

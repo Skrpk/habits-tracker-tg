@@ -2,6 +2,7 @@ import http from 'http';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { join, extname, resolve } from 'path';
 import { VercelKVHabitRepository } from '../infrastructure/repositories/VercelKVHabitRepository';
+import { RedisReminderLogRepository, logRemindersSentBestEffort } from '../infrastructure/repositories/RedisReminderLogRepository';
 import { TelegramBotService } from '../presentation/telegram/TelegramBot';
 import { GetHabitsDueForReminderUseCase } from '../domain/use-cases/GetHabitsDueForReminderUseCase';
 import { EvaluateReminderPauseUseCase } from '../domain/use-cases/EvaluateReminderPauseUseCase';
@@ -20,6 +21,8 @@ import { validateTelegramInitData, parseTelegramInitData, isAuthDateValid } from
 import { getAnalyticsData, getAnalyticsInsights } from './analytics-shared';
 import {
   runAdminUsersList,
+  runAdminReminderStats,
+  logAdminReminderStatsError,
   logAdminUsersError,
   runAdminSendMessage,
   logAdminSendMessageError,
@@ -139,6 +142,7 @@ export async function handleRemindersEndpoint(
 
     // Send reminders grouped by user (targetDate = user's "today" in their timezone)
     const evaluateReminderPauseUseCase = new EvaluateReminderPauseUseCase();
+    const reminderLog = new RedisReminderLogRepository();
     for (const [userId, habits] of usersToNotify) {
       try {
         const prefs = await habitRepository.getUserPreferences(userId);
@@ -158,7 +162,17 @@ export async function handleRemindersEndpoint(
           await botService.sendPauseNotice(userId, habit.name, habit.id);
         }
 
+        // Admin reminder stats (best-effort, after delivery — see RedisReminderLogRepository).
+        const username = prefs?.user?.username || prefs?.user?.first_name;
+        const logBase = { userId, username, targetDate };
+        await logRemindersSentBestEffort(reminderLog, pausedNow.map(({ habit }) => (
+          { ...logBase, kind: 'pause' as const, habitId: habit.id, habitName: habit.name }
+        )));
+
         const sentIds = await botService.sendHabitReminders(userId, toSend.map(t => t.habit), targetDate);
+        await logRemindersSentBestEffort(reminderLog, toSend
+          .filter(({ habit }) => sentIds.includes(habit.id))
+          .map(({ habit }) => ({ ...logBase, kind: 'reminder' as const, habitId: habit.id, habitName: habit.name })));
         for (const { habit, update } of toSend) {
           if (Object.keys(update).length > 0 && sentIds.includes(habit.id)) {
             await habitRepository.updateHabit(userId, habit.id, update); // persist only what shipped
@@ -478,7 +492,7 @@ export async function handleCheckEndpoint(
       ? targetDate.trim()
       : new Date().toISOString().split('T')[0];
 
-    const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+    const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository, new RedisReminderLogRepository());
     const noteStr = typeof note === 'string' && note.trim().length > 0 ? note.trim().slice(0, 500) : undefined;
 
     let updatedHabit;
@@ -585,6 +599,50 @@ export async function handleUsersEndpoint(
     setJson(result.status, result.body);
   } catch (error) {
     logAdminUsersError(error);
+    setJson(500, { error: 'Internal server error' });
+  }
+}
+
+export async function handleReminderStatsEndpoint(
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<void> {
+  const setJson = (code: number, body: object) => {
+    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  try {
+    if (req.method !== 'POST') {
+      setJson(405, { error: 'Method not allowed' });
+      return;
+    }
+
+    const body = await readJsonBody(req);
+    const initData = body.initData;
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      Logger.error('TELEGRAM_BOT_TOKEN not configured');
+      setJson(500, { error: 'Server configuration error' });
+      return;
+    }
+
+    const urlObj = new URL(req.url || '/', 'http://localhost');
+    const query: Record<string, string | string[] | undefined> = {};
+    urlObj.searchParams.forEach((value, key) => {
+      if (query[key] === undefined) query[key] = value;
+    });
+
+    const result = await runAdminReminderStats(
+      typeof initData === 'string' ? initData : '',
+      botToken,
+      query,
+      new RedisReminderLogRepository()
+    );
+    setJson(result.status, result.body);
+  } catch (error) {
+    logAdminReminderStatsError(error);
     setJson(500, { error: 'Internal server error' });
   }
 }
@@ -817,6 +875,12 @@ export function createRemindersServer(
         return;
       }
 
+      // Admin: reminder delivery stats (same as production api/reminder-stats)
+      if (req.method === 'POST' && pathname === '/api/reminder-stats') {
+        await handleReminderStatsEndpoint(req, res);
+        return;
+      }
+
       // Admin: send message (same as production api/send-message)
       if (req.method === 'POST' && pathname === '/api/send-message') {
         await handleSendMessageEndpoint(req, res, habitRepository);
@@ -869,7 +933,7 @@ if (require.main === module) {
 
   const createHabitUseCase = new CreateHabitUseCase(habitRepository);
   const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
-  const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+  const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository, new RedisReminderLogRepository());
   const deleteHabitUseCase = new DeleteHabitUseCase(habitRepository);
   const getHabitsToCheckUseCase = new GetHabitsToCheckUseCase(habitRepository);
   const setHabitReminderScheduleUseCase = new SetHabitReminderScheduleUseCase(habitRepository);

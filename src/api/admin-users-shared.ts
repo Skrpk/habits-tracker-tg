@@ -8,6 +8,8 @@ import type { UserPreferences } from '../domain/entities/UserPreferences';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../domain/use-cases/SubscriptionUseCase';
 import { CheckHabitReminderDueUseCase } from '../domain/use-cases/CheckHabitReminderDueUseCase';
 import { buildHabitActivity } from '../domain/utils/HabitHeatmap';
+import type { IReminderLogRepository } from '../domain/repositories/IReminderLogRepository';
+import { summarizeReminderDay, trailingDates } from '../domain/utils/ReminderStats';
 
 const checkReminderDue = new CheckHabitReminderDueUseCase();
 
@@ -366,6 +368,77 @@ export async function runAdminUsersList(
   rows.sort((a, b) => leadArrivedAt(b) - leadArrivedAt(a) || b.userId - a.userId);
 
   return { status: 200, body: { users: rows } };
+}
+
+const REMINDER_STATS_DEFAULT_DAYS = 30;
+const REMINDER_STATS_MAX_DAYS = 90; // = retention; older day keys have expired
+
+/**
+ * Admin reminder stats. `?date=YYYY-MM-DD` → that day's entries (who got which
+ * reminder and how they answered); otherwise `?days=N` (default 30, max 90) →
+ * per-day summaries, newest first. Days are user-local `targetDate`s.
+ */
+export async function runAdminReminderStats(
+  initData: string,
+  botToken: string,
+  query: Record<string, string | string[] | undefined>,
+  reminderLog: IReminderLogRepository,
+  now: Date = new Date()
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  if (!initData || typeof initData !== 'string') {
+    return { status: 400, body: { error: 'initData is required' } };
+  }
+
+  let userId: number;
+  try {
+    ({ userId } = authenticateRequest(initData, botToken));
+  } catch (authError: unknown) {
+    const err = authError as { status?: number; message?: string };
+    return { status: err.status || 401, body: { error: err.message } };
+  }
+
+  const adminIds = parseAdminUsers();
+  if (!adminIds.includes(userId)) {
+    return { status: 403, body: { error: 'Forbidden' } };
+  }
+
+  const date = firstQueryString(query.date);
+  if (date !== undefined) {
+    if (!isValidIsoDateOnly(date)) {
+      return { status: 400, body: { error: 'Invalid date' } };
+    }
+    const entries = await reminderLog.getDay(date);
+    entries.sort((a, b) =>
+      a.kind.localeCompare(b.kind) ||
+      (a.username || String(a.userId)).localeCompare(b.username || String(b.userId)) ||
+      a.habitName.localeCompare(b.habitName));
+    return { status: 200, body: { date, summary: summarizeReminderDay(date, entries), entries } };
+  }
+
+  const daysRaw = firstQueryString(query.days);
+  let days = REMINDER_STATS_DEFAULT_DAYS;
+  if (daysRaw !== undefined) {
+    if (!/^\d+$/.test(daysRaw) || Number(daysRaw) < 1 || Number(daysRaw) > REMINDER_STATS_MAX_DAYS) {
+      return { status: 400, body: { error: `days must be 1-${REMINDER_STATS_MAX_DAYS}` } };
+    }
+    days = Number(daysRaw);
+  }
+
+  // Users east of UTC can already be on UTC "tomorrow", so look one day ahead
+  // and keep that day only if it actually has entries.
+  const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
+  const dates = trailingDates(tomorrow, days + 1);
+  const perDay = await Promise.all(dates.map(d => reminderLog.getDay(d)));
+  let summaries = dates.map((d, i) => summarizeReminderDay(d, perDay[i]));
+  summaries = perDay[0].length > 0 ? summaries.slice(0, days) : summaries.slice(1);
+
+  return { status: 200, body: { days: summaries } };
+}
+
+export function logAdminReminderStatsError(error: unknown): void {
+  Logger.error('Error in reminder-stats endpoint', {
+    error: error instanceof Error ? error.message : 'Unknown error',
+  });
 }
 
 function parseOptionalTargetUserId(body: Record<string, unknown>): number | undefined {

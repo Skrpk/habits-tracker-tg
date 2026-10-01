@@ -3,6 +3,15 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const mockProcessUpdate = vi.fn().mockResolvedValue(undefined);
 
+vi.mock('../../src/infrastructure/repositories/RedisReminderLogRepository', () => ({
+  RedisReminderLogRepository: vi.fn().mockImplementation(() => ({
+    recordSent: vi.fn().mockResolvedValue(undefined),
+    recordResponse: vi.fn().mockResolvedValue(undefined),
+    getDay: vi.fn().mockResolvedValue([]),
+  })),
+  logRemindersSentBestEffort: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/infrastructure/repositories/VercelKVHabitRepository', () => ({
   VercelKVHabitRepository: vi.fn().mockImplementation(() => ({})),
 }));

@@ -684,3 +684,50 @@ describe('RecordHabitCheckUseCase', () => {
     });
   });
 });
+
+describe('RecordHabitCheckUseCase — admin reminder stats', () => {
+  function setup(habit: Habit, logOverrides: Record<string, unknown> = {}) {
+    const repo = {
+      getUserHabits: vi.fn().mockResolvedValue({ habits: [habit] }),
+      updateHabit: vi.fn().mockResolvedValue(undefined),
+      getUserPreferences: vi.fn().mockResolvedValue({ timezone: 'UTC' }),
+    };
+    const log = {
+      recordSent: vi.fn(),
+      recordResponse: vi.fn().mockResolvedValue(undefined),
+      getDay: vi.fn(),
+      ...logOverrides,
+    };
+    const useCase = new RecordHabitCheckUseCase(repo as unknown as IHabitRepository, log);
+    return { repo, log, useCase };
+  }
+
+  const habit = () => createHabit({ streak: 2, lastCheckedDate: '2025-02-13', createdAt: new Date('2025-02-11') });
+
+  it('logs complete / drop / skip against the check date', async () => {
+    let s = setup(habit());
+    await s.useCase.execute(100, 'habit-1', true, 'u', '2025-02-14');
+    expect(s.log.recordResponse).toHaveBeenCalledWith('2025-02-14', 100, 'habit-1', 'complete');
+
+    s = setup(habit());
+    await s.useCase.execute(100, 'habit-1', false, 'u', '2025-02-14');
+    expect(s.log.recordResponse).toHaveBeenCalledWith('2025-02-14', 100, 'habit-1', 'drop');
+
+    s = setup(habit());
+    await s.useCase.skipHabit(100, 'habit-1', 'u', '2025-02-14');
+    expect(s.log.recordResponse).toHaveBeenCalledWith('2025-02-14', 100, 'habit-1', 'skip');
+  });
+
+  it('does not log when the day was already checked (no-op answer)', async () => {
+    const s = setup(habit());
+    await s.useCase.execute(100, 'habit-1', true, 'u', '2025-02-13');
+    await s.useCase.skipHabit(100, 'habit-1', 'u', '2025-02-13');
+    expect(s.log.recordResponse).not.toHaveBeenCalled();
+  });
+
+  it('a failing stats write never fails the check', async () => {
+    const s = setup(habit(), { recordResponse: vi.fn().mockRejectedValue(new Error('redis down')) });
+    await expect(s.useCase.execute(100, 'habit-1', true, 'u', '2025-02-14')).resolves.toBeDefined();
+    expect(s.repo.updateHabit).toHaveBeenCalled();
+  });
+});

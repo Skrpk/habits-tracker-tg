@@ -1,4 +1,5 @@
 import { VercelKVHabitRepository } from './infrastructure/repositories/VercelKVHabitRepository';
+import { RedisReminderLogRepository } from './infrastructure/repositories/RedisReminderLogRepository';
 import { CreateHabitUseCase } from './domain/use-cases/CreateHabitUseCase';
 import { GetUserHabitsUseCase } from './domain/use-cases/GetUserHabitsUseCase';
 import { RecordHabitCheckUseCase } from './domain/use-cases/RecordHabitCheckUseCase';
@@ -20,7 +21,7 @@ if (!botToken) {
 const habitRepository = new VercelKVHabitRepository();
 const createHabitUseCase = new CreateHabitUseCase(habitRepository);
 const getUserHabitsUseCase = new GetUserHabitsUseCase(habitRepository);
-const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository);
+const recordHabitCheckUseCase = new RecordHabitCheckUseCase(habitRepository, new RedisReminderLogRepository());
 const deleteHabitUseCase = new DeleteHabitUseCase(habitRepository);
 const getHabitsToCheckUseCase = new GetHabitsToCheckUseCase(habitRepository);
 const setHabitReminderScheduleUseCase = new SetHabitReminderScheduleUseCase(habitRepository);

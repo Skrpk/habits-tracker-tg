@@ -132,6 +132,42 @@ if (hasRedisUrl || useLocalRedis) {
         throw error;
       }
     },
+    // Hash helpers (values JSON-encoded, like get/set). Used by the reminder log.
+    hGet: async <T>(key: string, field: string): Promise<T | null> => {
+      try {
+        await ensureConnected();
+        const value = await redisClient.hGet(key, field);
+        return value ? JSON.parse(value) : null;
+      } catch (error) {
+        console.error('Error hGet from Redis:', {
+          key,
+          field,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        return null;
+      }
+    },
+    hSet: async (key: string, field: string, value: any): Promise<void> => {
+      await ensureConnected();
+      await redisClient.hSet(key, field, JSON.stringify(value));
+    },
+    hGetAll: async <T>(key: string): Promise<Record<string, T>> => {
+      await ensureConnected();
+      const raw: Record<string, string> = await redisClient.hGetAll(key);
+      const out: Record<string, T> = {};
+      for (const [field, value] of Object.entries(raw || {})) {
+        try {
+          out[field] = JSON.parse(value);
+        } catch {
+          // Skip a corrupt field rather than failing the whole read.
+        }
+      }
+      return out;
+    },
+    expireAt: async (key: string, unixSeconds: number): Promise<void> => {
+      await ensureConnected();
+      await redisClient.expireAt(key, unixSeconds);
+    },
     del: async (key: string): Promise<void> => {
       try {
         await ensureConnected();
