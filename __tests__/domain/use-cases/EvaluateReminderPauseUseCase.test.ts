@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   EvaluateReminderPauseUseCase,
   isAutoPauseEligible,
@@ -137,5 +137,36 @@ describe('helpers', () => {
     expect(addDays('2025-02-15', 7)).toBe('2025-02-22');
     expect(addDays('2025-02-26', 7)).toBe('2025-03-05');
     expect(addDays('2025-12-30', 3)).toBe('2026-01-02');
+  });
+});
+
+describe('auto-pause default policy — 3 ignored reminders, then a 2-day pause', () => {
+  it('sends on days 1–3, pauses on day 4, stays silent day 5, resumes day 6', async () => {
+    // Read the env-derived defaults fresh, so this pins the shipped policy.
+    delete process.env.REMINDER_MISS_THRESHOLD;
+    delete process.env.REMINDER_PAUSE_DAYS;
+    vi.resetModules();
+    const mod = await import('../../../src/domain/use-cases/EvaluateReminderPauseUseCase');
+    expect(mod.REMINDER_MISS_THRESHOLD).toBe(3);
+    expect(mod.REMINDER_PAUSE_DAYS).toBe(2);
+    const uc = new mod.EvaluateReminderPauseUseCase();
+
+    // Simulate the daily cron with a user who never answers (lastCheckedDate stays old).
+    let habit = createHabit({ lastCheckedDate: '2025-02-01' });
+    const sentDays: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const day = mod.addDays('2025-02-10', i);
+      if (habit.remindersPausedUntil && day < habit.remindersPausedUntil) continue; // cron gate
+      const { toSend, pausedNow } = uc.filterDueHabits([habit], day);
+      if (pausedNow.length) {
+        expect(day).toBe('2025-02-13'); // day 4
+        habit = { ...habit, ...pausedNow[0].update };
+        expect(habit.remindersPausedUntil).toBe('2025-02-15'); // silent 13th + 14th
+      } else {
+        sentDays.push(day);
+        habit = { ...habit, ...toSend[0].update };
+      }
+    }
+    expect(sentDays).toEqual(['2025-02-10', '2025-02-11', '2025-02-12', '2025-02-15']);
   });
 });
