@@ -16,6 +16,8 @@ import { REMINDER_PAUSE_DAYS } from '../../domain/use-cases/EvaluateReminderPaus
 import { computePostponeTarget, localDay } from '../../domain/utils/postpone';
 import { SubscriptionUseCase, userHasPremiumAccess } from '../../domain/use-cases/SubscriptionUseCase';
 import { VercelKVHabitRepository } from '../../infrastructure/repositories/VercelKVHabitRepository';
+import { RedisReminderLogRepository, recordReminderClickBestEffort } from '../../infrastructure/repositories/RedisReminderLogRepository';
+import { isReminderClickCallback } from '../../domain/utils/ReminderStats';
 import { Habit } from '../../domain/entities/Habit';
 import { Logger } from '../../infrastructure/logger/Logger';
 import { kv } from '../../infrastructure/config/kv';
@@ -52,6 +54,7 @@ export class TelegramBotService {
   private postponeHabitReminderUseCase: PostponeHabitReminderUseCase;
   private resumeRemindersUseCase: ResumeRemindersUseCase;
   private subscriptionUseCase: SubscriptionUseCase;
+  private reminderLog = new RedisReminderLogRepository();
   private quoteManager: QuoteManager;
   private openai: OpenAI | null = null;
 
@@ -2528,6 +2531,12 @@ export class TelegramBotService {
     }
 
     // Callback query is already acknowledged in processUpdate before this runs.
+
+    // Admin "active users": any tap on a reminder message counts (best-effort, never throws).
+    if (isReminderClickCallback(data)) {
+      const prefs = await this.setUserPreferencesUseCase.getPreferences(userId);
+      await recordReminderClickBestEffort(this.reminderLog, userId, prefs?.timezone);
+    }
 
     if (data === 'open_subscribe') {
       await this.handleSubscribeCommand(chatId, userId, username);

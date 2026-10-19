@@ -40,4 +40,5 @@ export interface ReminderDaySummary {
   noAnswer: number;
   paused: number; // auto-pause notices
   users: number; // distinct users who got a reminder or pause notice
+  active: number; // distinct users who tapped a reminder message that (local) day
 }

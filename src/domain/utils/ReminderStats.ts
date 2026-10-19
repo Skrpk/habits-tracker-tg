@@ -1,6 +1,25 @@
 import { ReminderDaySummary, ReminderLogEntry } from '../entities/ReminderLog';
 
-export function summarizeReminderDay(date: string, entries: ReminderLogEntry[]): ReminderDaySummary {
+/**
+ * Callback data produced by buttons on a reminder message (or on the screens a
+ * reminder message turns into). They all carry the reminder's `:YYYY-MM-DD`;
+ * the same buttons from /myhabits don't, so they don't count as a reminder click.
+ * Includes the auto-pause notice's "Resume now".
+ */
+const REMINDER_CLICK_RE = new RegExp(
+  '^(?:' +
+    'habit_check:.+:(?:yes|no|skip|cancel):\\d{4}-\\d{2}-\\d{2}' +
+    '|habit_skip_confirm:[^:]+:\\d{4}-\\d{2}-\\d{2}' +
+    '|habit_postpone:.+:\\d{4}-\\d{2}-\\d{2}' +
+    '|resume_reminders:.+' +
+  ')$'
+);
+
+export function isReminderClickCallback(data: string): boolean {
+  return REMINDER_CLICK_RE.test(data);
+}
+
+export function summarizeReminderDay(date: string, entries: ReminderLogEntry[], active = 0): ReminderDaySummary {
   const summary: ReminderDaySummary = {
     date,
     sent: 0,
@@ -11,6 +30,7 @@ export function summarizeReminderDay(date: string, entries: ReminderLogEntry[]):
     noAnswer: 0,
     paused: 0,
     users: 0,
+    active,
   };
   const users = new Set<number>();
 

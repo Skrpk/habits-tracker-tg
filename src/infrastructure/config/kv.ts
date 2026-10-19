@@ -164,6 +164,15 @@ if (hasRedisUrl || useLocalRedis) {
       }
       return out;
     },
+    // Set helpers (raw string members). Used for the admin "active users" metric.
+    sAdd: async (key: string, member: string): Promise<void> => {
+      await ensureConnected();
+      await redisClient.sAdd(key, member);
+    },
+    sMembers: async (key: string): Promise<string[]> => {
+      await ensureConnected();
+      return redisClient.sMembers(key);
+    },
     expireAt: async (key: string, unixSeconds: number): Promise<void> => {
       await ensureConnected();
       await redisClient.expireAt(key, unixSeconds);

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hashes = new Map<string, Map<string, unknown>>();
+const sets = new Map<string, Set<string>>();
 const expiries = new Map<string, number>();
 
 vi.mock('../../src/infrastructure/config/kv', () => ({
@@ -12,6 +13,11 @@ vi.mock('../../src/infrastructure/config/kv', () => ({
     }),
     hGetAll: vi.fn(async (key: string) => Object.fromEntries(hashes.get(key) ?? new Map())),
     expireAt: vi.fn(async (key: string, ts: number) => { expiries.set(key, ts); }),
+    sAdd: vi.fn(async (key: string, member: string) => {
+      if (!sets.has(key)) sets.set(key, new Set());
+      sets.get(key)!.add(member);
+    }),
+    sMembers: vi.fn(async (key: string) => [...(sets.get(key) ?? [])]),
   },
 }));
 
@@ -23,6 +29,7 @@ import {
   RedisReminderLogRepository,
   REMINDER_LOG_RETENTION_DAYS,
   logRemindersSentBestEffort,
+  recordReminderClickBestEffort,
 } from '../../src/infrastructure/repositories/RedisReminderLogRepository';
 
 const base = { kind: 'reminder' as const, userId: 7, habitId: 'h1', habitName: 'Run', username: 'ann', targetDate: '2026-09-30' };
@@ -32,6 +39,7 @@ describe('RedisReminderLogRepository', () => {
 
   beforeEach(() => {
     hashes.clear();
+    sets.clear();
     expiries.clear();
     repo = new RedisReminderLogRepository();
   });
@@ -83,5 +91,30 @@ describe('RedisReminderLogRepository', () => {
     };
     await expect(logRemindersSentBestEffort(failing, [base, { ...base, habitId: 'h2' }])).resolves.toBeUndefined();
     expect(failing.recordSent).toHaveBeenCalledTimes(2);
+  });
+
+  it('active users: one entry per user per day, with the same expiry', async () => {
+    await repo.recordActiveUser('2026-10-19', 7);
+    await repo.recordActiveUser('2026-10-19', 7);
+    await repo.recordActiveUser('2026-10-19', 8);
+    expect((await repo.getActiveUsers('2026-10-19')).sort()).toEqual([7, 8]);
+    expect(await repo.getActiveUsers('2026-10-18')).toEqual([]);
+    expect(expiries.get('reminders:active:2026-10-19'))
+      .toBe(Date.parse('2026-10-19T00:00:00Z') / 1000 + (REMINDER_LOG_RETENTION_DAYS + 1) * 86400);
+  });
+
+  it('recordReminderClickBestEffort uses the user\'s local day of the action', async () => {
+    // 22:30 UTC on the 18th is already the 19th in Kyiv (UTC+3).
+    await recordReminderClickBestEffort(repo, 7, 'Europe/Kyiv', new Date('2026-10-18T22:30:00Z'));
+    expect(await repo.getActiveUsers('2026-10-19')).toEqual([7]);
+    expect(await repo.getActiveUsers('2026-10-18')).toEqual([]);
+  });
+
+  it('recordReminderClickBestEffort falls back to UTC for an unresolvable timezone and never throws', async () => {
+    await recordReminderClickBestEffort(repo, 7, 'Pacific/Baker_Island', new Date('2026-10-18T22:30:00Z'));
+    expect(await repo.getActiveUsers('2026-10-18')).toEqual([7]);
+    const failing = { recordSent: vi.fn(), recordResponse: vi.fn(), getDay: vi.fn(), getActiveUsers: vi.fn(),
+      recordActiveUser: vi.fn().mockRejectedValue(new Error('redis down')) };
+    await expect(recordReminderClickBestEffort(failing, 7, 'UTC')).resolves.toBeUndefined();
   });
 });

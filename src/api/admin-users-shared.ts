@@ -407,12 +407,12 @@ export async function runAdminReminderStats(
     if (!isValidIsoDateOnly(date)) {
       return { status: 400, body: { error: 'Invalid date' } };
     }
-    const entries = await reminderLog.getDay(date);
+    const [entries, activeIds] = await Promise.all([reminderLog.getDay(date), reminderLog.getActiveUsers(date)]);
     entries.sort((a, b) =>
       a.kind.localeCompare(b.kind) ||
       (a.username || String(a.userId)).localeCompare(b.username || String(b.userId)) ||
       a.habitName.localeCompare(b.habitName));
-    return { status: 200, body: { date, summary: summarizeReminderDay(date, entries), entries } };
+    return { status: 200, body: { date, summary: summarizeReminderDay(date, entries, activeIds.length), entries } };
   }
 
   const daysRaw = firstQueryString(query.days);
@@ -428,11 +428,18 @@ export async function runAdminReminderStats(
   // and keep that day only if it actually has entries.
   const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
   const dates = trailingDates(tomorrow, days + 1);
-  const perDay = await Promise.all(dates.map(d => reminderLog.getDay(d)));
-  let summaries = dates.map((d, i) => summarizeReminderDay(d, perDay[i]));
-  summaries = perDay[0].length > 0 ? summaries.slice(0, days) : summaries.slice(1);
+  const [perDay, activePerDay] = await Promise.all([
+    Promise.all(dates.map(d => reminderLog.getDay(d))),
+    Promise.all(dates.map(d => reminderLog.getActiveUsers(d))),
+  ]);
+  let summaries = dates.map((d, i) => summarizeReminderDay(d, perDay[i], activePerDay[i].length));
+  const keepTomorrow = perDay[0].length > 0 || activePerDay[0].length > 0;
+  summaries = keepTomorrow ? summaries.slice(0, days) : summaries.slice(1);
+  const windowActive = keepTomorrow ? activePerDay.slice(0, days) : activePerDay.slice(1);
+  // Distinct users active on at least one day in the window.
+  const uniqueActive = new Set(windowActive.flat()).size;
 
-  return { status: 200, body: { days: summaries } };
+  return { status: 200, body: { days: summaries, uniqueActive } };
 }
 
 export function logAdminReminderStatsError(error: unknown): void {

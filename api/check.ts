@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { VercelKVHabitRepository } from '../src/infrastructure/repositories/VercelKVHabitRepository';
-import { RedisReminderLogRepository } from '../src/infrastructure/repositories/RedisReminderLogRepository';
+import { RedisReminderLogRepository, recordReminderClickBestEffort } from '../src/infrastructure/repositories/RedisReminderLogRepository';
 import { GetUserHabitsUseCase } from '../src/domain/use-cases/GetUserHabitsUseCase';
 import { SetUserPreferencesUseCase } from '../src/domain/use-cases/SetUserPreferencesUseCase';
 import { RecordHabitCheckUseCase } from '../src/domain/use-cases/RecordHabitCheckUseCase';
@@ -144,6 +144,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? Number(msgId)
       : undefined;
     if (chatIdNum != null && msgIdNum != null && !Number.isNaN(chatIdNum) && !Number.isNaN(msgIdNum)) {
+      // Opened from a reminder message → counts toward admin "active users".
+      const prefs = await habitRepository.getUserPreferences(userId);
+      await recordReminderClickBestEffort(new RedisReminderLogRepository(), userId, prefs?.timezone);
       await editTelegramReminderMessage(botToken, chatIdNum, msgIdNum, habit.name);
     }
 

@@ -9,4 +9,7 @@ export interface IReminderLogRepository {
    */
   recordResponse(targetDate: string, userId: number, habitId: string, response: ReminderResponse, at?: Date): Promise<void>;
   getDay(targetDate: string): Promise<ReminderLogEntry[]>;
+  /** Mark `userId` active on `day` (their local day) — they tapped a reminder message. Idempotent. */
+  recordActiveUser(day: string, userId: number): Promise<void>;
+  getActiveUsers(day: string): Promise<number[]>;
 }

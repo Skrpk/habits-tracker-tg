@@ -684,7 +684,7 @@
 
         <section class="rem-stats" id="remStats">
             <button type="button" class="rem-toggle" id="remToggle" aria-expanded="false">
-                <span class="rem-caret">▶</span>Reminders sent &amp; answered
+                <span class="rem-caret">▶</span>Reminders &amp; active users
             </button>
             <div class="rem-body" id="remBody" hidden></div>
         </section>
@@ -1274,8 +1274,8 @@
             });
             // ---- Reminder delivery stats (lazy: nothing is fetched until expanded) ----
             var REM_KEYS = ['complete', 'skip', 'drop', 'noAnswer'];
-            var REM_COLORS = { complete: HM_COLORS[3], skip: HM_COLORS[2], drop: HM_COLORS[1], noAnswer: '#B8B8B0', pause: '#7C8DB5' };
-            var REM_LABELS = { complete: 'Done', skip: 'Skipped', drop: 'Dropped', noAnswer: 'No answer', pause: 'Paused' };
+            var REM_COLORS = { complete: HM_COLORS[3], skip: HM_COLORS[2], drop: HM_COLORS[1], noAnswer: '#B8B8B0', pause: '#7C8DB5', active: '#1A1A1A' };
+            var REM_LABELS = { complete: 'Done', skip: 'Skipped', drop: 'Dropped', noAnswer: 'No answer', pause: 'Paused', active: 'Active users' };
             var remLoaded = false;
             var remChart = null;
 
@@ -1297,16 +1297,22 @@
                 return d ? Math.round(n * 100 / d) + '%' : '—';
             }
 
-            function renderRemDays(days) {
-                var t = { sent: 0, complete: 0, skip: 0, drop: 0, noAnswer: 0, paused: 0 };
+            function renderRemDays(days, uniqueActive) {
+                var t = { sent: 0, complete: 0, skip: 0, drop: 0, noAnswer: 0, paused: 0, active: 0 };
                 days.forEach(function (d) {
                     Object.keys(t).forEach(function (k) { t[k] += d[k] || 0; });
                 });
                 var answered = t.complete + t.skip + t.drop;
 
                 var html = '<p class="rem-note">Last ' + days.length + ' days. Days are each user\'s local date; ' +
-                    'only answers to a sent reminder count. Tap a day to see who got what.</p>';
+                    'only answers to a sent reminder count. Active users = tapped any button on a reminder message ' +
+                    '(or acted in the MiniApp opened from one) that day. Tap a day to see who got what.</p>';
+                var latest = days.length ? days[0] : null;
                 html += '<div class="rem-totals">' +
+                    '<span>Active ' + (latest ? latest.date.slice(5) : '') + ' <b>' + (latest ? latest.active : 0) + '</b></span>' +
+                    '<span>Avg active / day <b>' + (days.length ? Math.round(t.active / days.length * 10) / 10 : 0) + '</b></span>' +
+                    '<span>Unique active (' + days.length + 'd) <b>' + (uniqueActive || 0) + '</b></span>' +
+                    '</div><div class="rem-totals">' +
                     '<span>Sent <b>' + t.sent + '</b></span>' +
                     '<span>Answered <b>' + answered + '</b> (' + remPct(answered, t.sent) + ')</span>' +
                     '<span>Done <b>' + t.complete + '</b></span>' +
@@ -1315,20 +1321,21 @@
                     '<span>No answer <b>' + t.noAnswer + '</b></span>' +
                     '<span>Auto-paused <b>' + t.paused + '</b></span>' +
                     '</div>';
-                if (t.sent + t.paused > 0) html += '<div class="rem-chart" id="remChart"></div>';
+                if (t.sent + t.paused + t.active > 0) html += '<div class="rem-chart" id="remChart"></div>';
 
                 html += '<div class="rem-table-wrap"><table class="rem-table"><thead><tr>' +
-                    '<th>Date</th><th>Sent</th><th>Done</th><th>Skip</th><th>Drop</th><th>No ans.</th><th>Rate</th><th>Paused</th><th>Users</th>' +
+                    '<th>Date</th><th>Active</th><th>Sent</th><th>Done</th><th>Skip</th><th>Drop</th><th>No ans.</th><th>Rate</th><th>Paused</th><th>Users</th>' +
                     '</tr></thead><tbody>';
                 days.forEach(function (d) {
-                    var empty = d.sent + d.paused === 0;
+                    var empty = d.sent + d.paused + d.active === 0;
                     var answeredDay = d.complete + d.skip + d.drop;
                     html += '<tr class="rem-row' + (empty ? ' empty-day' : '') + '" data-date="' + d.date + '">' +
                         '<td><span class="rem-caret">▶</span>' + d.date + '</td>' +
+                        '<td><b>' + d.active + '</b></td>' +
                         '<td>' + d.sent + (d.sends > d.sent ? ' <span class="rem-meta" title="incl. Check later re-asks">(' + d.sends + ')</span>' : '') + '</td>' +
                         '<td>' + d.complete + '</td><td>' + d.skip + '</td><td>' + d.drop + '</td><td>' + d.noAnswer + '</td>' +
                         '<td>' + remPct(answeredDay, d.sent) + '</td><td>' + d.paused + '</td><td>' + d.users + '</td></tr>' +
-                        '<tr class="rem-detail" data-date="' + d.date + '" hidden><td colspan="9"></td></tr>';
+                        '<tr class="rem-detail" data-date="' + d.date + '" hidden><td colspan="10"></td></tr>';
                 });
                 html += '</tbody></table></div>';
                 document.getElementById('remBody').innerHTML = html;
@@ -1342,6 +1349,11 @@
                             itemStyle: { color: REM_COLORS[k] },
                             data: asc.map(function (d) { return d[k]; })
                         };
+                    });
+                    series.push({
+                        name: REM_LABELS.active, type: 'line', symbolSize: 4,
+                        itemStyle: { color: REM_COLORS.active },
+                        data: asc.map(function (d) { return d.active; })
                     });
                     series.push({
                         name: REM_LABELS.pause, type: 'line', symbolSize: 4,
@@ -1409,7 +1421,7 @@
                 bodyEl.innerHTML = '<p class="loading">Loading…</p>';
                 try {
                     var body = await postAdminJson('/api/reminder-stats?days=30');
-                    renderRemDays(body.days || []);
+                    renderRemDays(body.days || [], body.uniqueActive);
                     remLoaded = true;
                 } catch (err) {
                     bodyEl.innerHTML = '<p class="error">' + escapeHtml(err.message || 'Network error.') + '</p>';

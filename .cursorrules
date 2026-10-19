@@ -288,6 +288,7 @@ interface UserPreferences {
 - Redis keys: `user:{userId}:preferences` for user preferences (timezone)
 - Redis keys: `active_users` for tracking users with habits
 - Redis keys: `conversation_state:{userId}` for multi-step conversations
+- Redis keys: `reminders:active:{YYYY-MM-DD}` — set, users who tapped a reminder message that local day (expires 90 days after)
 - Redis keys: `reminders:log:{YYYY-MM-DD}` — hash, reminder delivery log per user-local day (expires 90 days after that day; see Important Patterns §15)
 
 ## Environment Variables
@@ -388,8 +389,9 @@ interface UserPreferences {
    - **Writes on send:** both cron loops (`api/reminders.ts`, `reminders-server.ts` — keep in parity) call `logRemindersSentBestEffort` for `pausedNow` notices and for `toSend` habits **in `sentIds` only** (same persist-after-send rule as auto-pause). A same-day "Check later" re-ask bumps `sends` on the existing entry. Logging never throws into the cron.
    - **Writes on answer:** `RecordHabitCheckUseCase` takes an optional `IReminderLogRepository` and, after a real complete/drop/skip (not the "already checked" no-op), calls `recordResponse(checkDate, …)` best-effort. It only updates an existing `reminder` entry — **proactive checks with no reminder that day are deliberately not counted**. Latest answer wins (drop → later complete shows complete). Every construction site passes `new RedisReminderLogRepository()` (webhook ×2, reminders cron, check API, local server ×2, `src/index.ts`).
    - **Read:** `runAdminReminderStats` (`admin-users-shared.ts`) behind `POST /api/reminder-stats`. Looks one day past UTC today (users east of UTC) and keeps that day only if it has entries. Summaries via `summarizeReminderDay` (`src/domain/utils/ReminderStats.ts`): `sent` counts each habit-reminder once, `sends` includes re-asks, `noAnswer` = sent with no response yet.
-   - **UI:** collapsed "Reminders sent & answered" section at the top of `admin.html` (both copies); fetched only on first expand. ECharts stacked bars (done/skipped/dropped/no answer) + paused line, a per-day table, and a click-to-expand per-day list of user · habit · status (fetched lazily per day).
+   - **UI:** collapsed "Reminders & active users" section at the top of `admin.html` (both copies); fetched only on first expand. ECharts stacked bars (done/skipped/dropped/no answer) + paused line, a per-day table, and a click-to-expand per-day list of user · habit · status (fetched lazily per day).
    - History starts from deploy — there is no backfill.
+   - **Active users:** set `reminders:active:{YYYY-MM-DD}` (user-local day of the *action*, same 90-day expiry) of users who tapped any reminder-message button (Yes/No/Skip/Skip-confirm/Cancel/Check later/Resume) or acted in the MiniApp opened from a reminder (`chatId`+`msgId` present). `TelegramBot.handleCallbackQuery` detects reminder clicks with `isReminderClickCallback` — reminder buttons carry `:YYYY-MM-DD`, `/myhabits` buttons don't, so manual checks aren't counted. Written by `recordReminderClickBestEffort` (never throws). API adds `active` per day and `uniqueActive` for the window.
 
 ## Build Process
 

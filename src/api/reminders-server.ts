@@ -2,7 +2,7 @@ import http from 'http';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { join, extname, resolve } from 'path';
 import { VercelKVHabitRepository } from '../infrastructure/repositories/VercelKVHabitRepository';
-import { RedisReminderLogRepository, logRemindersSentBestEffort } from '../infrastructure/repositories/RedisReminderLogRepository';
+import { RedisReminderLogRepository, logRemindersSentBestEffort, recordReminderClickBestEffort } from '../infrastructure/repositories/RedisReminderLogRepository';
 import { TelegramBotService } from '../presentation/telegram/TelegramBot';
 import { GetHabitsDueForReminderUseCase } from '../domain/use-cases/GetHabitsDueForReminderUseCase';
 import { EvaluateReminderPauseUseCase } from '../domain/use-cases/EvaluateReminderPauseUseCase';
@@ -514,6 +514,11 @@ export async function handleCheckEndpoint(
 
     const chatIdNum = chatId != null && msgId != null ? Number(chatId) : undefined;
     const msgIdNum = chatId != null && msgId != null ? Number(msgId) : undefined;
+    if (chatIdNum != null && msgIdNum != null && !Number.isNaN(chatIdNum) && !Number.isNaN(msgIdNum)) {
+      // Opened from a reminder message → counts toward admin "active users" (mirrors api/check.ts).
+      const prefs = await habitRepository.getUserPreferences(userId);
+      await recordReminderClickBestEffort(new RedisReminderLogRepository(), userId, prefs?.timezone);
+    }
     if (botToken && chatIdNum != null && msgIdNum != null && !Number.isNaN(chatIdNum) && !Number.isNaN(msgIdNum)) {
       const editUrl = `https://api.telegram.org/bot${botToken}/editMessageText`;
       const editRes = await fetch(editUrl, {

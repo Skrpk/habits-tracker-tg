@@ -4,12 +4,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 vi.mock('../../src/infrastructure/config/kv', () => ({ kv: {} }));
 
 const mockGetDay = vi.fn();
+const mockGetActiveUsers = vi.fn();
 
 vi.mock('../../src/infrastructure/repositories/RedisReminderLogRepository', () => ({
   RedisReminderLogRepository: vi.fn().mockImplementation(() => ({
     recordSent: vi.fn(),
     recordResponse: vi.fn(),
     getDay: mockGetDay,
+    getActiveUsers: mockGetActiveUsers,
   })),
 }));
 
@@ -62,6 +64,7 @@ describe('api/reminder-stats', () => {
     process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
     process.env.ADMIN_USERS = '[12345]';
     mockGetDay.mockReset().mockResolvedValue([]);
+    mockGetActiveUsers.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -113,4 +116,20 @@ describe('api/reminder-stats', () => {
     expect(res.body.entries.map((e: any) => e.kind)).toEqual(['pause', 'reminder']);
     expect(res.body.summary).toMatchObject({ sent: 1, skip: 1, paused: 1, users: 1 });
   });
+
+  it('reports active users per day and distinct active users across the window', async () => {
+    const active: Record<string, number[]> = { '2026-10-01': [1, 2], '2026-09-30': [2, 3], '2026-09-20': [9] };
+    mockGetActiveUsers.mockImplementation(async (d: string) => active[d] ?? []);
+    const res = await call({ days: '3' });
+    expect(res.body.days.map((d: any) => d.active)).toEqual([2, 2, 0]);
+    expect(res.body.uniqueActive).toBe(3); // 1, 2, 3 — the 20th is outside the window
+  });
+
+  it('keeps UTC-tomorrow when only active users exist there', async () => {
+    mockGetActiveUsers.mockImplementation(async (d: string) => (d === '2026-10-02' ? [5] : []));
+    const res = await call({ days: '2' });
+    expect(res.body.days.map((d: any) => d.date)).toEqual(['2026-10-02', '2026-10-01']);
+    expect(res.body.uniqueActive).toBe(1);
+  });
 });
+
